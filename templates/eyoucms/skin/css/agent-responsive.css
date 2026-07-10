@@ -36,6 +36,15 @@
     box-shadow: none;
   }
 
+  .agent-chat-page--eyoucms .chat-workspace {
+    top: var(--chat-site-navigation-height);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: auto;
+    margin: 0;
+  }
+
   .chat-main {
     height: 100%;
   }

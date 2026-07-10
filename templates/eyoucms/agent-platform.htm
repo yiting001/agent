@@ -23,21 +23,21 @@
 
     <!-- 页面图标全部内置，部署时不依赖外部图标服务。 -->
     <svg class="chat-icon-sprite" aria-hidden="true" xmlns:xlink="http://www.w3.org/1999/xlink">
-      <symbol id="chat-icon-bot" viewBox="0 0 24 24">
+      <symbol id="chat-icon-bot" viewBox="0 -1 24 24">
         <rect x="4" y="6" width="16" height="13" rx="4" fill="none" stroke="currentColor" stroke-width="1.8" />
         <path d="M12 3v3M8.5 11h.01M15.5 11h.01M8 15h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
       </symbol>
-      <symbol id="chat-icon-user" viewBox="0 0 24 24">
+      <symbol id="chat-icon-user" viewBox="0 0.5 24 24">
         <circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.8" />
         <path d="M4.5 21a7.5 7.5 0 0 1 15 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
       </symbol>
       <symbol id="chat-icon-plus" viewBox="0 0 24 24">
         <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
       </symbol>
-      <symbol id="chat-icon-message" viewBox="0 0 24 24">
+      <symbol id="chat-icon-message" viewBox="0 0.2 24 24">
         <path d="M5 19l-2 2 .8-4A8 8 0 1 1 7 19H5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
       </symbol>
-      <symbol id="chat-icon-trash" viewBox="0 0 24 24">
+      <symbol id="chat-icon-trash" viewBox="0 0.5 24 24">
         <path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
       </symbol>
       <symbol id="chat-icon-menu" viewBox="0 0 24 24">
@@ -47,7 +47,7 @@
         <path d="m3 3 18 9-18 9 3-9-3-9Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
         <path d="M6 12h15" fill="none" stroke="currentColor" stroke-width="1.8" />
       </symbol>
-      <symbol id="chat-icon-light" viewBox="0 0 24 24">
+      <symbol id="chat-icon-light" viewBox="0 0.2 24 24">
         <path d="M9 18h6M10 22h4M8.5 15.5A7 7 0 1 1 15.5 15.5c-.9.7-1.5 1.5-1.5 2.5h-4c0-1-.6-1.8-1.5-2.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
       </symbol>
       <symbol id="chat-icon-file" viewBox="0 0 24 24">
@@ -163,25 +163,39 @@
           </div>
         </section>
 
-        <footer class="chat-composer-wrap">
-          <div class="chat-composer">
-            <label class="chat-visually-hidden" for="agent-chat-input">输入问题</label>
-            <textarea
-              id="agent-chat-input"
-              data-chat-input
-              rows="1"
-              maxlength="2000"
-              placeholder="输入你的问题，按回车发送…"
-            ></textarea>
-            <button class="chat-send-button" data-chat-send type="button" aria-label="发送消息">
-              <svg aria-hidden="true"><use href="#chat-icon-send" xlink:href="#chat-icon-send"></use></svg>
-            </button>
+        <div class="chat-composer-wrap" role="group" aria-label="消息输入">
+          <div class="chat-composer-shell">
+            <div class="chat-pending-attachments" data-chat-pending-attachments hidden></div>
+            <p class="chat-attachment-error" data-chat-attachment-error role="alert" hidden></p>
+            <div class="chat-composer">
+              <label class="chat-attachment-button" title="上传图片或音频" aria-label="上传图片或音频">
+                <svg aria-hidden="true"><use href="#chat-icon-file" xlink:href="#chat-icon-file"></use></svg>
+                <input
+                  data-chat-attachment-input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif,audio/mpeg,audio/wav"
+                  multiple
+                />
+              </label>
+              <label class="chat-visually-hidden" for="agent-chat-input">输入问题</label>
+              <textarea
+                id="agent-chat-input"
+                data-chat-input
+                rows="1"
+                maxlength="8000"
+                placeholder="输入问题，或上传图片/音频…"
+              ></textarea>
+              <button class="chat-send-button" data-chat-send type="button" aria-label="发送消息">
+                <svg aria-hidden="true"><use href="#chat-icon-send" xlink:href="#chat-icon-send"></use></svg>
+              </button>
+            </div>
           </div>
-          <p class="chat-disclaimer">智能体生成的内容仅供参考，请核实重要信息。</p>
-        </footer>
+          <p class="chat-disclaimer">支持图片和音频输入；智能体生成的内容仅供参考，请核实重要信息。</p>
+        </div>
       </main>
     </div>
 
+    {eyou:static file="skin/js/agent-attachments.js" /}
     {eyou:static file="skin/js/agent-platform.js" /}
     {eyou:include file="footer.htm" /}
   </body>

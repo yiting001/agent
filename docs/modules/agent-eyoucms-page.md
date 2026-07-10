@@ -7,6 +7,7 @@
 - 开始新对话。
 - 查看当前浏览器会话。
 - 输入问题并发送。
+- 上传图片或音频，与文本一起发送给当前智能体。
 - 点击常用问题快速发起对话。
 - 清空当前对话。
 - 在手机端打开或关闭对话列表。
@@ -40,7 +41,8 @@ templates/eyoucms/
     │   ├── agent-composer.css       # 底部输入框
     │   └── agent-responsive.css     # 平板与手机适配
     └── js/
-        └── agent-platform.js        # 后台地址、品牌加载、发送和移动侧栏
+        ├── agent-attachments.js     # 附件选择、预览、移除和上传
+        └── agent-platform.js        # 后台地址、品牌加载、对话和移动侧栏
 ```
 
 ```mermaid
@@ -51,17 +53,20 @@ flowchart LR
   Chat[对话样式]
   Composer[输入区样式]
   Responsive[响应式样式]
+  Attachments[多模态附件交互]
   Script[对话交互脚本]
 
   Eyou --> Foundation
   Eyou --> Chat
   Eyou --> Composer
   Eyou --> Responsive
+  Eyou --> Attachments
   Eyou --> Script
   Preview --> Foundation
   Preview --> Chat
   Preview --> Composer
   Preview --> Responsive
+  Preview --> Attachments
   Preview --> Script
 ```
 
@@ -74,7 +79,8 @@ flowchart TD
   Header[智能体名称与在线状态]
   Welcome[中文欢迎语与快捷问题]
   Messages[用户和智能体消息]
-  Composer[问题输入与发送]
+  Composer[文字、图片、音频与发送]
+  Upload[附件上传接口]
 
   Navigation --> History
   Navigation --> Header
@@ -82,13 +88,16 @@ flowchart TD
   Header --> Messages
   Welcome --> Messages
   Composer --> Messages
+  Composer --> Upload
+  Upload --> Messages
 ```
 
 页面没有后台导航、模型选择、知识库管理或 API 配置入口。
 EyouCMS 模板通过 `agent-chat-page--eyoucms` 为站点公共导航预留 64px，
 避免固定导航覆盖对话头部；站点导航高度不同时只需修改
 `agent-foundation.css` 中的 `--chat-site-navigation-height`。
-工作区使用动态视口高度，重置会话并聚焦输入框时不会把对话头部滚动到导航下方。
+工作区固定在公共导航与视口底部之间，不受站点页脚样式或页面内容高度影响。
+主内容网格显式允许对话区收缩和滚动，短窗口恢复初始欢迎内容时输入区仍固定可见。
 左侧会话列表拥有独立滚动区域，记录增多时品牌、新建按钮和底部说明保持可见。
 内置 SVG 图标同时声明现代 `href` 与兼容 `xlink:href` 引用，
 避免部分浏览器出现图标缺失或错位。
@@ -149,6 +158,9 @@ http://localhost:4173/preview/agent-platform.html?agentId=<智能体ID>
 
 - 点击快捷问题会自动发送对应内容。
 - 输入文字后按回车发送，`Shift + Enter` 换行。
+- 可选择最多 6 个 PNG、JPG、WebP、GIF、MP3 或 WAV 附件；附件可单独发送。
+- 附件先上传到 `/api/chat-attachments`，对话消息只提交后端返回的附件标识。
+- 已发送的图片和音频在当前会话中显示预览，重新开始时释放本地预览资源。
 - 发送后先展示“正在回复”，再通过 SSE 逐段显示真实模型和知识检索生成的回答。
 - 点击“开始新对话”“重新开始”或清空按钮会恢复初始状态。
 - 手机端点击左上角菜单按钮可打开最近对话抽屉。
@@ -160,13 +172,18 @@ http://localhost:4173/preview/agent-platform.html?agentId=<智能体ID>
 ```mermaid
 flowchart LR
   Page[中文对话页]
+  AttachmentAPI[附件上传接口]
   ChatAPI[后端对话接口]
   Agent[智能体应用服务]
+  Storage[附件存储端口]
   Model[模型适配器]
   Knowledge[知识检索服务]
 
-  Page -->|只提交用户消息| ChatAPI
+  Page -->|上传图片或音频| AttachmentAPI
+  AttachmentAPI --> Storage
+  Page -->|提交文本与附件标识| ChatAPI
   ChatAPI --> Agent
+  Agent --> Storage
   Agent --> Model
   Agent --> Knowledge
 ```
@@ -195,5 +212,7 @@ flowchart LR
 - 所有可见文案均为中文。
 - 页面不存在 API、模型和知识库配置控件。
 - 输入、快捷问题、回复、清空和移动侧栏交互可用。
+- 短窗口和 EyouCMS 公共导航同时存在时输入区保持可见。
+- 图片和音频可选择、预览、移除、上传，并通过公开智能体接口发送。
 - 单个源文件不超过 500 行。
 - 项目格式、lint、类型检查、测试和构建保持通过。

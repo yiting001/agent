@@ -252,15 +252,26 @@ describe('Knowledge platform', () => {
       .set('X-File-Name', encodeURIComponent('截图.png'))
       .send(image)
       .expect(201);
-    const attachment = parseRecord(attachmentResponse.text);
+    const imageAttachment = parseRecord(attachmentResponse.text);
+    const audio = Buffer.from([
+      0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45,
+    ]);
+    const audioAttachmentResponse = await request(app.getHttpServer())
+      .post('/api/chat-attachments')
+      .set('Content-Type', 'audio/wav')
+      .set('X-File-Name', encodeURIComponent('录音.wav'))
+      .send(audio)
+      .expect(201);
+    const audioAttachment = parseRecord(audioAttachmentResponse.text);
+    const attachments = [imageAttachment, audioAttachment];
 
     await request(app.getHttpServer())
       .post(`/api/agents/${agentId}/chat`)
       .send({
         messages: [
           {
-            attachments: [attachment],
-            content: '分析图片',
+            attachments,
+            content: '分析图片和音频',
             role: 'user',
           },
         ],
@@ -274,20 +285,38 @@ describe('Knowledge platform', () => {
     expect(JSON.stringify(multimodalContent)).toContain(
       'data:image/png;base64,',
     );
+    expect(JSON.stringify(multimodalContent)).toContain('"input_audio"');
 
     await request(app.getHttpServer())
       .post(`/api/public/agents/${agentId}/chat`)
       .send({
-        messages: [{ content: '公开测试问题', role: 'user' }],
+        messages: [
+          {
+            attachments,
+            content: '公开多模态测试',
+            role: 'user',
+          },
+        ],
         stream: false,
       })
       .expect(200);
+
+    expect(Array.isArray(lastChatInput?.messages.at(-1)?.content)).toBe(true);
+    expect(JSON.stringify(lastChatInput?.messages.at(-1)?.content)).toContain(
+      '"input_audio"',
+    );
 
     await request(app.getHttpServer())
       .post('/api/v1/chat/completions')
       .set('Authorization', `Bearer ${secretKey}`)
       .send({
-        messages: [{ content: '请回答问题', role: 'user' }],
+        messages: [
+          {
+            attachments,
+            content: 'API 多模态测试',
+            role: 'user',
+          },
+        ],
         model: 'agent',
         stream: false,
       })
@@ -295,6 +324,11 @@ describe('Knowledge platform', () => {
       .expect(({ text }) => {
         expect(readString(parseRecord(text), 'object')).toBe('chat.completion');
       });
+
+    expect(Array.isArray(lastChatInput?.messages.at(-1)?.content)).toBe(true);
+    expect(JSON.stringify(lastChatInput?.messages.at(-1)?.content)).toContain(
+      'data:image/png;base64,',
+    );
 
     const document = Buffer.from('需要进入异步索引的真实文档内容。');
     const uploadResponse = await request(app.getHttpServer())

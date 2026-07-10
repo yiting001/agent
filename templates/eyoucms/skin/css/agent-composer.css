@@ -1,6 +1,11 @@
 /* 固定在对话底部的输入区。 */
 .chat-composer-wrap {
   position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  margin: 0;
   border-top: 1px solid rgb(232 234 241 / 72%);
   padding: 16px 24px 18px;
   background: linear-gradient(
@@ -10,15 +15,19 @@
   );
 }
 
+.chat-composer-shell {
+  width: min(820px, 100%);
+  margin: 0 auto;
+}
+
 .chat-composer {
   display: flex;
   gap: 10px;
   align-items: flex-end;
-  width: min(820px, 100%);
-  margin: 0 auto;
+  width: 100%;
   border: 1px solid #dfe2eb;
   border-radius: 18px;
-  padding: 9px 9px 9px 16px;
+  padding: 9px;
   background: #ffffff;
   box-shadow: 0 12px 34px rgb(43 45 75 / 9%);
   transition:
@@ -48,6 +57,119 @@
 
 .chat-composer textarea::placeholder {
   color: #a3a7b4;
+}
+
+.chat-attachment-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 13px;
+  color: #696f80;
+  background: #f1f2f7;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background 160ms ease;
+}
+
+.chat-attachment-button:hover {
+  color: var(--chat-primary);
+  background: var(--chat-primary-soft);
+}
+
+.chat-attachment-button.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.chat-attachment-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.chat-attachment-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chat-pending-attachments {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+  padding: 2px;
+}
+
+.chat-pending-attachments[hidden] {
+  display: none;
+}
+
+.chat-pending-attachments figure {
+  position: relative;
+  width: 112px;
+  min-width: 112px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid #e2e4ec;
+  border-radius: 13px;
+  background: #ffffff;
+}
+
+.chat-pending-attachments img {
+  display: block;
+  width: 100%;
+  height: 72px;
+  object-fit: cover;
+}
+
+.chat-pending-attachments audio {
+  display: block;
+  width: 100%;
+  height: 72px;
+}
+
+.chat-pending-attachments figcaption {
+  overflow: hidden;
+  padding: 6px 8px;
+  color: #606678;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-pending-attachments button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #ffffff;
+  background: rgb(29 31 43 / 78%);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chat-attachment-error {
+  margin: 0 2px 8px;
+  color: #c63f4f;
+  font-size: 11px;
+}
+
+.chat-attachment-error[hidden] {
+  display: none;
 }
 
 .chat-send-button {

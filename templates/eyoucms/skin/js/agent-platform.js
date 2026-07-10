@@ -7,6 +7,15 @@ const AGENT_BACKEND_BASE_URL = '/api';
   const conversation = document.querySelector('[data-chat-conversation]');
   const input = document.querySelector('[data-chat-input]');
   const sendButton = document.querySelector('[data-chat-send]');
+  const attachmentInput = document.querySelector(
+    '[data-chat-attachment-input]',
+  );
+  const pendingAttachments = document.querySelector(
+    '[data-chat-pending-attachments]',
+  );
+  const attachmentError = document.querySelector(
+    '[data-chat-attachment-error]',
+  );
   const clearButtons = document.querySelectorAll('[data-chat-clear]');
   const sidebar = document.querySelector('[data-chat-sidebar]');
   const sidebarBackdrop = document.querySelector('[data-chat-backdrop]');
@@ -32,9 +41,10 @@ const AGENT_BACKEND_BASE_URL = '/api';
   let replying = false;
   let ready = false;
   let agentId = '';
+  let attachmentController;
   const messages = [];
 
-  function createMessage(role, content) {
+  function createMessage(role, content, attachments = []) {
     const message = document.createElement('article');
     const avatar = document.createElement('span');
     const avatarIcon = document.createElementNS(
@@ -71,7 +81,15 @@ const AGENT_BACKEND_BASE_URL = '/api';
 
     avatarIcon.appendChild(avatarUse);
     avatar.appendChild(avatarIcon);
-    bubble.appendChild(paragraph);
+    if (attachments.length && attachmentController) {
+      bubble.appendChild(
+        attachmentController.createMessageGallery(attachments),
+      );
+    }
+
+    if (content || role === 'assistant') {
+      bubble.appendChild(paragraph);
+    }
     body.append(name, bubble);
     message.append(avatar, body);
     return message;
@@ -115,6 +133,17 @@ const AGENT_BACKEND_BASE_URL = '/api';
     }
 
     return responseBody;
+  }
+
+  function uploadAttachment(file) {
+    return request('/chat-attachments', {
+      body: file,
+      headers: {
+        'Content-Type': file.type,
+        'X-File-Name': encodeURIComponent(file.name),
+      },
+      method: 'POST',
+    });
   }
 
   async function streamRequest(path, body, onDelta) {
@@ -239,19 +268,22 @@ const AGENT_BACKEND_BASE_URL = '/api';
   }
 
   function updateSendState() {
-    sendButton.disabled = !ready || replying || input.value.trim().length === 0;
+    const hasContent =
+      input.value.trim().length > 0 || attachmentController?.hasPending();
+
+    sendButton.disabled = !ready || replying || !hasContent;
+    attachmentController?.setDisabled(!ready || replying);
   }
 
   async function sendMessage(question) {
     const content = question.trim();
 
-    if (!content || replying) {
+    if ((!content && !attachmentController?.hasPending()) || replying) {
       return;
     }
 
     replying = true;
-    input.value = '';
-    resizeInput();
+    attachmentController?.clearError();
     updateSendState();
 
     const messageList = conversation.querySelector('[data-chat-messages]');
@@ -262,15 +294,36 @@ const AGENT_BACKEND_BASE_URL = '/api';
       return;
     }
 
-    messageList.appendChild(createMessage('user', content));
-    messages.push({ content, role: 'user' });
-    const typingMessage = createTypingMessage();
-    messageList.appendChild(typingMessage);
-    scrollToLatest();
+    let typingMessage;
     let answerMessage;
     let answerParagraph;
 
     try {
+      const attachments = attachmentController
+        ? await attachmentController.uploadAll()
+        : [];
+      const attachmentReferences = attachments.map(
+        ({ fileName, id, mimeType, sizeBytes }) => ({
+          fileName,
+          id,
+          mimeType,
+          sizeBytes,
+        }),
+      );
+
+      input.value = '';
+      resizeInput();
+      messageList.appendChild(createMessage('user', content, attachments));
+      messages.push({
+        ...(attachmentReferences.length
+          ? { attachments: attachmentReferences }
+          : {}),
+        content,
+        role: 'user',
+      });
+      typingMessage = createTypingMessage();
+      messageList.appendChild(typingMessage);
+      scrollToLatest();
       let answer = '';
 
       await streamRequest(
@@ -282,7 +335,7 @@ const AGENT_BACKEND_BASE_URL = '/api';
           if (!answerMessage) {
             answerMessage = createMessage('assistant', '');
             answerParagraph = answerMessage.querySelector('p');
-            typingMessage.replaceWith(answerMessage);
+            typingMessage?.replaceWith(answerMessage);
           }
 
           if (answerParagraph) {
@@ -295,7 +348,7 @@ const AGENT_BACKEND_BASE_URL = '/api';
 
       if (!answer) {
         answer = '模型没有返回有效内容。';
-        typingMessage.replaceWith(createMessage('assistant', answer));
+        typingMessage?.replaceWith(createMessage('assistant', answer));
       }
 
       messages.push({ content: answer, role: 'assistant' });
@@ -307,8 +360,10 @@ const AGENT_BACKEND_BASE_URL = '/api';
 
       if (answerMessage) {
         answerMessage.replaceWith(errorMessage);
-      } else {
+      } else if (typingMessage) {
         typingMessage.replaceWith(errorMessage);
+      } else {
+        messageList.appendChild(errorMessage);
       }
     } finally {
       replying = false;
@@ -325,6 +380,7 @@ const AGENT_BACKEND_BASE_URL = '/api';
     input.value = '';
     messages.length = 0;
     replying = false;
+    attachmentController?.reset();
     resizeInput();
     updateSendState();
     conversation.scrollTop = 0;
@@ -339,6 +395,21 @@ const AGENT_BACKEND_BASE_URL = '/api';
     sidebar.classList.toggle('is-open', open);
     sidebarBackdrop.classList.toggle('is-visible', open);
     sidebarBackdrop.setAttribute('aria-hidden', open ? 'false' : 'true');
+  }
+
+  if (
+    attachmentInput instanceof HTMLInputElement &&
+    pendingAttachments instanceof HTMLElement &&
+    attachmentError instanceof HTMLElement &&
+    window.AgentChatAttachments
+  ) {
+    attachmentController = window.AgentChatAttachments.create({
+      container: pendingAttachments,
+      error: attachmentError,
+      input: attachmentInput,
+      onChange: updateSendState,
+      upload: uploadAttachment,
+    });
   }
 
   sendButton.addEventListener('click', () => sendMessage(input.value));
