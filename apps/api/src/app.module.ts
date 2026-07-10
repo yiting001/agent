@@ -8,6 +8,7 @@ import {
 } from './config/application.config';
 import { InitialKnowledgePlatform1752150000000 } from './database/migrations/1752150000000-initial-knowledge-platform';
 import { AddBrandSettings1752151000000 } from './database/migrations/1752151000000-add-brand-settings';
+import { AddAgentCascades1752152000000 } from './database/migrations/1752152000000-add-agent-cascades';
 import { BrandingModule } from './modules/branding/branding.module';
 import { HealthModule } from './modules/health/health.module';
 import { AgentsModule } from './modules/agents/agents.module';
@@ -35,6 +36,7 @@ import { ModelProvidersModule } from './modules/model-providers/model-providers.
           migrations: [
             InitialKnowledgePlatform1752150000000,
             AddBrandSettings1752151000000,
+            AddAgentCascades1752152000000,
           ],
           migrationsRun: config.databaseMigrationsRun,
           synchronize: config.databaseSynchronize,

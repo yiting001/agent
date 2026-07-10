@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
 
-import type { AgentStatus } from '../../domain/admin-workspace';
+import type { AgentStatus, AgentSummary } from '../../domain/admin-workspace';
 import { useAdminWorkspaceStore } from '../../stores/admin-workspace.store';
 import { agentStatusLabels, formatCount, formatDate } from '../admin-display';
 import BaseIcon from '../components/BaseIcon.vue';
 import BaseModal from '../components/BaseModal.vue';
 
 const workspaceStore = useAdminWorkspaceStore();
-const createModalOpen = ref(false);
+const editorModalOpen = ref(false);
+const editingAgentId = ref('');
+const deleteCandidate = ref<AgentSummary>();
 const searchTerm = ref('');
 const form = reactive({
   description: '',
@@ -43,18 +45,31 @@ const filteredAgents = computed(() => {
       )
     : workspaceStore.agents;
 });
+const isEditing = computed(() => Boolean(editingAgentId.value));
 
 function openCreateModal(): void {
+  editingAgentId.value = '';
   form.name = '';
   form.description = '';
   form.providerId = availableProviders.value[0]?.id ?? '';
   form.moduleIds = [];
   form.systemPrompt = '你是专业、严谨的企业知识助手，请依据知识库准确回答。';
   form.temperature = 0.3;
-  createModalOpen.value = true;
+  editorModalOpen.value = true;
 }
 
-async function createAgent(): Promise<void> {
+function openEditModal(agent: AgentSummary): void {
+  editingAgentId.value = agent.id;
+  form.name = agent.name;
+  form.description = agent.description;
+  form.providerId = agent.providerId;
+  form.moduleIds = [...agent.moduleIds];
+  form.systemPrompt = agent.systemPrompt;
+  form.temperature = agent.temperature;
+  editorModalOpen.value = true;
+}
+
+async function saveAgent(): Promise<void> {
   if (
     !form.name.trim() ||
     !form.description.trim() ||
@@ -65,15 +80,39 @@ async function createAgent(): Promise<void> {
   }
 
   try {
-    await workspaceStore.createAgent({
+    const input = {
       description: form.description.trim(),
       moduleIds: form.moduleIds,
       name: form.name.trim(),
       providerId: form.providerId,
       systemPrompt: form.systemPrompt.trim(),
       temperature: form.temperature,
-    });
-    createModalOpen.value = false;
+    };
+
+    if (editingAgentId.value) {
+      await workspaceStore.updateAgent(editingAgentId.value, input);
+    } else {
+      await workspaceStore.createAgent(input);
+    }
+
+    editorModalOpen.value = false;
+  } catch {
+    return;
+  }
+}
+
+function openDeleteModal(agent: AgentSummary): void {
+  deleteCandidate.value = agent;
+}
+
+async function deleteAgent(): Promise<void> {
+  if (!deleteCandidate.value) {
+    return;
+  }
+
+  try {
+    await workspaceStore.deleteAgent(deleteCandidate.value.id);
+    deleteCandidate.value = undefined;
   } catch {
     return;
   }
@@ -164,13 +203,31 @@ async function toggleStatus(
         </div>
         <footer class="resource-card__footer">
           <span>更新于 {{ formatDate(agent.updatedAt) }}</span>
-          <RouterLink
-            class="primary-button primary-button--small"
-            :to="`/chat/${agent.id}`"
-          >
-            <BaseIcon name="chat" />
-            测试
-          </RouterLink>
+          <div>
+            <button
+              class="text-button"
+              type="button"
+              :disabled="workspaceStore.isSaving"
+              @click="openEditModal(agent)"
+            >
+              编辑
+            </button>
+            <button
+              class="text-button text-button--danger"
+              type="button"
+              :disabled="workspaceStore.isSaving"
+              @click="openDeleteModal(agent)"
+            >
+              删除
+            </button>
+            <RouterLink
+              class="primary-button primary-button--small"
+              :to="`/chat/${agent.id}`"
+            >
+              <BaseIcon name="chat" />
+              测试
+            </RouterLink>
+          </div>
         </footer>
       </article>
 
@@ -195,12 +252,16 @@ async function toggleStatus(
     </section>
 
     <BaseModal
-      :open="createModalOpen"
-      title="创建智能体"
-      description="模型、提示词和知识模块均会保存到真实后端。"
-      @close="createModalOpen = false"
+      :open="editorModalOpen"
+      :title="isEditing ? '编辑智能体' : '创建智能体'"
+      :description="
+        isEditing
+          ? '修改模型、提示词和知识模块后立即保存到真实后端。'
+          : '模型、提示词和知识模块均会保存到真实后端。'
+      "
+      @close="editorModalOpen = false"
     >
-      <form class="admin-form" @submit.prevent="createAgent">
+      <form class="admin-form" @submit.prevent="saveAgent">
         <label>
           <span>智能体名称</span>
           <input v-model="form.name" maxlength="80" required />
@@ -267,7 +328,7 @@ async function toggleStatus(
           <button
             class="secondary-button"
             type="button"
-            @click="createModalOpen = false"
+            @click="editorModalOpen = false"
           >
             取消
           </button>
@@ -276,10 +337,44 @@ async function toggleStatus(
             type="submit"
             :disabled="workspaceStore.isSaving"
           >
-            {{ workspaceStore.isSaving ? '正在创建…' : '创建智能体' }}
+            {{
+              workspaceStore.isSaving
+                ? '正在保存…'
+                : isEditing
+                  ? '保存修改'
+                  : '创建智能体'
+            }}
           </button>
         </div>
       </form>
+    </BaseModal>
+
+    <BaseModal
+      :open="Boolean(deleteCandidate)"
+      title="删除智能体"
+      description="此操作不可撤销，相关 API 接入应用也会一并删除。"
+      @close="deleteCandidate = undefined"
+    >
+      <p class="confirmation-message">
+        确定删除“{{ deleteCandidate?.name }}”吗？知识库和共享模块不会被删除。
+      </p>
+      <div class="form-actions">
+        <button
+          class="secondary-button"
+          type="button"
+          @click="deleteCandidate = undefined"
+        >
+          取消
+        </button>
+        <button
+          class="primary-button danger-button"
+          type="button"
+          :disabled="workspaceStore.isSaving"
+          @click="deleteAgent"
+        >
+          {{ workspaceStore.isSaving ? '正在删除…' : '确认删除' }}
+        </button>
+      </div>
     </BaseModal>
   </div>
 </template>

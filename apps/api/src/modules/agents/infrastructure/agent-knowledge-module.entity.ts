@@ -1,4 +1,13 @@
-import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryColumn,
+} from 'typeorm';
+
+import { AgentEntity } from './agent.entity';
 
 @Entity('agent_knowledge_modules')
 @Index(['agentId', 'moduleId'], { unique: true })
@@ -8,6 +17,10 @@ export class AgentKnowledgeModuleEntity {
 
   @Column('text')
   agentId: string;
+
+  @ManyToOne(() => AgentEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'agentId' })
+  agent: AgentEntity;
 
   @Column('text')
   moduleId: string;

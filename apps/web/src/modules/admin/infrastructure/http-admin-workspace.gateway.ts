@@ -16,6 +16,7 @@ import type {
   KnowledgeBaseSummary,
   KnowledgeModuleSummary,
   ModelProviderSummary,
+  UpdateAgentInput,
 } from '../domain/admin-workspace';
 
 interface UploadSessionSummary {
@@ -135,6 +136,12 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
     });
   }
 
+  async deleteAgent(agentId: string): Promise<void> {
+    await this.httpClient.delete<{ id: string }>(
+      `/agents/${encodeURIComponent(agentId)}`,
+    );
+  }
+
   listAgents(): Promise<AgentSummary[]> {
     return this.httpClient.get<AgentSummary[]>('/agents');
   }
@@ -158,6 +165,13 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
     return this.httpClient.patch<AgentSummary, { status: AgentStatus }>(
       `/agents/${agentId}/status`,
       { status },
+    );
+  }
+
+  updateAgent(agentId: string, input: UpdateAgentInput): Promise<AgentSummary> {
+    return this.httpClient.put<AgentSummary, UpdateAgentInput>(
+      `/agents/${encodeURIComponent(agentId)}`,
+      input,
     );
   }
 

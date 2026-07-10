@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
 
-import type { AgentSummary } from '../domain/agent';
+import type { Agent, AgentSummary } from '../domain/agent';
+import { AgentCatalogService } from './agent-catalog.service';
 import { AgentConfigurationService } from './agent-configuration.service';
 import { AgentRepository } from './agent.repository';
 import { toAgentSummary } from './agent-summary';
 
-export interface CreateAgentCommand {
+export interface UpdateAgentCommand {
   description: string;
   moduleIds: string[];
   name: string;
@@ -16,32 +16,36 @@ export interface CreateAgentCommand {
 }
 
 @Injectable()
-export class CreateAgentUseCase {
+export class UpdateAgentUseCase {
   constructor(
+    private readonly catalog: AgentCatalogService,
     private readonly configuration: AgentConfigurationService,
     private readonly repository: AgentRepository,
   ) {}
 
-  async execute(command: CreateAgentCommand): Promise<AgentSummary> {
+  async execute(
+    id: string,
+    command: UpdateAgentCommand,
+  ): Promise<AgentSummary> {
+    const current = await this.catalog.get(id);
     const configuration = await this.configuration.resolve(
       command.providerId,
       command.moduleIds,
     );
-    const now = new Date();
-    const agent = {
-      conversationCount: 0,
-      createdAt: now,
+    const agent: Agent = {
+      conversationCount: current.conversationCount,
+      createdAt: current.createdAt,
       description: command.description,
-      id: randomUUID(),
+      id: current.id,
       name: command.name,
       providerId: configuration.providerId,
-      status: 'draft' as const,
+      status: current.status,
       systemPrompt: command.systemPrompt,
       temperature: command.temperature,
-      updatedAt: now,
+      updatedAt: new Date(),
     };
 
-    await this.repository.save(agent, configuration.moduleIds);
+    await this.repository.update(agent, configuration.moduleIds);
 
     return toAgentSummary(agent, configuration.moduleIds);
   }

@@ -15,6 +15,7 @@ import type {
   CreateKnowledgeModuleInput,
   KnowledgeBaseSummary,
   ModelProviderSummary,
+  UpdateAgentInput,
 } from '../domain/admin-workspace';
 
 const gateway = applicationDependencies.adminWorkspaceGateway;
@@ -112,6 +113,24 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     const created = await execute(() => gateway.createAgent(input));
 
     agents.value.unshift(created);
+  }
+
+  async function deleteAgent(agentId: string): Promise<void> {
+    await execute(() => gateway.deleteAgent(agentId));
+
+    agents.value = agents.value.filter((agent) => agent.id !== agentId);
+    apiApplications.value = apiApplications.value.filter(
+      (application) => application.agentId !== agentId,
+    );
+  }
+
+  async function updateAgent(
+    agentId: string,
+    input: UpdateAgentInput,
+  ): Promise<void> {
+    const updated = await execute(() => gateway.updateAgent(agentId, input));
+
+    agents.value = replaceById(agents.value, updated);
   }
 
   async function updateAgentStatus(
@@ -244,6 +263,7 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     createApiApplication,
     createKnowledgeBase,
     createKnowledgeModule,
+    deleteAgent,
     documentCount,
     enabledProviderCount,
     errorMessage,
@@ -257,6 +277,7 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     publishedAgentCount,
     refreshKnowledgeBases,
     requestCount,
+    updateAgent,
     updateAgentStatus,
     uploadChatAttachment,
     uploadKnowledgeFile,

@@ -202,6 +202,24 @@ describe('Knowledge platform', () => {
     const agentId = readString(parseRecord(agentResponse.text), 'id');
 
     await request(app.getHttpServer())
+      .put(`/api/agents/${agentId}`)
+      .send({
+        description: '回答企业制度与知识问题',
+        moduleIds: [sharedModuleId],
+        name: '企业知识助手',
+        providerId,
+        systemPrompt: '请严格依据企业知识回答。',
+        temperature: 0.4,
+      })
+      .expect(200)
+      .expect(({ text }) => {
+        const updatedAgent = parseRecord(text);
+
+        expect(readString(updatedAgent, 'name')).toBe('企业知识助手');
+        expect(readArray(updatedAgent, 'moduleIds')).toEqual([sharedModuleId]);
+      });
+
+    await request(app.getHttpServer())
       .patch(`/api/agents/${agentId}/status`)
       .send({ status: 'published' })
       .expect(200);
@@ -347,5 +365,13 @@ describe('Knowledge platform', () => {
       .expect(({ text }) => {
         expect(readString(parseRecord(text), 'status')).toBe('queued');
       });
+
+    await request(app.getHttpServer())
+      .delete(`/api/agents/${agentId}`)
+      .expect(200, { id: agentId });
+    await request(app.getHttpServer()).get('/api/agents').expect(200, []);
+    await request(app.getHttpServer())
+      .get('/api/api-applications')
+      .expect(200, []);
   });
 });

@@ -62,7 +62,7 @@ openssl rand -hex 32
 启动项目后，Web 根路径即为中文管理后台：
 
 - `/`：管理工作台与后端服务状态。
-- `/agents`：智能体创建、列表和测试入口。
+- `/agents`：智能体创建、编辑、删除、发布、停用和测试入口。
 - `/knowledge-bases`：知识库创建、文档上传和处理状态。
 - `/model-providers`：DeepSeek、通义千问、豆包及兼容模型配置。
 - `/api-access`：智能体应用与 API 访问凭证管理。
