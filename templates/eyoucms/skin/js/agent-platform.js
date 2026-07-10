@@ -1,3 +1,6 @@
+/** Change this deployment value when the NestJS API uses another origin. */
+const AGENT_BACKEND_BASE_URL = '/api';
+
 (function () {
   'use strict';
 
@@ -13,7 +16,6 @@
   const brandNames = document.querySelectorAll('[data-brand-name]');
   const brandIcons = document.querySelectorAll('[data-brand-icon]');
   const query = new URLSearchParams(window.location.search);
-  const configuredApiBase = document.body.dataset.apiBase || '/api';
   const configuredAgentId = document.body.dataset.agentId || '';
 
   if (
@@ -90,11 +92,7 @@
   }
 
   function apiUrl(path) {
-    const apiBase = normalizeApiBase(
-      query.get('apiBase') || validConfiguredValue(configuredApiBase) || '/api',
-    );
-
-    return `${apiBase}${path}`;
+    return `${normalizeApiBase(AGENT_BACKEND_BASE_URL)}${path}`;
   }
 
   async function request(path, options) {
