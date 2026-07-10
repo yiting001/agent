@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{$eyou.field.seo_title}</title>
+    <meta name="keywords" content="{$eyou.field.seo_keywords}" />
+    <meta name="description" content="{$eyou.field.seo_description}" />
+    <link
+      href="{eyou:global name='web_ico' /}"
+      rel="shortcut icon"
+      type="image/x-icon"
+    />
+    {eyou:static file="skin/css/agent-foundation.css" /}
+    {eyou:static file="skin/css/agent-sections.css" /}
+    {eyou:static file="skin/css/agent-knowledge.css" /}
+    {eyou:static file="skin/css/agent-content.css" /}
+    {eyou:static file="skin/css/agent-responsive.css" /}
+  </head>
+  <body class="agent-platform-page">
+    {eyou:include file="header.htm" /}
+
+    <!-- 页面内复用的轻量 SVG 图标，不依赖第三方图标库。 -->
+    <!-- prettier-ignore -->
+    <svg class="agent-icon-sprite" aria-hidden="true">
+      <symbol id="agent-icon-bot" viewBox="0 0 24 24">
+        <rect x="4" y="6" width="16" height="13" rx="4" fill="none" stroke="currentColor" stroke-width="1.8" />
+        <path d="M12 3v3M8.5 11h.01M15.5 11h.01M8 15h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+      </symbol>
+      <symbol id="agent-icon-book" viewBox="0 0 24 24">
+        <path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H20v17H7.5A3.5 3.5 0 0 0 4 22V5.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        <path d="M4 18.5A3.5 3.5 0 0 1 7.5 15H20" fill="none" stroke="currentColor" stroke-width="1.8" />
+      </symbol>
+      <symbol id="agent-icon-model" viewBox="0 0 24 24">
+        <path d="m12 3 8 4.5-8 4.5-8-4.5L12 3Z" fill="none" stroke="currentColor" stroke-width="1.8" />
+        <path d="m4 12 8 4.5 8-4.5M4 16.5 12 21l8-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="agent-icon-api" viewBox="0 0 24 24">
+        <path d="M8 7 3 12l5 5M16 7l5 5-5 5M14 4l-4 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="agent-icon-flow" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="6" height="6" rx="2" fill="none" stroke="currentColor" stroke-width="1.8" />
+        <rect x="15" y="15" width="6" height="6" rx="2" fill="none" stroke="currentColor" stroke-width="1.8" />
+        <path d="M9 6h4a4 4 0 0 1 4 4v5M15 18h-4a4 4 0 0 1-4-4V9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+      </symbol>
+      <symbol id="agent-icon-chart" viewBox="0 0 24 24">
+        <path d="M4 20V9M10 20V4M16 20v-7M22 20H2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+      </symbol>
+      <symbol id="agent-icon-arrow" viewBox="0 0 24 24">
+        <path d="M5 12h14M14 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="agent-icon-send" viewBox="0 0 24 24">
+        <path d="m3 3 18 9-18 9 3-9-3-9Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        <path d="M6 12h15" fill="none" stroke="currentColor" stroke-width="1.8" />
+      </symbol>
+      <symbol id="agent-icon-file" viewBox="0 0 24 24">
+        <path d="M6 2h8l4 4v16H6V2Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        <path d="M14 2v5h5M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+      </symbol>
+    </svg>
+
+    <main>
+      <!-- 首屏：明确产品定位并提供一个可操作的智能体演示。 -->
+      <section class="agent-hero">
+        <div class="agent-container agent-hero__layout">
+          <div class="agent-hero__copy">
+            <div class="agent-hero__badge">
+              <span class="agent-dot"></span>
+              企业级 Agent 构建与知识管理平台
+            </div>
+            <h1>
+              把企业知识，变成
+              <span class="agent-gradient-text">会思考的智能体</span>
+            </h1>
+            <p class="agent-hero__lead">
+              在一个平台完成智能体创建、模型接入、知识库清洗、效果调试与 API
+              发布。兼容 DeepSeek 等主流模型，让业务团队无需重复搭建 AI
+              基础设施。
+            </p>
+            <div class="agent-hero__actions">
+              <a class="agent-button" href="#capabilities">
+                探索平台能力
+                <svg aria-hidden="true">
+                  <use href="#agent-icon-arrow"></use>
+                </svg>
+              </a>
+              <a class="agent-button agent-button--secondary" href="#workflow">
+                查看构建流程
+              </a>
+            </div>
+            <div class="agent-hero__facts">
+              <span class="agent-hero__fact"
+                ><i class="agent-dot"></i> 多模型统一接入</span
+              >
+              <span class="agent-hero__fact"
+                ><i class="agent-dot"></i> 知识来源可追溯</span
+              >
+              <span class="agent-hero__fact"
+                ><i class="agent-dot"></i> API 一键发布</span
+              >
+            </div>
+          </div>
+
+          <div class="agent-console agent-reveal">
+            <div class="agent-console__window">
+              <div class="agent-console__bar">
+                <div class="agent-console__dots"><i></i><i></i><i></i></div>
+                <div class="agent-console__status">
+                  <span class="agent-dot"></span>
+                  Agent Studio
+                </div>
+              </div>
+              <div class="agent-console__body">
+                <aside class="agent-console__sidebar">
+                  <div class="agent-console__profile">
+                    <span class="agent-console__avatar">
+                      <svg width="20" height="20">
+                        <use href="#agent-icon-bot"></use>
+                      </svg>
+                    </span>
+                    <div><strong>产品顾问</strong><span>已发布</span></div>
+                  </div>
+                  <div class="agent-console__menu">
+                    <span class="is-active">对话调试</span>
+                    <span>角色设定</span>
+                    <span>知识库</span>
+                    <span>模型配置</span>
+                    <span>API 发布</span>
+                  </div>
+                </aside>
+                <div class="agent-console__chat">
+                  <div class="agent-chat__title">
+                    <strong>在线调试</strong>
+                    <span class="agent-model-pill" data-selected-model
+                      >DeepSeek V3</span
+                    >
+                  </div>
+                  <div class="agent-chat__messages" data-demo-messages>
+                    <div class="agent-chat__bubble agent-chat__bubble--user">
+                      请介绍知识库如何保证回答准确？
+                    </div>
+                    <div class="agent-chat__bubble">
+                      平台会对文档进行解析、清洗、分段和向量化，并在回答中返回命中的知识来源。
+                      <span class="agent-chat__source"
+                        >引用：产品能力说明.pdf / 第 6 页</span
+                      >
+                    </div>
+                  </div>
+                  <div class="agent-chat__composer">
+                    <input
+                      data-demo-input
+                      type="text"
+                      placeholder="输入问题测试智能体…"
+                    />
+                    <button
+                      data-demo-send
+                      type="button"
+                      aria-label="发送测试问题"
+                    >
+                      <svg aria-hidden="true">
+                        <use href="#agent-icon-send"></use>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 模型兼容能力。 -->
+      <section class="agent-model-strip" aria-label="支持的模型平台">
+        <div class="agent-container agent-model-strip__inner">
+          <span class="agent-model-strip__label">统一接入主流模型平台</span>
+          <div class="agent-model-list">
+            <span class="agent-model-chip">DeepSeek</span>
+            <span class="agent-model-chip">OpenAI</span>
+            <span class="agent-model-chip">通义千问</span>
+            <span class="agent-model-chip">智谱 GLM</span>
+            <span class="agent-model-chip">豆包</span>
+            <span class="agent-model-chip">本地模型</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 平台核心能力。 -->
+      <section id="capabilities" class="agent-section">
+        <div class="agent-container">
+          <div class="agent-section-heading">
+            <span class="agent-kicker">Core Capabilities</span>
+            <h2>从想法到上线，一套平台完成</h2>
+            <p>
+              围绕智能体全生命周期设计，减少模型、知识、接口和运营工具之间的重复集成。
+            </p>
+          </div>
+          <div class="agent-capability-grid">
+            <article class="agent-card agent-capability-card agent-reveal">
+              <span class="agent-icon"
+                ><svg><use href="#agent-icon-bot"></use></svg
+              ></span>
+              <h3>智能体工作室</h3>
+              <p>
+                配置角色、目标、提示词、开场白和工具能力，通过实时对话快速验证效果。
+              </p>
+              <div class="agent-capability-card__tags">
+                <span class="agent-tag">可视化创建</span
+                ><span class="agent-tag">版本管理</span>
+              </div>
+            </article>
+            <article class="agent-card agent-capability-card agent-reveal">
+              <span class="agent-icon agent-icon--cyan"
+                ><svg><use href="#agent-icon-book"></use></svg
+              ></span>
+              <h3>知识库管理</h3>
+              <p>
+                支持 TXT、Word、PDF
+                等文件，自动解析、去噪、切片、索引并保留来源引用。
+              </p>
+              <div class="agent-capability-card__tags">
+                <span class="agent-tag">多格式解析</span
+                ><span class="agent-tag">智能清洗</span>
+              </div>
+            </article>
+            <article class="agent-card agent-capability-card agent-reveal">
+              <span class="agent-icon agent-icon--orange"
+                ><svg><use href="#agent-icon-model"></use></svg
+              ></span>
+              <h3>多模型网关</h3>
+              <p>
+                集中维护平台密钥、模型参数和调用策略，让不同智能体按场景选择最合适的模型。
+              </p>
+              <div class="agent-capability-card__tags">
+                <span class="agent-tag">模型切换</span
+                ><span class="agent-tag">参数模板</span>
+              </div>
+            </article>
+            <article class="agent-card agent-capability-card agent-reveal">
+              <span class="agent-icon agent-icon--green"
+                ><svg><use href="#agent-icon-api"></use></svg
+              ></span>
+              <h3>Agent API</h3>
+              <p>
+                为每个已发布智能体生成独立
+                API，支持鉴权、限流、调用日志和多环境管理。
+              </p>
+              <div class="agent-capability-card__tags">
+                <span class="agent-tag">标准接口</span
+                ><span class="agent-tag">访问密钥</span>
+              </div>
+            </article>
+            <article class="agent-card agent-capability-card agent-reveal">
+              <span class="agent-icon"
+                ><svg><use href="#agent-icon-flow"></use></svg
+              ></span>
+              <h3>工具与工作流</h3>
+              <p>
+                通过标准工具扩展查询、计算和业务操作能力，把回答升级为可执行的业务流程。
+              </p>
+              <div class="agent-capability-card__tags">
+                <span class="agent-tag">工具调用</span
+                ><span class="agent-tag">流程编排</span>
+              </div>
+            </article>
+            <article class="agent-card agent-capability-card agent-reveal">
+              <span class="agent-icon agent-icon--cyan"
+                ><svg><use href="#agent-icon-chart"></use></svg
+              ></span>
+              <h3>运营与观测</h3>
+              <p>
+                查看会话、Token、延迟、命中率和用户反馈，持续优化知识质量与模型成本。
+              </p>
+              <div class="agent-capability-card__tags">
+                <span class="agent-tag">效果分析</span
+                ><span class="agent-tag">成本观测</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- 知识库自动处理流程。 -->
+      <section id="knowledge" class="agent-section agent-section--soft">
+        <div class="agent-container agent-knowledge-layout">
+          <div class="agent-section-heading agent-section-heading--left">
+            <span class="agent-kicker">Knowledge Engine</span>
+            <h2>上传文档，自动成为可用知识</h2>
+            <p>
+              从原始文件到可检索知识的全过程自动化，并允许管理员检查、修订和重新发布每个片段。
+            </p>
+            <div class="agent-format-list">
+              <span>TXT</span><span>DOC / DOCX</span><span>PDF</span
+              ><span>Markdown</span><span>网页内容</span>
+            </div>
+          </div>
+          <div class="agent-card agent-pipeline agent-reveal">
+            <div class="agent-pipeline__header">
+              <strong>知识处理任务</strong>
+              <button
+                class="agent-upload-button"
+                data-upload-demo
+                type="button"
+              >
+                重新演示处理
+              </button>
+            </div>
+            <div class="agent-file">
+              <span class="agent-file__icon"
+                ><svg width="20" height="20">
+                  <use href="#agent-icon-file"></use></svg
+              ></span>
+              <span class="agent-file__meta"
+                ><strong>产品与服务知识手册.pdf</strong
+                ><span>8.4 MB · 126 页</span></span
+              >
+              <span class="agent-file__state" data-upload-state>处理完成</span>
+            </div>
+            <div class="agent-pipeline__steps">
+              <div class="agent-pipeline__step is-active" data-pipeline-step>
+                <b>上传</b><span>文件校验</span>
+              </div>
+              <div class="agent-pipeline__step is-active" data-pipeline-step>
+                <b>解析</b><span>提取内容</span>
+              </div>
+              <div class="agent-pipeline__step is-active" data-pipeline-step>
+                <b>清洗</b><span>去除噪声</span>
+              </div>
+              <div class="agent-pipeline__step is-active" data-pipeline-step>
+                <b>切片</b><span>语义分段</span>
+              </div>
+              <div class="agent-pipeline__step is-active" data-pipeline-step>
+                <b>发布</b><span>建立索引</span>
+              </div>
+            </div>
+            <div class="agent-progress">
+              <div class="agent-progress__value" data-upload-progress></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 模型配置中心。 -->
+      <section id="models" class="agent-section agent-section--dark">
+        <div class="agent-container agent-model-center">
+          <div class="agent-section-heading agent-section-heading--left">
+            <span class="agent-kicker">Model Gateway</span>
+            <h2>一个入口，管理所有模型</h2>
+            <p>
+              模型配置与智能体解耦，便于按质量、速度和成本切换供应商，也支持企业本地部署模型。
+            </p>
+            <div class="agent-model-points">
+              <div class="agent-model-point">
+                <span class="agent-model-point__number">01</span>
+                <div>
+                  <strong>密钥统一托管</strong>
+                  <p>按平台隔离凭证，不在业务页面和客户端暴露敏感信息。</p>
+                </div>
+              </div>
+              <div class="agent-model-point">
+                <span class="agent-model-point__number">02</span>
+                <div>
+                  <strong>参数模板复用</strong>
+                  <p>统一维护温度、上下文长度和响应格式，减少重复配置。</p>
+                </div>
+              </div>
+              <div class="agent-model-point">
+                <span class="agent-model-point__number">03</span>
+                <div>
+                  <strong>故障自动降级</strong>
+                  <p>主模型不可用时按策略切换备用模型，保证服务连续性。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="agent-model-board agent-reveal">
+            <button
+              class="agent-model-option is-selected"
+              data-model-name="DeepSeek V3"
+              type="button"
+            >
+              <span class="agent-model-option__top"
+                ><i class="agent-model-option__logo">DS</i
+                ><i class="agent-model-option__state">可用</i></span
+              >
+              <strong>DeepSeek V3</strong><span>推理与通用问答</span>
+            </button>
+            <button
+              class="agent-model-option"
+              data-model-name="通义千问 Max"
+              type="button"
+            >
+              <span class="agent-model-option__top"
+                ><i class="agent-model-option__logo">QW</i
+                ><i class="agent-model-option__state">可用</i></span
+              >
+              <strong>通义千问 Max</strong><span>中文理解与长文本</span>
+            </button>
+            <button
+              class="agent-model-option"
+              data-model-name="豆包 Pro"
+              type="button"
+            >
+              <span class="agent-model-option__top"
+                ><i class="agent-model-option__logo">DB</i
+                ><i class="agent-model-option__state">可用</i></span
+              >
+              <strong>豆包 Pro</strong><span>多场景对话生成</span>
+            </button>
+            <button
+              class="agent-model-option"
+              data-model-name="企业本地模型"
+              type="button"
+            >
+              <span class="agent-model-option__top"
+                ><i class="agent-model-option__logo">LLM</i
+                ><i class="agent-model-option__state">内网</i></span
+              >
+              <strong>企业本地模型</strong><span>私有化安全部署</span>
+            </button>
+            <div class="agent-model-board__footer">
+              <span>当前测试模型</span
+              ><strong data-selected-model>DeepSeek V3</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 典型使用场景。 -->
+      <section id="scenarios" class="agent-section">
+        <div class="agent-container">
+          <div class="agent-section-heading">
+            <span class="agent-kicker">Business Scenarios</span>
+            <h2>让智能体进入真实业务</h2>
+            <p>
+              同一套底座可服务不同部门，通过独立知识、模型和权限边界保证业务互不干扰。
+            </p>
+          </div>
+          <!-- prettier-ignore -->
+          <div class="agent-scenario-grid">
+            <article class="agent-card agent-scenario-card agent-reveal"><span class="agent-scenario-card__number">01 / CUSTOMER</span><h3>智能客服</h3><p>基于产品与服务知识自动回答问题，复杂会话无缝转人工。</p></article>
+            <article class="agent-card agent-scenario-card agent-reveal"><span class="agent-scenario-card__number">02 / SALES</span><h3>销售顾问</h3><p>结合客户需求生成产品方案、跟进建议和标准化沟通内容。</p></article>
+            <article class="agent-card agent-scenario-card agent-reveal"><span class="agent-scenario-card__number">03 / INTERNAL</span><h3>企业知识助手</h3><p>让员工快速查询制度、流程、项目资料与技术文档。</p></article>
+            <article class="agent-card agent-scenario-card agent-reveal"><span class="agent-scenario-card__number">04 / DEVELOPER</span><h3>API 能力中心</h3><p>将成熟智能体接入网站、App、企微和现有业务系统。</p></article>
+          </div>
+        </div>
+      </section>
+
+      <!-- 标准构建流程。 -->
+      <section id="workflow" class="agent-section agent-section--soft">
+        <div class="agent-container">
+          <div class="agent-section-heading">
+            <span class="agent-kicker">Build Workflow</span>
+            <h2>四步发布专属智能体</h2>
+            <p>用清晰流程降低团队协作成本，每一步都可保存、回退和持续优化。</p>
+          </div>
+          <!-- prettier-ignore -->
+          <div class="agent-process">
+            <article class="agent-process__item agent-reveal"><h3>创建角色</h3><p>确定智能体职责、边界、语气和需要解决的业务问题。</p></article>
+            <article class="agent-process__item agent-reveal"><h3>绑定模型</h3><p>从统一模型中心选择供应商，并应用经过验证的参数模板。</p></article>
+            <article class="agent-process__item agent-reveal"><h3>配置知识</h3><p>上传并审核知识内容，通过调试修正召回与回答效果。</p></article>
+            <article class="agent-process__item agent-reveal"><h3>发布接入</h3><p>生成 API 或嵌入组件，配置访问权限后交付业务使用。</p></article>
+          </div>
+        </div>
+      </section>
+
+      <!-- 行动引导。 -->
+      <section id="contact" class="agent-cta">
+        <div class="agent-container">
+          <div class="agent-cta__box">
+            <div>
+              <h2>准备好创建第一个企业智能体了吗？</h2>
+              <p>
+                从一个知识库和一个真实业务问题开始，快速验证 Agent
+                为团队带来的效率提升。
+              </p>
+            </div>
+            <div class="agent-cta__action">
+              <a class="agent-button agent-button--light" href="#capabilities"
+                >立即了解能力</a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    {eyou:include file="footer.htm" /}
+    {eyou:static file="skin/js/agent-platform.js" /}
+  </body>
+</html>

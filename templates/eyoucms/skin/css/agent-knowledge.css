@@ -1,0 +1,299 @@
+/* 文档进入知识库的处理流水线。 */
+.agent-knowledge-layout {
+  display: grid;
+  grid-template-columns: 0.82fr 1.18fr;
+  gap: 70px;
+  align-items: center;
+}
+
+.agent-format-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.agent-format-list span {
+  border: 1px solid #e0e3ed;
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: #545c6e;
+  background: #ffffff;
+  box-shadow: 0 9px 24px rgb(43 47 78 / 5%);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.agent-pipeline {
+  position: relative;
+  padding: 28px;
+}
+
+.agent-pipeline__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 26px;
+}
+
+.agent-pipeline__header strong {
+  font-size: 16px;
+}
+
+.agent-upload-button {
+  border: 1px solid rgb(103 87 255 / 18%);
+  border-radius: 999px;
+  padding: 8px 13px;
+  color: #5747d8;
+  background: #f0edff;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.agent-file {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #ebedf3;
+  border-radius: 15px;
+  padding: 14px;
+  background: #fafbfe;
+}
+
+.agent-file__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: #6757ff;
+  background: #ebe8ff;
+}
+
+.agent-file__meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.agent-file__meta strong,
+.agent-file__meta span {
+  display: block;
+}
+
+.agent-file__meta strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-file__meta span {
+  margin-top: 4px;
+  color: #969caf;
+  font-size: 10px;
+}
+
+.agent-file__state {
+  color: var(--agent-green);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.agent-pipeline__steps {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.agent-pipeline__step {
+  position: relative;
+  border: 1px solid #e7e9f1;
+  border-radius: 14px;
+  padding: 14px 9px;
+  color: #6f7688;
+  background: #ffffff;
+  text-align: center;
+}
+
+.agent-pipeline__step.is-active {
+  border-color: rgb(103 87 255 / 30%);
+  color: #5040d4;
+  background: #f1efff;
+}
+
+.agent-pipeline__step b,
+.agent-pipeline__step span {
+  display: block;
+}
+
+.agent-pipeline__step b {
+  margin-bottom: 5px;
+  font-size: 11px;
+}
+
+.agent-pipeline__step span {
+  font-size: 9px;
+}
+
+.agent-progress {
+  height: 7px;
+  margin-top: 22px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eceef5;
+}
+
+.agent-progress__value {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--agent-gradient);
+  transition: width 450ms ease;
+}
+
+/* 多模型调度中心。 */
+.agent-model-center {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 70px;
+  align-items: center;
+}
+
+.agent-model-points {
+  display: grid;
+  gap: 18px;
+  margin-top: 32px;
+}
+
+.agent-model-point {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.agent-model-point__number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 11px;
+  color: #a9e9f4;
+  background: rgb(255 255 255 / 7%);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.agent-model-point strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.agent-model-point p {
+  margin: 0;
+  color: #9fa6bf;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.agent-model-board {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 28px;
+  padding: 18px;
+  background: rgb(255 255 255 / 5%);
+  box-shadow: 0 34px 90px rgb(0 0 0 / 30%);
+}
+
+.agent-model-option {
+  position: relative;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 18px;
+  padding: 20px;
+  color: #ffffff;
+  background: rgb(255 255 255 / 5%);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.agent-model-option:hover,
+.agent-model-option.is-selected {
+  border-color: rgb(121 105 255 / 72%);
+  background: linear-gradient(
+    135deg,
+    rgb(103 87 255 / 24%),
+    rgb(17 185 214 / 12%)
+  );
+  transform: translateY(-3px);
+}
+
+.agent-model-option__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.agent-model-option__logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  color: #d9d4ff;
+  background: rgb(255 255 255 / 9%);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.agent-model-option__state {
+  color: #65dbad;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.agent-model-option strong,
+.agent-model-option span {
+  display: block;
+}
+
+.agent-model-option strong {
+  font-size: 15px;
+}
+
+.agent-model-option > span {
+  margin-top: 7px;
+  color: #929ab5;
+  font-size: 11px;
+}
+
+.agent-model-board__footer {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 16px;
+  padding: 15px 18px;
+  color: #aab1ca;
+  background: rgb(255 255 255 / 5%);
+  font-size: 11px;
+}
+
+.agent-model-board__footer strong {
+  color: #ffffff;
+}
