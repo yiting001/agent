@@ -312,7 +312,7 @@
 }
 
 .chat-suggestion strong,
-.chat-suggestion span {
+.chat-suggestion span:not(.chat-suggestion__icon) {
   display: block;
 }
 
@@ -320,7 +320,7 @@
   font-size: 13px;
 }
 
-.chat-suggestion span {
+.chat-suggestion span:not(.chat-suggestion__icon) {
   margin-top: 5px;
   color: #8a8f9f;
   font-size: 11px;
