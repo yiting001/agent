@@ -33,6 +33,8 @@ apps/
 docs/
 ├── architecture.md             # 架构边界和设计原则
 └── modules/                    # 功能模块说明
+templates/
+└── eyoucms/                    # EyouCMS 展示模板与独立预览页
 ```
 
 ## 本地开发
@@ -47,6 +49,17 @@ pnpm dev
 - API：`http://localhost:3000/api`
 - Swagger：`http://localhost:3000/docs`
 - Web：`http://localhost:5173`
+
+## EyouCMS 模板预览
+
+仓库包含 Agent 管理平台的 EyouCMS 展示模板和无需 CMS 环境的 HTML 测试页：
+
+```bash
+python3 -m http.server 4173 -d templates/eyoucms
+```
+
+访问 `http://localhost:4173/preview/agent-platform.html`。模板接入与文件说明见
+[Agent 平台 EyouCMS 展示页文档](docs/modules/agent-eyoucms-page.md)。
 
 ## 质量检查
 
