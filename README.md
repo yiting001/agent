@@ -71,6 +71,23 @@ openssl rand -hex 32
 管理后台模块结构与后端边界见
 [中文智能体管理后台文档](docs/modules/admin-web.md)。
 
+对话默认流式输出，支持 Markdown、数学公式、ECharts/D3 图表、Mermaid
+流程图/思维导图，以及图片和音频输入。格式与接口见
+[流式富内容与多模态对话文档](docs/modules/rich-streaming-chat.md)。
+
+## 单 JS 服务端构建
+
+```bash
+pnpm build:server
+node apps/api/dist-single/server.js
+```
+
+构建产物只有一个应用文件 `apps/api/dist-single/server.js`。由于 SQLite、Zvec
+包含平台原生二进制，PDF 解析器包含运行时资源，部署目录仍需执行生产依赖安装；
+其余 NestJS 业务代码和 JavaScript 依赖均已写入该文件。
+
+跨域来源通过 `CORS_ORIGIN` 配置，多个来源使用逗号分隔；设置为 `*` 时允许任意来源。
+
 ## 中文智能体对话页
 
 仓库包含纯中文 EyouCMS 智能体对话模板，以及无需 CMS 环境即可进入的 HTML 测试页。API、模型和知识库配置
@@ -94,6 +111,7 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm build:server
 ```
 
 提交前 Husky 会运行 lint-staged，仅检查暂存文件。

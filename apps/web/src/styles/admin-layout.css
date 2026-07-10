@@ -42,6 +42,7 @@
   color: #ffffff;
   background: linear-gradient(135deg, #7668f5, #4cc3d7);
   box-shadow: 0 10px 24px rgb(103 89 235 / 23%);
+  line-height: 0;
 }
 
 .admin-brand__mark .base-icon {
@@ -53,7 +54,8 @@
   width: 100%;
   height: 100%;
   border-radius: inherit;
-  object-fit: cover;
+  padding: 5px;
+  object-fit: contain;
 }
 
 .admin-brand strong,
@@ -124,6 +126,7 @@
 .admin-navigation__item .base-icon {
   width: 18px;
   height: 18px;
+  justify-self: center;
 }
 
 .admin-navigation__arrow {
@@ -152,6 +155,7 @@
   border-radius: 11px;
   color: var(--admin-primary);
   background: #e9e6ff;
+  line-height: 0;
 }
 
 .admin-sidebar__tester-icon .base-icon {

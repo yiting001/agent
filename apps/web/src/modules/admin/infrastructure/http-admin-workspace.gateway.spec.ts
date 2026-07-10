@@ -37,6 +37,23 @@ class UploadHttpClient implements HttpClient {
     return Promise.resolve(undefined as Response);
   }
 
+  postFile<Response>(path: string, body: File): Promise<Response> {
+    void body;
+
+    return this.unsupported(path);
+  }
+
+  postEventStream<Body>(
+    path: string,
+    body: Body,
+    onEvent: (event: string, data: string) => void,
+  ): Promise<void> {
+    void body;
+    void onEvent;
+
+    return this.unsupported(path);
+  }
+
   put<Response, Body>(path: string, body: Body): Promise<Response> {
     void body;
 

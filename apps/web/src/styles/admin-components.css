@@ -56,6 +56,7 @@
   width: 45px;
   height: 45px;
   border-radius: 14px;
+  line-height: 0;
 }
 
 .summary-card__icon .base-icon {
@@ -163,6 +164,7 @@
   border-radius: 12px;
   color: var(--admin-primary);
   background: var(--admin-primary-soft);
+  line-height: 0;
 }
 
 .resource-avatar .base-icon {

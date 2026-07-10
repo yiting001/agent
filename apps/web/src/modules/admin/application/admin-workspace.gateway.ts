@@ -3,6 +3,7 @@ import type {
   AgentStatus,
   AgentSummary,
   ApiApplicationSummary,
+  ChatAttachmentSummary,
   ConfigureProviderInput,
   ConversationMessage,
   CreateAgentInput,
@@ -18,6 +19,7 @@ export abstract class AdminWorkspaceGateway {
   abstract chat(
     agentId: string,
     messages: ConversationMessage[],
+    onDelta: (content: string) => void,
   ): Promise<AgentChatResponse>;
 
   abstract configureProvider(
@@ -50,6 +52,8 @@ export abstract class AdminWorkspaceGateway {
     agentId: string,
     status: AgentStatus,
   ): Promise<AgentSummary>;
+
+  abstract uploadChatAttachment(file: File): Promise<ChatAttachmentSummary>;
 
   abstract uploadKnowledgeFile(
     moduleId: string,

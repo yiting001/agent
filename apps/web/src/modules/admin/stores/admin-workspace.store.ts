@@ -222,8 +222,15 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
   function chat(
     agentId: string,
     messages: ConversationMessage[],
+    onDelta: (content: string) => void,
   ): ReturnType<typeof gateway.chat> {
-    return gateway.chat(agentId, messages);
+    return gateway.chat(agentId, messages, onDelta);
+  }
+
+  function uploadChatAttachment(
+    file: File,
+  ): ReturnType<typeof gateway.uploadChatAttachment> {
+    return gateway.uploadChatAttachment(file);
   }
 
   return {
@@ -251,6 +258,7 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     refreshKnowledgeBases,
     requestCount,
     updateAgentStatus,
+    uploadChatAttachment,
     uploadKnowledgeFile,
     uploadProgress,
   };

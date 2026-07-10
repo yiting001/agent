@@ -112,6 +112,70 @@
     return responseBody;
   }
 
+  async function streamRequest(path, body, onDelta) {
+    const response = await fetch(apiUrl(path), {
+      body: JSON.stringify(body),
+      headers: {
+        Accept: 'text/event-stream',
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    });
+
+    if (!response.ok || !response.body) {
+      const errorBody = await response.json().catch(() => undefined);
+
+      throw new Error(
+        errorBody && typeof errorBody.message === 'string'
+          ? errorBody.message
+          : `服务请求失败（${response.status}）`,
+      );
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const result = await reader.read();
+
+      if (result.done) {
+        break;
+      }
+
+      buffer += decoder.decode(result.value, { stream: true });
+      const blocks = buffer.split(/\r?\n\r?\n/);
+
+      buffer = blocks.pop() || '';
+
+      for (const block of blocks) {
+        const eventLine = block
+          .split(/\r?\n/)
+          .find((line) => line.startsWith('event:'));
+        const event = eventLine ? eventLine.slice(6).trim() : 'message';
+        const data = block
+          .split(/\r?\n/)
+          .filter((line) => line.startsWith('data:'))
+          .map((line) => line.slice(5).trimStart())
+          .join('\n');
+
+        if (!data) {
+          continue;
+        }
+
+        const payload = JSON.parse(data);
+
+        if (event === 'delta' && typeof payload.content === 'string') {
+          onDelta(payload.content);
+        }
+
+        if (event === 'error') {
+          throw new Error(payload.message || '模型流式响应读取失败。');
+        }
+      }
+    }
+  }
+
   async function initializeBranding() {
     const branding = await request('/branding');
 
@@ -194,27 +258,49 @@
     const typingMessage = createTypingMessage();
     messageList.appendChild(typingMessage);
     scrollToLatest();
+    let answerMessage;
+    let answerParagraph;
 
     try {
-      const response = await request(`/public/agents/${agentId}/chat`, {
-        body: JSON.stringify({ messages }),
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
+      let answer = '';
+
+      await streamRequest(
+        `/public/agents/${agentId}/chat`,
+        { messages, stream: true },
+        (delta) => {
+          answer += delta;
+
+          if (!answerMessage) {
+            answerMessage = createMessage('assistant', '');
+            answerParagraph = answerMessage.querySelector('p');
+            typingMessage.replaceWith(answerMessage);
+          }
+
+          if (answerParagraph) {
+            answerParagraph.textContent = answer;
+          }
+
+          scrollToLatest();
         },
-        method: 'POST',
-      });
-      const answer = response.answer || '模型没有返回有效内容。';
+      );
+
+      if (!answer) {
+        answer = '模型没有返回有效内容。';
+        typingMessage.replaceWith(createMessage('assistant', answer));
+      }
 
       messages.push({ content: answer, role: 'assistant' });
-      typingMessage.replaceWith(createMessage('assistant', answer));
     } catch (error) {
-      typingMessage.replaceWith(
-        createMessage(
-          'assistant',
-          error instanceof Error ? error.message : '对话请求失败，请稍后重试。',
-        ),
+      const errorMessage = createMessage(
+        'assistant',
+        error instanceof Error ? error.message : '对话请求失败，请稍后重试。',
       );
+
+      if (answerMessage) {
+        answerMessage.replaceWith(errorMessage);
+      } else {
+        typingMessage.replaceWith(errorMessage);
+      }
     } finally {
       replying = false;
       updateSendState();

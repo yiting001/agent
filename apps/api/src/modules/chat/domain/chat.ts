@@ -1,4 +1,12 @@
+export interface ChatAttachmentSummary {
+  fileName: string;
+  id: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+
 export interface ConversationMessage {
+  attachments?: ChatAttachmentSummary[];
   content: string;
   role: 'assistant' | 'user';
 }

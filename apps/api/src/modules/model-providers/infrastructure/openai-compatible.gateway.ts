@@ -34,6 +34,22 @@ function readChatContent(value: unknown): string | undefined {
     : undefined;
 }
 
+function readChatDelta(value: unknown): string | undefined {
+  if (!isRecord(value) || !Array.isArray(value.choices)) {
+    return undefined;
+  }
+
+  const firstChoice: unknown = value.choices[0];
+
+  if (!isRecord(firstChoice) || !isRecord(firstChoice.delta)) {
+    return undefined;
+  }
+
+  return typeof firstChoice.delta.content === 'string'
+    ? firstChoice.delta.content
+    : undefined;
+}
+
 function readEmbeddings(value: unknown): number[][] | undefined {
   if (!isRecord(value) || !Array.isArray(value.data)) {
     return undefined;
@@ -89,19 +105,13 @@ export class OpenAiCompatibleGateway extends ModelGateway {
   }
 
   async chat(input: ChatCompletionInput): Promise<string> {
-    const response = await this.request(`${input.baseUrl}/chat/completions`, {
-      body: JSON.stringify({
-        messages: input.messages,
-        model: input.model,
-        temperature: input.temperature,
-      }),
-      headers: this.headers(input.apiKey),
-      method: 'POST',
-    });
-    const body = await parseResponse(response);
-    const content = readChatContent(body);
+    let content = '';
 
-    if (!content) {
+    for await (const delta of this.streamChat(input)) {
+      content += delta;
+    }
+
+    if (!content.trim()) {
       throw new ApplicationError(
         'service_unavailable',
         '模型服务未返回有效对话内容。',
@@ -111,13 +121,72 @@ export class OpenAiCompatibleGateway extends ModelGateway {
     return content;
   }
 
+  async *streamChat(input: ChatCompletionInput): AsyncIterable<string> {
+    const response = await this.request(`${input.baseUrl}/chat/completions`, {
+      body: JSON.stringify({
+        messages: input.messages,
+        model: input.model,
+        stream: true,
+        temperature: input.temperature,
+      }),
+      headers: this.headers(input.apiKey),
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      await parseResponse(response);
+      return;
+    }
+
+    if (response.headers.get('content-type')?.includes('application/json')) {
+      const content = readChatContent(await response.json());
+
+      if (content) {
+        yield content;
+      }
+
+      return;
+    }
+
+    if (!response.body) {
+      throw new ApplicationError(
+        'service_unavailable',
+        '模型服务未返回可读取的流。',
+      );
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    for await (const chunk of response.body) {
+      buffer += decoder.decode(chunk, { stream: true });
+      const lines = buffer.split(/\r?\n/);
+
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        const data = line.startsWith('data:') ? line.slice(5).trim() : '';
+
+        if (!data || data === '[DONE]') {
+          continue;
+        }
+
+        const delta = readChatDelta(JSON.parse(data) as unknown);
+
+        if (delta) {
+          yield delta;
+        }
+      }
+    }
+  }
+
   async embed(input: EmbeddingInput): Promise<number[][]> {
     const response = await this.request(`${input.baseUrl}/embeddings`, {
       body: JSON.stringify({
-        dimensions: input.dimensions,
         encoding_format: 'float',
         input: input.input,
         model: input.model,
+        ...(input.dimensions ? { dimensions: input.dimensions } : {}),
       }),
       headers: this.headers(input.apiKey),
       method: 'POST',

@@ -1,10 +1,12 @@
-import { Body, Controller, Headers, Post } from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, Post, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { randomUUID } from 'node:crypto';
 
 import { ApplicationError } from '../../../../shared/application/application-error';
 import { ApiApplicationRepository } from '../../../api-access/application/api-application.repository';
 import { ApiKeyAuthenticatorService } from '../../../api-access/application/api-key-authenticator.service';
 import { ChatWithAgentUseCase } from '../../application/chat-with-agent.use-case';
+import { sendOpenAiChatStream } from './chat-stream.response';
 import { OpenAiChatCompletionDto } from './openai-chat-completion.dto';
 
 interface OpenAiChatCompletionResponse {
@@ -39,36 +41,56 @@ export class OpenAiChatCompletionController {
   ) {}
 
   @Post('completions')
+  @HttpCode(200)
   async execute(
     @Headers('authorization') authorization: string | undefined,
     @Body() body: OpenAiChatCompletionDto,
-  ): Promise<OpenAiChatCompletionResponse> {
+    @Res() response: Response,
+  ): Promise<void> {
     const application = await this.authenticator.authenticate(
       readBearerToken(authorization),
     );
-    const response = await this.useCase.execute({
+    const command = {
       agentId: application.agentId,
       messages: body.messages,
       requirePublished: true,
-    });
+    };
+    const completionId = `chatcmpl_${randomUUID()}`;
+    const model = body.model ?? application.agentId;
+
+    if (body.stream !== false) {
+      const completed = await sendOpenAiChatStream(
+        response,
+        await this.useCase.executeStream(command),
+        completionId,
+        model,
+      );
+
+      if (completed) {
+        await this.applications.incrementRequestCount(application.id);
+      }
+
+      return;
+    }
+
+    const chat = await this.useCase.execute(command);
 
     await this.applications.incrementRequestCount(application.id);
-
-    return {
+    response.json({
       choices: [
         {
           finish_reason: 'stop',
           index: 0,
           message: {
-            content: response.answer,
+            content: chat.answer,
             role: 'assistant',
           },
         },
       ],
       created: Math.floor(Date.now() / 1_000),
-      id: `chatcmpl_${randomUUID()}`,
-      model: body.model ?? application.agentId,
+      id: completionId,
+      model,
       object: 'chat.completion',
-    };
+    } satisfies OpenAiChatCompletionResponse);
   }
 }

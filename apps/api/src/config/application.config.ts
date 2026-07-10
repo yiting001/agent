@@ -3,6 +3,8 @@ import { registerAs } from '@nestjs/config';
 const DEFAULT_API_PORT = 3000;
 const DEFAULT_BRAND_ICON_MAX_BYTES = 1024 * 1024;
 const DEFAULT_BRAND_STORAGE_PATH = 'brand-storage';
+const DEFAULT_CHAT_ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024;
+const DEFAULT_CHAT_ATTACHMENT_STORAGE_PATH = 'chat-attachments';
 const DEFAULT_CORS_ORIGIN = 'http://localhost:5173';
 const DEFAULT_DATABASE_PATH = 'agent.sqlite';
 const DEFAULT_SOFTWARE_NAME = '灵枢智能体';
@@ -25,7 +27,9 @@ export type ZvecIndexType = 'diskann' | 'hnsw';
 export interface ApplicationConfig {
   brandIconMaxBytes: number;
   brandStoragePath: string;
-  corsOrigin: string[];
+  chatAttachmentMaxBytes: number;
+  chatAttachmentStoragePath: string;
+  corsOrigin: string | string[];
   credentialEncryptionKey?: string;
   databasePath: string;
   databaseMigrationsRun: boolean;
@@ -139,7 +143,18 @@ export const applicationConfig = registerAs(
       ),
       brandStoragePath:
         process.env.BRAND_STORAGE_PATH ?? DEFAULT_BRAND_STORAGE_PATH,
-      corsOrigin: parseCorsOrigins(process.env.CORS_ORIGIN),
+      chatAttachmentMaxBytes: parsePositiveInteger(
+        'CHAT_ATTACHMENT_MAX_BYTES',
+        process.env.CHAT_ATTACHMENT_MAX_BYTES,
+        DEFAULT_CHAT_ATTACHMENT_MAX_BYTES,
+      ),
+      chatAttachmentStoragePath:
+        process.env.CHAT_ATTACHMENT_STORAGE_PATH ??
+        DEFAULT_CHAT_ATTACHMENT_STORAGE_PATH,
+      corsOrigin:
+        process.env.CORS_ORIGIN?.trim() === '*'
+          ? '*'
+          : parseCorsOrigins(process.env.CORS_ORIGIN),
       credentialEncryptionKey: optionalValue(
         process.env.CREDENTIAL_ENCRYPTION_KEY,
       ),

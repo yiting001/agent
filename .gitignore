@@ -1,8 +1,10 @@
 node_modules/
 dist/
+dist-single/
 coverage/
 .test-data/
 brand-storage/
+chat-attachments/
 knowledge-storage/
 zvec-data/
 .env

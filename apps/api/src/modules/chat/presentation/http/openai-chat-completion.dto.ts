@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsOptional,
   IsString,
   ValidateNested,
@@ -21,4 +22,8 @@ export class OpenAiChatCompletionDto {
   @IsOptional()
   @IsString()
   model?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  stream?: boolean;
 }

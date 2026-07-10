@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
 import { ApplicationError } from '../../../shared/application/application-error';
+import { ModelGateway } from '../../model-providers/application/model-gateway';
 import { ModelProviderRuntimeService } from '../../model-providers/application/model-provider-runtime.service';
 import type { KnowledgeBaseSummary } from '../domain/knowledge';
 import { KnowledgeCatalogRepository } from './knowledge-catalog.repository';
@@ -17,6 +18,7 @@ export class CreateKnowledgeBaseUseCase {
   constructor(
     private readonly repository: KnowledgeCatalogRepository,
     private readonly modelProviders: ModelProviderRuntimeService,
+    private readonly modelGateway: ModelGateway,
   ) {}
 
   async execute(
@@ -28,6 +30,21 @@ export class CreateKnowledgeBaseUseCase {
       throw new ApplicationError(
         'invalid_operation',
         '所选模型服务未配置嵌入模型和向量维度。',
+      );
+    }
+
+    const [probe] = await this.modelGateway.embed({
+      apiKey: provider.apiKey,
+      baseUrl: provider.baseUrl,
+      dimensions: provider.embeddingDimensions,
+      input: ['知识库创建校验'],
+      model: provider.embeddingModel,
+    });
+
+    if (probe?.length !== provider.embeddingDimensions) {
+      throw new ApplicationError(
+        'invalid_operation',
+        '嵌入模型返回维度与已保存配置不一致，请重新验证模型配置。',
       );
     }
 

@@ -12,7 +12,12 @@ async function bootstrap(): Promise<void> {
   const configService = app.get(ConfigService);
   const config = configService.getOrThrow<ApplicationConfig>('application');
 
-  app.enableCors({ origin: config.corsOrigin });
+  app.enableCors({
+    allowedHeaders: ['Authorization', 'Content-Type', 'X-File-Name'],
+    maxAge: 86_400,
+    methods: ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT'],
+    origin: config.corsOrigin,
+  });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new ValidationPipe({

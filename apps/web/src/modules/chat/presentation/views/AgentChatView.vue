@@ -1,17 +1,41 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
+import { webApplicationConfig } from '@/config/application.config';
+import type { ChatAttachmentSummary } from '@/modules/admin/domain/admin-workspace';
 import BaseIcon from '@/modules/admin/presentation/components/BaseIcon.vue';
 import { useAdminWorkspaceStore } from '@/modules/admin/stores/admin-workspace.store';
 import { useBrandSettingsStore } from '@/modules/branding/stores/brand-settings.store';
+import RichMessageContent from '../components/RichMessageContent.vue';
+
+interface DisplayAttachment extends ChatAttachmentSummary {
+  previewUrl: string;
+}
 
 interface ChatMessage {
+  attachments?: DisplayAttachment[];
   content: string;
   id: string;
   role: 'assistant' | 'user';
   sources?: string[];
 }
+
+interface PendingAttachment {
+  file: File;
+  previewUrl: string;
+}
+
+const MAX_ATTACHMENTS = 6;
+const SUPPORTED_ATTACHMENT_TYPES = new Set([
+  'audio/mpeg',
+  'audio/wav',
+  'audio/x-wav',
+  'image/gif',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
 
 const route = useRoute();
 const workspaceStore = useAdminWorkspaceStore();
@@ -20,6 +44,7 @@ const messages = ref<ChatMessage[]>([]);
 const message = ref('');
 const replying = ref(false);
 const errorMessage = ref('');
+const pendingAttachments = ref<PendingAttachment[]>([]);
 const conversation = ref<HTMLElement>();
 
 const agentId = computed(() => {
@@ -56,35 +81,78 @@ async function scrollToLatest(): Promise<void> {
 async function sendMessage(content = message.value): Promise<void> {
   const question = content.trim();
 
-  if (!question || replying.value || !agentId.value) {
+  if (
+    (!question && !pendingAttachments.value.length) ||
+    replying.value ||
+    !agentId.value
+  ) {
     return;
   }
 
-  messages.value.push({
-    content: question,
-    id: crypto.randomUUID(),
-    role: 'user',
-  });
-  message.value = '';
   errorMessage.value = '';
   replying.value = true;
-  await scrollToLatest();
 
   try {
-    const response = await workspaceStore.chat(
-      agentId.value,
-      messages.value
-        .filter((item) => item.id !== 'welcome')
-        .map((item) => ({ content: item.content, role: item.role })),
+    const pending = [...pendingAttachments.value];
+    const uploaded = await Promise.all(
+      pending.map((item) => workspaceStore.uploadChatAttachment(item.file)),
+    );
+    const attachments = uploaded.map(
+      (attachment, index): DisplayAttachment => ({
+        ...attachment,
+        previewUrl: pending[index]?.previewUrl ?? '',
+      }),
     );
 
     messages.value.push({
-      content: response.answer,
+      attachments,
+      content: question,
+      id: crypto.randomUUID(),
+      role: 'user',
+    });
+    pendingAttachments.value = [];
+    message.value = '';
+    await scrollToLatest();
+
+    const history = messages.value
+      .filter((item) => item.id !== 'welcome')
+      .map((item) => ({
+        attachments: item.attachments?.map(
+          ({ fileName, id, mimeType, sizeBytes }) => ({
+            fileName,
+            id,
+            mimeType,
+            sizeBytes,
+          }),
+        ),
+        content: item.content,
+        role: item.role,
+      }));
+    const reply: ChatMessage = {
+      content: '',
       id: crypto.randomUUID(),
       role: 'assistant',
-      sources: [...new Set(response.citations.map((item) => item.fileName))],
-    });
+    };
+
+    messages.value.push(reply);
+    const response = await workspaceStore.chat(
+      agentId.value,
+      history,
+      (delta) => {
+        reply.content += delta;
+        void scrollToLatest();
+      },
+    );
+
+    reply.sources = [
+      ...new Set(response.citations.map((item) => item.fileName)),
+    ];
   } catch (error) {
+    const lastMessage = messages.value.at(-1);
+
+    if (lastMessage?.role === 'assistant' && !lastMessage.content) {
+      messages.value.pop();
+    }
     errorMessage.value =
       error instanceof Error ? error.message : '对话请求失败，请稍后重试。';
   } finally {
@@ -93,11 +161,65 @@ async function sendMessage(content = message.value): Promise<void> {
   }
 }
 
+function selectAttachments(event: Event): void {
+  const input = event.target as HTMLInputElement;
+  const files = [...(input.files ?? [])];
+
+  for (const file of files) {
+    if (pendingAttachments.value.length >= MAX_ATTACHMENTS) {
+      errorMessage.value = `每次最多上传 ${MAX_ATTACHMENTS} 个附件。`;
+      break;
+    }
+
+    if (!SUPPORTED_ATTACHMENT_TYPES.has(file.type)) {
+      errorMessage.value = `${file.name} 的格式不受支持。`;
+      continue;
+    }
+
+    if (file.size > webApplicationConfig.chatAttachmentMaxBytes) {
+      const maxMegabytes = Math.floor(
+        webApplicationConfig.chatAttachmentMaxBytes / 1024 / 1024,
+      );
+
+      errorMessage.value = `${file.name} 超过 ${maxMegabytes}MB。`;
+      continue;
+    }
+
+    pendingAttachments.value.push({
+      file,
+      previewUrl: URL.createObjectURL(file),
+    });
+  }
+
+  input.value = '';
+}
+
+function removePendingAttachment(index: number): void {
+  const [attachment] = pendingAttachments.value.splice(index, 1);
+
+  if (attachment) {
+    URL.revokeObjectURL(attachment.previewUrl);
+  }
+}
+
 function resetConversation(): void {
+  revokePreviewUrls();
   messages.value = [welcomeMessage()];
   message.value = '';
   errorMessage.value = '';
   replying.value = false;
+}
+
+function revokePreviewUrls(): void {
+  for (const attachment of pendingAttachments.value) {
+    URL.revokeObjectURL(attachment.previewUrl);
+  }
+
+  for (const item of messages.value) {
+    for (const attachment of item.attachments ?? []) {
+      URL.revokeObjectURL(attachment.previewUrl);
+    }
+  }
 }
 
 onMounted(async () => {
@@ -107,6 +229,8 @@ onMounted(async () => {
 
   resetConversation();
 });
+
+onBeforeUnmount(revokePreviewUrls);
 </script>
 
 <template>
@@ -172,19 +296,38 @@ onMounted(async () => {
             </span>
             <div>
               <small>{{ item.role === 'user' ? '我' : agent?.name }}</small>
-              <p>{{ item.content }}</p>
+              <div
+                v-if="item.attachments?.length"
+                class="chat-message-attachments"
+              >
+                <figure
+                  v-for="attachment in item.attachments"
+                  :key="attachment.id"
+                >
+                  <img
+                    v-if="attachment.mimeType.startsWith('image/')"
+                    :src="attachment.previewUrl"
+                    :alt="attachment.fileName"
+                  />
+                  <audio
+                    v-else
+                    :src="attachment.previewUrl"
+                    controls
+                    preload="metadata"
+                  ></audio>
+                  <figcaption>{{ attachment.fileName }}</figcaption>
+                </figure>
+              </div>
+              <RichMessageContent
+                v-if="item.content && item.role === 'assistant'"
+                :content="item.content"
+                :streaming="replying && item.id === messages.at(-1)?.id"
+              />
+              <p v-else-if="item.content">{{ item.content }}</p>
+              <p v-else class="vue-chat-typing"><i></i><i></i><i></i></p>
               <small v-if="item.sources?.length" class="chat-sources">
                 参考资料：{{ item.sources.join('、') }}
               </small>
-            </div>
-          </article>
-          <article v-if="replying" class="vue-chat-message">
-            <span class="vue-chat-message__avatar"
-              ><BaseIcon name="bot"
-            /></span>
-            <div>
-              <small>{{ agent?.name }}</small>
-              <p class="vue-chat-typing"><i></i><i></i><i></i></p>
             </div>
           </article>
           <p v-if="errorMessage" class="chat-error">{{ errorMessage }}</p>
@@ -194,6 +337,37 @@ onMounted(async () => {
 
     <footer class="vue-chat-composer-wrap">
       <form class="vue-chat-composer" @submit.prevent="sendMessage()">
+        <div v-if="pendingAttachments.length" class="chat-pending-attachments">
+          <figure
+            v-for="(attachment, index) in pendingAttachments"
+            :key="attachment.previewUrl"
+          >
+            <img
+              v-if="attachment.file.type.startsWith('image/')"
+              :src="attachment.previewUrl"
+              :alt="attachment.file.name"
+            />
+            <span v-else><BaseIcon name="upload" /></span>
+            <figcaption>{{ attachment.file.name }}</figcaption>
+            <button
+              type="button"
+              aria-label="移除附件"
+              @click="removePendingAttachment(index)"
+            >
+              <BaseIcon name="close" />
+            </button>
+          </figure>
+        </div>
+        <label class="chat-attachment-button" title="上传图片或音频">
+          <BaseIcon name="upload" />
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif,audio/mpeg,audio/wav"
+            multiple
+            :disabled="replying || !agent"
+            @change="selectAttachments"
+          />
+        </label>
         <textarea
           v-model="message"
           rows="1"
@@ -204,13 +378,17 @@ onMounted(async () => {
         ></textarea>
         <button
           type="submit"
-          :disabled="!message.trim() || replying || !agent"
+          :disabled="
+            (!message.trim() && !pendingAttachments.length) ||
+            replying ||
+            !agent
+          "
           aria-label="发送消息"
         >
           <span>发送</span>
         </button>
       </form>
-      <p>回答由真实模型结合已索引知识生成，请核实重要信息。</p>
+      <p>支持 Markdown、LaTeX、图表、流程图及图片/音频输入，请核实重要信息。</p>
     </footer>
   </main>
 </template>
