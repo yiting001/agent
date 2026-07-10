@@ -15,14 +15,11 @@
   backdrop-filter: blur(18px);
 }
 
+/* 嵌入 EyouCMS 时工作区随文档流排布，位于站点头尾之间。 */
 .agent-chat-page--eyoucms .chat-workspace {
-  position: fixed;
-  top: calc(var(--chat-site-navigation-height) + 16px);
-  right: 16px;
-  bottom: 16px;
-  left: 16px;
-  height: auto;
-  margin: 0 auto;
+  height: min(860px, calc(100dvh - 96px));
+  min-height: 560px;
+  margin: 32px auto;
 }
 
 /* 左侧仅提供新建与历史对话，不出现任何后台配置入口。 */
