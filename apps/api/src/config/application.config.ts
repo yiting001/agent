@@ -5,8 +5,10 @@ const DEFAULT_CORS_ORIGIN = 'http://localhost:5173';
 const DEFAULT_DATABASE_PATH = 'agent.sqlite';
 const DEFAULT_SERVICE_NAME = 'agent-api';
 const DEFAULT_STORAGE_PATH = 'knowledge-storage';
-const DEFAULT_QDRANT_URL = 'http://localhost:6333';
-const DEFAULT_QDRANT_COLLECTION_PREFIX = 'agent_knowledge';
+const DEFAULT_ZVEC_DATA_PATH = 'zvec-data';
+const DEFAULT_ZVEC_COLLECTION_PREFIX = 'agent_knowledge';
+const DEFAULT_ZVEC_UPSERT_BATCH_SIZE = 256;
+const DEFAULT_ZVEC_INDEX_TYPE = 'hnsw';
 const DEFAULT_UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024;
 const DEFAULT_MAX_DOCUMENT_BYTES = 128 * 1024 * 1024;
 const DEFAULT_INGESTION_POLL_INTERVAL_MS = 2_000;
@@ -15,6 +17,8 @@ const DEFAULT_KNOWLEDGE_CHUNK_OVERLAP = 180;
 const DEFAULT_EMBEDDING_BATCH_SIZE = 24;
 
 /** Runtime values owned by the API process. */
+export type ZvecIndexType = 'diskann' | 'hnsw';
+
 export interface ApplicationConfig {
   corsOrigin: string[];
   credentialEncryptionKey?: string;
@@ -30,10 +34,11 @@ export interface ApplicationConfig {
   knowledgeUploadChunkBytes: number;
   modelRequestTimeoutMs: number;
   port: number;
-  qdrantApiKey?: string;
-  qdrantCollectionPrefix: string;
-  qdrantUrl: string;
   serviceName: string;
+  zvecCollectionPrefix: string;
+  zvecDataPath: string;
+  zvecIndexType: ZvecIndexType;
+  zvecUpsertBatchSize: number;
 }
 
 function parsePort(value: string | undefined): number {
@@ -75,6 +80,28 @@ function parseCorsOrigins(value: string | undefined): string[] {
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
+}
+
+function parseZvecIndexType(value: string | undefined): ZvecIndexType {
+  const indexType = value ?? DEFAULT_ZVEC_INDEX_TYPE;
+
+  if (indexType !== 'hnsw' && indexType !== 'diskann') {
+    throw new Error('ZVEC_INDEX_TYPE must be hnsw or diskann.');
+  }
+
+  return indexType;
+}
+
+function parseZvecCollectionPrefix(value: string | undefined): string {
+  const prefix = value ?? DEFAULT_ZVEC_COLLECTION_PREFIX;
+
+  if (!/^[a-zA-Z0-9_-]+$/.test(prefix)) {
+    throw new Error(
+      'ZVEC_COLLECTION_PREFIX may only contain letters, numbers, underscores, and hyphens.',
+    );
+  }
+
+  return prefix;
 }
 
 /** Provides validated, typed configuration to Nest modules. */
@@ -136,12 +163,17 @@ export const applicationConfig = registerAs(
         120_000,
       ),
       port: parsePort(process.env.API_PORT),
-      qdrantApiKey: optionalValue(process.env.QDRANT_API_KEY),
-      qdrantCollectionPrefix:
-        process.env.QDRANT_COLLECTION_PREFIX ??
-        DEFAULT_QDRANT_COLLECTION_PREFIX,
-      qdrantUrl: process.env.QDRANT_URL ?? DEFAULT_QDRANT_URL,
       serviceName: process.env.API_SERVICE_NAME ?? DEFAULT_SERVICE_NAME,
+      zvecCollectionPrefix: parseZvecCollectionPrefix(
+        process.env.ZVEC_COLLECTION_PREFIX,
+      ),
+      zvecDataPath: process.env.ZVEC_DATA_PATH ?? DEFAULT_ZVEC_DATA_PATH,
+      zvecIndexType: parseZvecIndexType(process.env.ZVEC_INDEX_TYPE),
+      zvecUpsertBatchSize: parsePositiveInteger(
+        'ZVEC_UPSERT_BATCH_SIZE',
+        process.env.ZVEC_UPSERT_BATCH_SIZE,
+        DEFAULT_ZVEC_UPSERT_BATCH_SIZE,
+      ),
     };
   },
 );

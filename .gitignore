@@ -3,6 +3,7 @@ dist/
 coverage/
 .test-data/
 knowledge-storage/
+zvec-data/
 .env
 .env.local
 *.sqlite

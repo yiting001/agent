@@ -28,7 +28,7 @@
 | -------------------------------- | ---------------- | ----------------------------------- |
 | 智能体、知识库、模块、文档、任务 | SQLite           | 事务元数据和状态                    |
 | 原始文件、上传分片               | 本地对象存储目录 | 流式大文件读写，可替换 S3/OSS/MinIO |
-| 语义向量和片段正文               | Qdrant           | 向量索引、模块过滤和相似度检索      |
+| 语义向量和片段正文               | Zvec             | 向量索引、模块过滤和相似度检索      |
 | 模型凭证                         | SQLite 密文      | AES-256-GCM 加密，不向前端回传      |
 
 SQLite 不保存文件二进制或向量。
@@ -69,7 +69,7 @@ flowchart LR
   Worker --> Parse[解析与清洗]
   Parse --> Chunk[重叠切片]
   Chunk --> Embed[真实嵌入模型]
-  Embed --> Vector[(Qdrant)]
+  Embed --> Vector[(Zvec)]
   Worker --> Metadata
 ```
 
@@ -86,5 +86,6 @@ flowchart LR
 - 管理数据仍满足 SQLite 技术栈要求。
 - 5～6GB 资料不会造成单请求内存峰值或 SQLite BLOB 膨胀。
 - 知识模块可以被多个智能体复用，避免重复上传、解析和向量费用。
-- 本地开发可使用本地目录和 Qdrant Docker；生产可替换为 S3/OSS/MinIO 和托管 Qdrant。
+- 本地开发和单机生产使用 Zvec 持久目录；向量实现细节见
+  [ADR-0002](0002-zvec-embedded-vector-index.md)。
 - PDF、DOCX 解析仍受单文件解析器内存限制，因此单文件上限需要独立配置，不能等同于知识库总容量。
