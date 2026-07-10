@@ -88,6 +88,10 @@ flowchart TD
 EyouCMS 模板通过 `agent-chat-page--eyoucms` 为站点公共导航预留 64px，
 避免固定导航覆盖对话头部；站点导航高度不同时只需修改
 `agent-foundation.css` 中的 `--chat-site-navigation-height`。
+工作区使用动态视口高度，重置会话并聚焦输入框时不会把对话头部滚动到导航下方。
+左侧会话列表拥有独立滚动区域，记录增多时品牌、新建按钮和底部说明保持可见。
+内置 SVG 图标同时声明现代 `href` 与兼容 `xlink:href` 引用，
+避免部分浏览器出现图标缺失或错位。
 
 ## 如何进入测试页面
 

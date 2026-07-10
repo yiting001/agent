@@ -26,7 +26,9 @@ const AGENT_BACKEND_BASE_URL = '/api';
     return;
   }
 
-  const initialConversation = conversation.innerHTML;
+  const initialConversation = Array.from(conversation.childNodes, (node) =>
+    node.cloneNode(true),
+  );
   let replying = false;
   let ready = false;
   let agentId = '';
@@ -59,6 +61,11 @@ const AGENT_BACKEND_BASE_URL = '/api';
     paragraph.textContent = content;
     avatarUse.setAttribute(
       'href',
+      role === 'user' ? '#chat-icon-user' : '#chat-icon-bot',
+    );
+    avatarUse.setAttributeNS(
+      'http://www.w3.org/1999/xlink',
+      'xlink:href',
       role === 'user' ? '#chat-icon-user' : '#chat-icon-bot',
     );
 
@@ -227,6 +234,10 @@ const AGENT_BACKEND_BASE_URL = '/api';
     input.style.height = `${Math.min(input.scrollHeight, 132)}px`;
   }
 
+  function focusInput() {
+    input.focus({ preventScroll: true });
+  }
+
   function updateSendState() {
     sendButton.disabled = !ready || replying || input.value.trim().length === 0;
   }
@@ -303,19 +314,21 @@ const AGENT_BACKEND_BASE_URL = '/api';
       replying = false;
       updateSendState();
       scrollToLatest();
-      input.focus();
+      focusInput();
     }
   }
 
   function resetConversation() {
-    conversation.innerHTML = initialConversation;
+    conversation.replaceChildren(
+      ...initialConversation.map((node) => node.cloneNode(true)),
+    );
     input.value = '';
     messages.length = 0;
     replying = false;
     resizeInput();
     updateSendState();
     conversation.scrollTop = 0;
-    input.focus();
+    focusInput();
   }
 
   function setSidebarOpen(open) {
