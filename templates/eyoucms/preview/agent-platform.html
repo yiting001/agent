@@ -12,7 +12,11 @@
   </head>
   <body class="agent-chat-page" data-agent-id="">
     <!-- 页面图标全部内置，测试时无需联网加载第三方资源。 -->
-    <svg class="chat-icon-sprite" aria-hidden="true">
+    <svg
+      class="chat-icon-sprite"
+      aria-hidden="true"
+      xmlns:xlink="http://www.w3.org/1999/xlink"
+    >
       <symbol id="chat-icon-bot" viewBox="0 0 24 24">
         <rect
           x="4"
@@ -138,7 +142,11 @@
             data-brand-root
           >
             <span class="chat-brand__mark" data-brand-icon
-              ><svg><use href="#chat-icon-bot"></use></svg
+              ><svg>
+                <use
+                  href="#chat-icon-bot"
+                  xlink:href="#chat-icon-bot"
+                ></use></svg
             ></span>
             <span data-brand-name>灵枢智能体</span>
           </a>
@@ -148,7 +156,9 @@
           data-chat-clear
           type="button"
         >
-          <svg><use href="#chat-icon-plus"></use></svg>
+          <svg>
+            <use href="#chat-icon-plus" xlink:href="#chat-icon-plus"></use>
+          </svg>
           开始新对话
         </button>
         <p class="chat-sidebar__label">当前会话</p>
@@ -159,7 +169,11 @@
             type="button"
           >
             <span class="chat-history__icon"
-              ><svg><use href="#chat-icon-message"></use></svg
+              ><svg>
+                <use
+                  href="#chat-icon-message"
+                  xlink:href="#chat-icon-message"
+                ></use></svg
             ></span>
             <span class="chat-history__copy"
               ><strong>新对话</strong><span>本次访问</span></span
@@ -187,11 +201,15 @@
             type="button"
             aria-label="打开对话列表"
           >
-            <svg><use href="#chat-icon-menu"></use></svg>
+            <svg>
+              <use href="#chat-icon-menu" xlink:href="#chat-icon-menu"></use>
+            </svg>
           </button>
           <div class="chat-header__identity">
             <span class="chat-agent-avatar">
-              <svg><use href="#chat-icon-bot"></use></svg>
+              <svg>
+                <use href="#chat-icon-bot" xlink:href="#chat-icon-bot"></use>
+              </svg>
               <i class="chat-status-dot"></i>
             </span>
             <span class="chat-header__copy">
@@ -207,7 +225,12 @@
               aria-label="清空当前对话"
               title="清空当前对话"
             >
-              <svg><use href="#chat-icon-trash"></use></svg>
+              <svg>
+                <use
+                  href="#chat-icon-trash"
+                  xlink:href="#chat-icon-trash"
+                ></use>
+              </svg>
             </button>
             <button
               class="chat-button chat-button--plain"
@@ -227,7 +250,11 @@
           <div class="chat-conversation__inner">
             <div class="chat-welcome">
               <span class="chat-welcome__avatar"
-                ><svg><use href="#chat-icon-bot"></use></svg
+                ><svg>
+                  <use
+                    href="#chat-icon-bot"
+                    xlink:href="#chat-icon-bot"
+                  ></use></svg
               ></span>
               <h1>你好，我是企业知识助手</h1>
               <p>你可以直接提出问题，我会尽力提供清晰、准确的回答。</p>
@@ -238,7 +265,11 @@
                   type="button"
                 >
                   <span class="chat-suggestion__icon"
-                    ><svg><use href="#chat-icon-light"></use></svg
+                    ><svg>
+                      <use
+                        href="#chat-icon-light"
+                        xlink:href="#chat-icon-light"
+                      ></use></svg
                   ></span>
                   <span
                     ><strong>了解助手能力</strong
@@ -251,7 +282,11 @@
                   type="button"
                 >
                   <span class="chat-suggestion__icon"
-                    ><svg><use href="#chat-icon-file"></use></svg
+                    ><svg>
+                      <use
+                        href="#chat-icon-file"
+                        xlink:href="#chat-icon-file"
+                      ></use></svg
                   ></span>
                   <span
                     ><strong>获取方案建议</strong
@@ -263,7 +298,11 @@
             <div class="chat-message-list" data-chat-messages>
               <article class="chat-message">
                 <span class="chat-message__avatar"
-                  ><svg><use href="#chat-icon-bot"></use></svg
+                  ><svg>
+                    <use
+                      href="#chat-icon-bot"
+                      xlink:href="#chat-icon-bot"
+                    ></use></svg
                 ></span>
                 <div class="chat-message__body">
                   <span class="chat-message__name">企业知识助手</span>
@@ -296,7 +335,9 @@
               type="button"
               aria-label="发送消息"
             >
-              <svg><use href="#chat-icon-send"></use></svg>
+              <svg>
+                <use href="#chat-icon-send" xlink:href="#chat-icon-send"></use>
+              </svg>
             </button>
           </div>
           <p class="chat-disclaimer">
