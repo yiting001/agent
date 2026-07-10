@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
@@ -11,6 +11,8 @@
       rel="shortcut icon"
       type="image/x-icon"
     />
+    {eyou:static file="skin/css/style.css" /}
+    {eyou:static file="skin/css/all.min.css" /}
     {eyou:static file="skin/css/agent-foundation.css" /}
     {eyou:static file="skin/css/agent-chat.css" /}
     {eyou:static file="skin/css/agent-composer.css" /}
@@ -21,6 +23,8 @@
     data-api-base="{$eyou.field.api_base}"
     data-agent-id="{$eyou.field.agent_id}"
   >
+    {eyou:include file="header.htm" /}
+
     <!-- 页面图标全部内置，部署时不依赖外部图标服务。 -->
     <svg class="chat-icon-sprite" aria-hidden="true">
       <symbol id="chat-icon-bot" viewBox="0 0 24 24">
@@ -183,5 +187,6 @@
     </div>
 
     {eyou:static file="skin/js/agent-platform.js" /}
+    {eyou:include file="footer.htm" /}
   </body>
 </html>
