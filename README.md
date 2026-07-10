@@ -99,9 +99,12 @@ python3 -m http.server 4173 -d templates/eyoucms
 
 访问
 `http://localhost:4173/preview/agent-platform.html?agentId=<智能体ID>`。
-页面默认连接 `http://localhost:3000/api`，也可追加
-`&apiBase=<API地址>`。EyouCMS 接入方式见
+页面后台地址由 `templates/eyoucms/skin/js/agent-platform.js` 顶部常量配置。
+EyouCMS 接入方式见
 [中文智能体对话页文档](docs/modules/agent-eyoucms-page.md)。
+
+生产环境构建、持久化目录、Nginx、systemd 和 EyouCMS 发布步骤见
+[部署文档](docs/deployment.md)。
 
 ## 质量检查
 

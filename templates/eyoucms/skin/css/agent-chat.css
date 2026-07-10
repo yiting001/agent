@@ -3,9 +3,9 @@
   display: grid;
   grid-template-columns: 278px minmax(0, 1fr);
   width: min(1380px, calc(100% - 32px));
-  height: calc(100vh - 32px);
+  height: calc(100vh - var(--chat-site-navigation-height) - 32px);
   min-height: 640px;
-  margin: 16px auto;
+  margin: calc(var(--chat-site-navigation-height) + 16px) auto 16px;
   overflow: hidden;
   border: 1px solid rgb(226 228 239 / 90%);
   border-radius: var(--chat-radius-lg);

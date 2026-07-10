@@ -14,6 +14,11 @@
   --chat-radius-sm: 14px;
   --chat-radius-md: 20px;
   --chat-radius-lg: 28px;
+  --chat-site-navigation-height: 0px;
+}
+
+.agent-chat-page--eyoucms {
+  --chat-site-navigation-height: 64px;
 }
 
 .agent-chat-page,
