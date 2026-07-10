@@ -13,6 +13,7 @@ import type {
   KnowledgeBaseSummary,
   KnowledgeModuleSummary,
   ModelProviderSummary,
+  UpdateAgentInput,
 } from '../domain/admin-workspace';
 
 export abstract class AdminWorkspaceGateway {
@@ -40,6 +41,8 @@ export abstract class AdminWorkspaceGateway {
     input: CreateKnowledgeModuleInput,
   ): Promise<KnowledgeModuleSummary>;
 
+  abstract deleteAgent(agentId: string): Promise<void>;
+
   abstract listAgents(): Promise<AgentSummary[]>;
 
   abstract listApiApplications(): Promise<ApiApplicationSummary[]>;
@@ -51,6 +54,11 @@ export abstract class AdminWorkspaceGateway {
   abstract updateAgentStatus(
     agentId: string,
     status: AgentStatus,
+  ): Promise<AgentSummary>;
+
+  abstract updateAgent(
+    agentId: string,
+    input: UpdateAgentInput,
   ): Promise<AgentSummary>;
 
   abstract uploadChatAttachment(file: File): Promise<ChatAttachmentSummary>;

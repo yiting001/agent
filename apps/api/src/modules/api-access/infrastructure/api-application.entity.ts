@@ -1,5 +1,13 @@
-import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryColumn,
+} from 'typeorm';
 
+import { AgentEntity } from '../../agents/infrastructure/agent.entity';
 import type { ApiApplicationStatus } from '../domain/api-application';
 
 @Entity('api_applications')
@@ -12,6 +20,10 @@ export class ApiApplicationEntity {
 
   @Column('text')
   agentId: string;
+
+  @ManyToOne(() => AgentEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'agentId' })
+  agent: AgentEntity;
 
   @Index({ unique: true })
   @Column('text')

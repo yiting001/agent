@@ -169,6 +169,14 @@ p {
   color: var(--admin-primary-dark);
 }
 
+.text-button--danger {
+  color: var(--admin-danger);
+}
+
+.text-button--danger:hover {
+  color: #b63f3f;
+}
+
 .text-button .base-icon {
   width: 16px;
   height: 16px;
@@ -194,6 +202,15 @@ p {
 .icon-button .base-icon {
   width: 18px;
   height: 18px;
+}
+
+.danger-button {
+  background: linear-gradient(135deg, #e26868, #bd4141);
+  box-shadow: 0 10px 24px rgb(214 88 88 / 20%);
+}
+
+.danger-button:hover {
+  box-shadow: 0 13px 28px rgb(214 88 88 / 28%);
 }
 
 .status-badge {
@@ -313,6 +330,12 @@ p {
   justify-content: flex-end;
   border-top: 1px solid var(--admin-line);
   padding-top: 18px;
+}
+
+.confirmation-message {
+  color: var(--admin-muted);
+  font-size: 14px;
+  line-height: 1.75;
 }
 
 .form-notice {

@@ -79,6 +79,8 @@ export interface CreateAgentInput {
   temperature: number;
 }
 
+export type UpdateAgentInput = CreateAgentInput;
+
 export interface CreateKnowledgeBaseInput {
   description: string;
   embeddingProviderId: string;

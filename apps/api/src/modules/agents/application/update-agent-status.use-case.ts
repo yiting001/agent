@@ -4,6 +4,7 @@ import { ApplicationError } from '../../../shared/application/application-error'
 import type { AgentStatus, AgentSummary } from '../domain/agent';
 import { AgentCatalogService } from './agent-catalog.service';
 import { AgentRepository } from './agent.repository';
+import { toAgentSummary } from './agent-summary';
 
 @Injectable()
 export class UpdateAgentStatusUseCase {
@@ -22,19 +23,14 @@ export class UpdateAgentStatusUseCase {
       );
     }
 
+    const updatedAgent = {
+      ...agent,
+      status,
+      updatedAt: new Date(),
+    };
+
     await this.repository.updateStatus(id, status);
 
-    return {
-      conversationCount: agent.conversationCount,
-      description: agent.description,
-      id: agent.id,
-      moduleIds: agent.moduleIds,
-      name: agent.name,
-      providerId: agent.providerId,
-      status,
-      systemPrompt: agent.systemPrompt,
-      temperature: agent.temperature,
-      updatedAt: new Date().toISOString(),
-    };
+    return toAgentSummary(updatedAgent, agent.moduleIds);
   }
 }

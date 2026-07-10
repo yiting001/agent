@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 
 import { AgentRepository } from '../application/agent.repository';
 import type {
@@ -23,6 +23,10 @@ export class TypeOrmAgentRepository extends AgentRepository {
     private readonly dataSource: DataSource,
   ) {
     super();
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.agents.delete(id);
   }
 
   async findById(id: string): Promise<AgentDetail | undefined> {
@@ -68,13 +72,17 @@ export class TypeOrmAgentRepository extends AgentRepository {
   async save(agent: Agent, moduleIds: string[]): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
       await manager.getRepository(AgentEntity).save(agent);
-      await manager.getRepository(AgentKnowledgeModuleEntity).save(
-        [...new Set(moduleIds)].map((moduleId) => ({
-          agentId: agent.id,
-          id: randomUUID(),
-          moduleId,
-        })),
-      );
+      await this.saveBindings(manager, agent.id, moduleIds);
+    });
+  }
+
+  async update(agent: Agent, moduleIds: string[]): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      await manager.getRepository(AgentEntity).save(agent);
+      await manager
+        .getRepository(AgentKnowledgeModuleEntity)
+        .delete({ agentId: agent.id });
+      await this.saveBindings(manager, agent.id, moduleIds);
     });
   }
 
@@ -83,5 +91,21 @@ export class TypeOrmAgentRepository extends AgentRepository {
       status,
       updatedAt: new Date(),
     });
+  }
+
+  private async saveBindings(
+    manager: EntityManager,
+    agentId: string,
+    moduleIds: string[],
+  ): Promise<void> {
+    const bindings = [...new Set(moduleIds)].map((moduleId) => ({
+      agentId,
+      id: randomUUID(),
+      moduleId,
+    }));
+
+    if (bindings.length > 0) {
+      await manager.getRepository(AgentKnowledgeModuleEntity).save(bindings);
+    }
   }
 }
