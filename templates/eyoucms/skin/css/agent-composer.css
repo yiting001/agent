@@ -1,7 +1,11 @@
 /* 固定在对话底部的输入区。 */
 .chat-composer-wrap {
   position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
   min-width: 0;
+  margin: 0;
   border-top: 1px solid rgb(232 234 241 / 72%);
   padding: 16px 24px 18px;
   background: linear-gradient(
