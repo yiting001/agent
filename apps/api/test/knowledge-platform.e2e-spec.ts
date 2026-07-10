@@ -11,6 +11,7 @@ import { DocumentTextExtractor } from '../src/modules/knowledge/application/docu
 import { VectorIndex } from '../src/modules/knowledge/application/vector-index';
 import { IngestionScheduler } from '../src/modules/knowledge/infrastructure/indexing/ingestion.scheduler';
 import type { EmbeddingInput } from '../src/modules/model-providers/application/model-gateway';
+import type { ChatCompletionInput } from '../src/modules/model-providers/application/model-gateway';
 import { ModelGateway } from '../src/modules/model-providers/application/model-gateway';
 import { ApplicationErrorFilter } from '../src/shared/presentation/application-error.filter';
 
@@ -50,9 +51,11 @@ function readArray(
 describe('Knowledge platform', () => {
   const storagePath = resolve('.test-data/knowledge-platform');
   let app: INestApplication<Server>;
+  let lastChatInput: ChatCompletionInput | undefined;
 
   beforeAll(async () => {
     process.env.CREDENTIAL_ENCRYPTION_KEY = '22'.repeat(32);
+    process.env.CHAT_ATTACHMENT_STORAGE_PATH = `${storagePath}/chat`;
     process.env.DATABASE_MIGRATIONS_RUN = 'false';
     process.env.DATABASE_PATH = ':memory:';
     process.env.DATABASE_SYNCHRONIZE = 'true';
@@ -69,6 +72,14 @@ describe('Knowledge platform', () => {
         .mockImplementation((input: EmbeddingInput) =>
           Promise.resolve(input.input.map(() => [0.1, 0.2, 0.3])),
         ),
+      streamChat: jest.fn().mockImplementation(async function* (
+        input: ChatCompletionInput,
+      ) {
+        await Promise.resolve();
+        lastChatInput = input;
+        yield '真实';
+        yield '模型回答';
+      }),
       verify: jest.fn().mockResolvedValue(undefined),
     };
     const vectorIndex = {
@@ -129,12 +140,14 @@ describe('Knowledge platform', () => {
         baseUrl: 'http://model.test/v1',
         chatModel: 'chat-model',
         description: '测试模型服务',
-        embeddingDimensions: 3,
         embeddingModel: 'embedding-model',
         name: '测试模型',
       })
       .expect(200);
-    const providerId = readString(parseRecord(providerResponse.text), 'id');
+    const provider = parseRecord(providerResponse.text);
+    const providerId = readString(provider, 'id');
+
+    expect(provider.embeddingDimensions).toBe(3);
     const providersResponse = await request(app.getHttpServer())
       .get('/api/model-providers')
       .expect(200);
@@ -210,18 +223,65 @@ describe('Knowledge platform', () => {
       .post(`/api/agents/${agentId}/chat`)
       .send({
         messages: [{ content: '企业知识是什么？', role: 'user' }],
+        stream: false,
       })
-      .expect(201)
+      .expect(200)
       .expect(({ text }) => {
         expect(readString(parseRecord(text), 'answer')).toBe('真实模型回答');
       });
 
     await request(app.getHttpServer())
+      .post(`/api/agents/${agentId}/chat`)
+      .send({
+        messages: [{ content: '流式回答', role: 'user' }],
+      })
+      .expect('Content-Type', /text\/event-stream/)
+      .expect(200)
+      .expect(({ text }) => {
+        expect(text).toContain('event: metadata');
+        expect(text).toContain('data: {"content":"真实"}');
+        expect(text).toContain('event: done');
+      });
+
+    const image = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01,
+    ]);
+    const attachmentResponse = await request(app.getHttpServer())
+      .post('/api/chat-attachments')
+      .set('Content-Type', 'image/png')
+      .set('X-File-Name', encodeURIComponent('截图.png'))
+      .send(image)
+      .expect(201);
+    const attachment = parseRecord(attachmentResponse.text);
+
+    await request(app.getHttpServer())
+      .post(`/api/agents/${agentId}/chat`)
+      .send({
+        messages: [
+          {
+            attachments: [attachment],
+            content: '分析图片',
+            role: 'user',
+          },
+        ],
+        stream: false,
+      })
+      .expect(200);
+
+    const multimodalContent = lastChatInput?.messages.at(-1)?.content;
+
+    expect(Array.isArray(multimodalContent)).toBe(true);
+    expect(JSON.stringify(multimodalContent)).toContain(
+      'data:image/png;base64,',
+    );
+
+    await request(app.getHttpServer())
       .post(`/api/public/agents/${agentId}/chat`)
       .send({
         messages: [{ content: '公开测试问题', role: 'user' }],
+        stream: false,
       })
-      .expect(201);
+      .expect(200);
 
     await request(app.getHttpServer())
       .post('/api/v1/chat/completions')
@@ -229,8 +289,9 @@ describe('Knowledge platform', () => {
       .send({
         messages: [{ content: '请回答问题', role: 'user' }],
         model: 'agent',
+        stream: false,
       })
-      .expect(201)
+      .expect(200)
       .expect(({ text }) => {
         expect(readString(parseRecord(text), 'object')).toBe('chat.completion');
       });

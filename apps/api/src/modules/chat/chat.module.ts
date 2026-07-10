@@ -4,16 +4,21 @@ import { AgentsModule } from '../agents/agents.module';
 import { ApiAccessModule } from '../api-access/api-access.module';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { ModelProvidersModule } from '../model-providers/model-providers.module';
+import { ChatAttachmentStorage } from './application/chat-attachment.storage';
 import { ChatWithAgentUseCase } from './application/chat-with-agent.use-case';
+import { UploadChatAttachmentUseCase } from './application/upload-chat-attachment.use-case';
+import { LocalChatAttachmentStorage } from './infrastructure/local-chat-attachment.storage';
 import { ChatWithAgentController } from './presentation/http/chat-with-agent.controller';
 import { OpenAiChatCompletionController } from './presentation/http/openai-chat-completion.controller';
 import { PublicChatWithAgentController } from './presentation/http/public-chat-with-agent.controller';
+import { UploadChatAttachmentController } from './presentation/http/upload-chat-attachment.controller';
 
 @Module({
   controllers: [
     ChatWithAgentController,
     OpenAiChatCompletionController,
     PublicChatWithAgentController,
+    UploadChatAttachmentController,
   ],
   imports: [
     AgentsModule,
@@ -21,6 +26,13 @@ import { PublicChatWithAgentController } from './presentation/http/public-chat-w
     KnowledgeModule,
     ModelProvidersModule,
   ],
-  providers: [ChatWithAgentUseCase],
+  providers: [
+    ChatWithAgentUseCase,
+    UploadChatAttachmentUseCase,
+    {
+      provide: ChatAttachmentStorage,
+      useClass: LocalChatAttachmentStorage,
+    },
+  ],
 })
 export class ChatModule {}

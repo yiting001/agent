@@ -1,7 +1,8 @@
-import { Body, Controller, Param, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, Param, Post, Res } from '@nestjs/common';
+import type { Response } from 'express';
 
-import type { AgentChatResponse } from '../../domain/chat';
 import { ChatWithAgentUseCase } from '../../application/chat-with-agent.use-case';
+import { sendAgentChatStream } from './chat-stream.response';
 import { ChatWithAgentDto } from './chat-with-agent.dto';
 
 @Controller('agents')
@@ -9,14 +10,26 @@ export class ChatWithAgentController {
   constructor(private readonly useCase: ChatWithAgentUseCase) {}
 
   @Post(':id/chat')
-  execute(
+  @HttpCode(200)
+  async execute(
     @Param('id') agentId: string,
     @Body() body: ChatWithAgentDto,
-  ): Promise<AgentChatResponse> {
-    return this.useCase.execute({
+    @Res() response: Response,
+  ): Promise<void> {
+    const command = {
       agentId,
       messages: body.messages,
       requirePublished: false,
-    });
+    };
+
+    if (body.stream === false) {
+      response.json(await this.useCase.execute(command));
+      return;
+    }
+
+    await sendAgentChatStream(
+      response,
+      await this.useCase.executeStream(command),
+    );
   }
 }

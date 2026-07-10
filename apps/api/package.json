@@ -4,10 +4,12 @@
   "private": true,
   "description": "Agent NestJS API",
   "scripts": {
-    "build": "nest build",
+    "build": "nest build && pnpm run build:single",
+    "build:single": "nest build --webpack --webpackPath webpack.config.cjs",
     "dev": "nest start --watch",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "start": "node dist/main.js",
+    "start:single": "node dist-single/server.js",
     "test": "jest --runInBand",
     "test:e2e": "jest --config test/jest-e2e.json --runInBand",
     "typecheck": "tsc --noEmit"
@@ -43,9 +45,11 @@
     "jest": "30.0.5",
     "supertest": "7.1.4",
     "ts-jest": "29.4.1",
+    "ts-loader": "9.5.2",
     "ts-node": "10.9.2",
     "typescript": "5.8.3",
-    "typescript-eslint": "8.38.0"
+    "typescript-eslint": "8.38.0",
+    "webpack": "5.100.2"
   },
   "jest": {
     "moduleFileExtensions": [

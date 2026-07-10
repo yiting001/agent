@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
 import type { ModelProviderSummary } from '../domain/model-provider';
+import { ApplicationError } from '../../../shared/application/application-error';
 import { CredentialCipher } from './credential-cipher';
 import { ModelGateway } from './model-gateway';
 import { ModelProviderRepository } from './model-provider.repository';
@@ -35,6 +36,14 @@ export class ConfigureModelProviderUseCase {
     const baseUrl = normalizeBaseUrl(command.baseUrl);
 
     await this.gateway.verify(baseUrl, command.apiKey);
+    const embeddingDimensions = command.embeddingModel
+      ? await this.detectEmbeddingDimensions({
+          apiKey: command.apiKey,
+          baseUrl,
+          dimensions: command.embeddingDimensions,
+          model: command.embeddingModel,
+        })
+      : undefined;
 
     const existing = await this.repository.findByKey(command.key);
     const now = new Date();
@@ -44,7 +53,7 @@ export class ConfigureModelProviderUseCase {
       createdAt: existing?.createdAt ?? now,
       credential: this.cipher.encrypt(command.apiKey),
       description: command.description,
-      embeddingDimensions: command.embeddingDimensions,
+      embeddingDimensions,
       embeddingModel: command.embeddingModel,
       enabled: true,
       id: existing?.id ?? randomUUID(),
@@ -68,5 +77,26 @@ export class ConfigureModelProviderUseCase {
       name: provider.name,
       updatedAt: provider.updatedAt.toISOString(),
     };
+  }
+
+  private async detectEmbeddingDimensions(input: {
+    apiKey: string;
+    baseUrl: string;
+    dimensions?: number;
+    model: string;
+  }): Promise<number> {
+    const [embedding] = await this.gateway.embed({
+      ...input,
+      input: ['知识库嵌入模型连接测试'],
+    });
+
+    if (!embedding?.length) {
+      throw new ApplicationError(
+        'service_unavailable',
+        '嵌入模型未返回有效向量，请检查模型名称和服务地址。',
+      );
+    }
+
+    return embedding.length;
   }
 }

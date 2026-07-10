@@ -75,6 +75,8 @@ p {
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
+  overflow: visible;
+  vertical-align: middle;
 }
 
 .primary-button,
@@ -85,6 +87,7 @@ p {
   gap: 8px;
   align-items: center;
   justify-content: center;
+  line-height: 1;
   border: 0;
   cursor: pointer;
   transition:
@@ -179,6 +182,8 @@ p {
   border-radius: 11px;
   color: #777c8e;
   background: transparent;
+  padding: 0;
+  line-height: 0;
 }
 
 .icon-button:hover {

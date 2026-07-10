@@ -14,7 +14,7 @@ const form = reactive({
   baseUrl: '',
   chatModel: '',
   description: '',
-  embeddingDimensions: 1536,
+  embeddingDimensions: '' as number | '',
   embeddingModel: '',
   key: '',
   name: '',
@@ -26,7 +26,7 @@ function openConfiguration(provider?: ModelProviderSummary): void {
   form.baseUrl = provider?.baseUrl ?? '';
   form.chatModel = provider?.chatModel ?? '';
   form.description = provider?.description ?? '';
-  form.embeddingDimensions = provider?.embeddingDimensions ?? 1536;
+  form.embeddingDimensions = provider?.embeddingDimensions ?? '';
   form.embeddingModel = provider?.embeddingModel ?? '';
   form.key = provider?.key ?? '';
   form.name = provider?.name ?? '';
@@ -51,9 +51,12 @@ async function saveConfiguration(): Promise<void> {
       baseUrl: form.baseUrl.trim(),
       chatModel: form.chatModel.trim() || undefined,
       description: form.description.trim(),
-      embeddingDimensions: form.embeddingModel.trim()
-        ? form.embeddingDimensions
-        : undefined,
+      embeddingDimensions:
+        form.embeddingModel.trim() &&
+        typeof form.embeddingDimensions === 'number' &&
+        form.embeddingDimensions > 0
+          ? form.embeddingDimensions
+          : undefined,
       embeddingModel: form.embeddingModel.trim() || undefined,
       key: form.key.trim().toLowerCase(),
       name: form.name.trim(),
@@ -229,14 +232,15 @@ async function saveConfiguration(): Promise<void> {
           />
         </label>
         <label v-if="form.embeddingModel">
-          <span>向量维度</span>
+          <span>向量维度（可选）</span>
           <input
             v-model.number="form.embeddingDimensions"
             type="number"
             min="1"
             max="65536"
-            required
+            placeholder="留空由后端自动检测"
           />
+          <small>保存时会调用嵌入接口并记录模型实际返回的维度。</small>
         </label>
         <label>
           <span>访问密钥</span>

@@ -2,7 +2,9 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
+  IsBoolean,
   IsArray,
+  IsOptional,
   ValidateNested,
 } from 'class-validator';
 
@@ -15,4 +17,8 @@ export class ChatWithAgentDto {
   @ValidateNested({ each: true })
   @Type(() => ChatMessageDto)
   messages: ChatMessageDto[];
+
+  @IsOptional()
+  @IsBoolean()
+  stream?: boolean;
 }

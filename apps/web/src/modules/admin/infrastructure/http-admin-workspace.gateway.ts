@@ -6,6 +6,7 @@ import type {
   AgentStatus,
   AgentSummary,
   ApiApplicationSummary,
+  ChatAttachmentSummary,
   ConfigureProviderInput,
   ConversationMessage,
   CreateAgentInput,
@@ -23,19 +24,61 @@ interface UploadSessionSummary {
   id: string;
 }
 
+function parseRecord(value: string): Record<string, unknown> {
+  const parsed: unknown = JSON.parse(value);
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('流式响应格式无效。');
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
 export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
   constructor(private readonly httpClient: HttpClient) {
     super();
   }
 
-  chat(
+  async chat(
     agentId: string,
     messages: ConversationMessage[],
+    onDelta: (content: string) => void,
   ): Promise<AgentChatResponse> {
-    return this.httpClient.post<
-      AgentChatResponse,
-      { messages: ConversationMessage[] }
-    >(`/agents/${agentId}/chat`, { messages });
+    let result: AgentChatResponse = {
+      agentId,
+      answer: '',
+      citations: [],
+    };
+
+    await this.httpClient.postEventStream(
+      `/agents/${agentId}/chat`,
+      { messages },
+      (event, data) => {
+        const payload = parseRecord(data);
+
+        if (event === 'metadata' && Array.isArray(payload.citations)) {
+          result = {
+            ...result,
+            citations: payload.citations as AgentChatResponse['citations'],
+          };
+        }
+
+        if (event === 'delta' && typeof payload.content === 'string') {
+          result.answer += payload.content;
+          onDelta(payload.content);
+        }
+
+        if (event === 'error') {
+          throw new Error(
+            typeof payload.message === 'string'
+              ? payload.message
+              : '模型流式响应失败。',
+          );
+        }
+      },
+    );
+
+    return result;
   }
 
   configureProvider(
@@ -115,6 +158,13 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
     return this.httpClient.patch<AgentSummary, { status: AgentStatus }>(
       `/agents/${agentId}/status`,
       { status },
+    );
+  }
+
+  uploadChatAttachment(file: File): Promise<ChatAttachmentSummary> {
+    return this.httpClient.postFile<ChatAttachmentSummary>(
+      '/chat-attachments',
+      file,
     );
   }
 
