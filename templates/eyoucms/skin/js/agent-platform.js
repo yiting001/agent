@@ -1,150 +1,212 @@
 (function () {
   'use strict';
 
-  document.documentElement.classList.add('js-enabled');
+  const conversation = document.querySelector('[data-chat-conversation]');
+  const input = document.querySelector('[data-chat-input]');
+  const sendButton = document.querySelector('[data-chat-send]');
+  const clearButtons = document.querySelectorAll('[data-chat-clear]');
+  const sidebar = document.querySelector('[data-chat-sidebar]');
+  const sidebarBackdrop = document.querySelector('[data-chat-backdrop]');
+  const sidebarOpenButton = document.querySelector('[data-chat-sidebar-open]');
+  const historyItems = document.querySelectorAll('[data-chat-history]');
 
-  function initializeRevealAnimations() {
-    const revealElements = document.querySelectorAll('.agent-reveal');
+  if (
+    !conversation ||
+    !(input instanceof HTMLTextAreaElement) ||
+    !(sendButton instanceof HTMLButtonElement)
+  ) {
+    return;
+  }
 
-    if (!('IntersectionObserver' in window)) {
-      revealElements.forEach((element) => element.classList.add('is-visible'));
-      return;
-    }
+  const initialConversation = conversation.innerHTML;
+  let replying = false;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) {
-            return;
-          }
+  function createMessage(role, content) {
+    const message = document.createElement('article');
+    const avatar = document.createElement('span');
+    const avatarIcon = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'svg',
+    );
+    const avatarUse = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'use',
+    );
+    const body = document.createElement('div');
+    const name = document.createElement('span');
+    const bubble = document.createElement('div');
+    const paragraph = document.createElement('p');
 
-          entry.target.classList.add('is-visible');
-          observer.unobserve(entry.target);
-        });
-      },
-      { threshold: 0.14 },
+    message.className = `chat-message ${
+      role === 'user' ? 'chat-message--user' : ''
+    }`.trim();
+    avatar.className = 'chat-message__avatar';
+    body.className = 'chat-message__body';
+    name.className = 'chat-message__name';
+    bubble.className = 'chat-message__bubble';
+    name.textContent = role === 'user' ? '我' : '企业知识助手';
+    paragraph.textContent = content;
+    avatarUse.setAttribute(
+      'href',
+      role === 'user' ? '#chat-icon-user' : '#chat-icon-bot',
     );
 
-    revealElements.forEach((element) => observer.observe(element));
+    avatarIcon.appendChild(avatarUse);
+    avatar.appendChild(avatarIcon);
+    bubble.appendChild(paragraph);
+    body.append(name, bubble);
+    message.append(avatar, body);
+    return message;
   }
 
-  function initializeModelSelection() {
-    const modelOptions = document.querySelectorAll('[data-model-name]');
-    const selectedModelLabels = document.querySelectorAll(
-      '[data-selected-model]',
-    );
+  function createTypingMessage() {
+    const message = createMessage('assistant', '');
+    const bubble = message.querySelector('.chat-message__bubble');
 
-    modelOptions.forEach((option) => {
-      option.addEventListener('click', () => {
-        modelOptions.forEach((item) => item.classList.remove('is-selected'));
-        option.classList.add('is-selected');
+    if (!bubble) {
+      return message;
+    }
 
-        selectedModelLabels.forEach((label) => {
-          label.textContent = option.dataset.modelName || 'DeepSeek V3';
-        });
-      });
+    bubble.innerHTML =
+      '<span class="chat-typing" aria-label="正在回复"><i></i><i></i><i></i></span>';
+    return message;
+  }
+
+  function selectResponse(question) {
+    if (question.includes('功能') || question.includes('什么')) {
+      return '我可以根据企业资料回答产品、服务、流程和常见问题，也能协助梳理需求并生成清晰的建议。你可以继续告诉我具体想了解的内容。';
+    }
+
+    if (question.includes('方案') || question.includes('需求')) {
+      return '可以。请告诉我你的使用场景、主要用户和希望解决的问题，我会据此整理一份包含目标、核心能力和实施步骤的建议方案。';
+    }
+
+    if (question.includes('联系') || question.includes('人工')) {
+      return '如果当前回答没有解决你的问题，请留下需要人工跟进的事项，工作人员会结合完整对话内容继续为你处理。';
+    }
+
+    return '已经收到你的问题。当前页面使用本地演示回复；接入正式服务后，我会结合后台配置的企业资料生成更准确、可追溯的回答。';
+  }
+
+  function scrollToLatest() {
+    conversation.scrollTo({
+      top: conversation.scrollHeight,
+      behavior: 'smooth',
     });
   }
 
-  function initializeChatDemo() {
-    const sendButton = document.querySelector('[data-demo-send]');
-    const input = document.querySelector('[data-demo-input]');
-    const messages = document.querySelector('[data-demo-messages]');
+  function resizeInput() {
+    input.style.height = 'auto';
+    input.style.height = `${Math.min(input.scrollHeight, 132)}px`;
+  }
 
-    if (!sendButton || !(input instanceof HTMLInputElement) || !messages) {
+  function updateSendState() {
+    sendButton.disabled = replying || input.value.trim().length === 0;
+  }
+
+  function sendMessage(question) {
+    const content = question.trim();
+
+    if (!content || replying) {
       return;
     }
 
-    function appendMessage(content, modifier) {
-      const message = document.createElement('div');
-      message.className = `agent-chat__bubble ${modifier}`.trim();
-      message.textContent = content;
-      messages.appendChild(message);
-      messages.scrollTop = messages.scrollHeight;
-    }
+    replying = true;
+    input.value = '';
+    resizeInput();
+    updateSendState();
 
-    function sendMessage() {
-      const question = input.value.trim();
+    const messageList = conversation.querySelector('[data-chat-messages]');
 
-      if (!question) {
-        input.focus();
-        return;
-      }
-
-      appendMessage(question, 'agent-chat__bubble--user');
-      input.value = '';
-      sendButton.setAttribute('disabled', 'disabled');
-
-      window.setTimeout(() => {
-        appendMessage(
-          '已结合产品知识库生成回答，并保留来源引用与可追溯片段。',
-          '',
-        );
-        sendButton.removeAttribute('disabled');
-      }, 520);
-    }
-
-    sendButton.addEventListener('click', sendMessage);
-    input.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        sendMessage();
-      }
-    });
-  }
-
-  function initializeUploadDemo() {
-    const uploadButton = document.querySelector('[data-upload-demo]');
-    const progress = document.querySelector('[data-upload-progress]');
-    const uploadState = document.querySelector('[data-upload-state]');
-    const steps = document.querySelectorAll('[data-pipeline-step]');
-
-    if (!uploadButton || !progress || !uploadState) {
+    if (!messageList) {
+      replying = false;
+      updateSendState();
       return;
     }
 
-    uploadButton.addEventListener('click', () => {
-      progress.style.width = '0%';
-      uploadState.textContent = '正在解析';
-      steps.forEach((step) => step.classList.remove('is-active'));
+    messageList.appendChild(createMessage('user', content));
+    const typingMessage = createTypingMessage();
+    messageList.appendChild(typingMessage);
+    scrollToLatest();
 
-      steps.forEach((step, index) => {
-        window.setTimeout(
-          () => {
-            step.classList.add('is-active');
-            progress.style.width = `${((index + 1) / steps.length) * 100}%`;
-
-            if (index === steps.length - 1) {
-              uploadState.textContent = '处理完成';
-            }
-          },
-          240 * (index + 1),
-        );
-      });
-    });
+    window.setTimeout(() => {
+      typingMessage.replaceWith(
+        createMessage('assistant', selectResponse(content)),
+      );
+      replying = false;
+      updateSendState();
+      scrollToLatest();
+      input.focus();
+    }, 680);
   }
 
-  function initializeSmoothAnchors() {
-    document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
-      anchor.addEventListener('click', (event) => {
-        const targetId = anchor.getAttribute('href');
-
-        if (!targetId || targetId === '#') {
-          return;
-        }
-
-        const target = document.querySelector(targetId);
-
-        if (target) {
-          event.preventDefault();
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      });
-    });
+  function resetConversation() {
+    conversation.innerHTML = initialConversation;
+    input.value = '';
+    replying = false;
+    resizeInput();
+    updateSendState();
+    conversation.scrollTop = 0;
+    input.focus();
   }
 
-  initializeRevealAnimations();
-  initializeModelSelection();
-  initializeChatDemo();
-  initializeUploadDemo();
-  initializeSmoothAnchors();
+  function setSidebarOpen(open) {
+    if (!sidebar || !sidebarBackdrop) {
+      return;
+    }
+
+    sidebar.classList.toggle('is-open', open);
+    sidebarBackdrop.classList.toggle('is-visible', open);
+    sidebarBackdrop.setAttribute('aria-hidden', open ? 'false' : 'true');
+  }
+
+  sendButton.addEventListener('click', () => sendMessage(input.value));
+  input.addEventListener('input', () => {
+    resizeInput();
+    updateSendState();
+  });
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      sendMessage(input.value);
+    }
+  });
+
+  conversation.addEventListener('click', (event) => {
+    const target = event.target;
+
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const suggestion = target.closest('[data-quick-question]');
+
+    if (suggestion instanceof HTMLElement) {
+      sendMessage(suggestion.dataset.quickQuestion || '');
+    }
+  });
+
+  clearButtons.forEach((button) =>
+    button.addEventListener('click', resetConversation),
+  );
+  historyItems.forEach((item) => {
+    item.addEventListener('click', () => {
+      historyItems.forEach((historyItem) =>
+        historyItem.classList.remove('is-active'),
+      );
+      item.classList.add('is-active');
+      setSidebarOpen(false);
+    });
+  });
+
+  sidebarOpenButton?.addEventListener('click', () => setSidebarOpen(true));
+  sidebarBackdrop?.addEventListener('click', () => setSidebarOpen(false));
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      setSidebarOpen(false);
+    }
+  });
+
+  resizeInput();
+  updateSendState();
 })();

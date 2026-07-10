@@ -50,16 +50,18 @@ pnpm dev
 - Swagger：`http://localhost:3000/docs`
 - Web：`http://localhost:5173`
 
-## EyouCMS 模板预览
+## 中文智能体对话页
 
-仓库包含 Agent 管理平台的 EyouCMS 展示模板和无需 CMS 环境的 HTML 测试页：
+仓库包含纯中文 EyouCMS 智能体对话模板，以及无需 CMS 环境即可进入的 HTML 测试页。API、模型和知识库配置
+属于后台能力，不会出现在该用户页面。
 
 ```bash
 python3 -m http.server 4173 -d templates/eyoucms
 ```
 
-访问 `http://localhost:4173/preview/agent-platform.html`。模板接入与文件说明见
-[Agent 平台 EyouCMS 展示页文档](docs/modules/agent-eyoucms-page.md)。
+访问 `http://localhost:4173/preview/agent-platform.html`，也可以直接用浏览器打开
+`templates/eyoucms/preview/agent-platform.html`。EyouCMS 接入方式见
+[中文智能体对话页文档](docs/modules/agent-eyoucms-page.md)。
 
 ## 质量检查
 
