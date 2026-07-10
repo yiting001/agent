@@ -1,55 +1,73 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
+
+import { webApplicationConfig } from '@/config/application.config';
 
 import { useAdminWorkspaceStore } from '../../stores/admin-workspace.store';
-import { formatCount, resourceStatusLabels } from '../admin-display';
+import {
+  formatCount,
+  formatDate,
+  resourceStatusLabels,
+} from '../admin-display';
 import BaseIcon from '../components/BaseIcon.vue';
 import BaseModal from '../components/BaseModal.vue';
 
 const workspaceStore = useAdminWorkspaceStore();
 const createModalOpen = ref(false);
-const copiedApplicationId = ref('');
+const copiedValue = ref('');
 const form = reactive({
-  agentName: '企业知识助手',
+  agentId: '',
   name: '',
 });
 
+const publishedAgents = computed(() =>
+  workspaceStore.agents.filter((agent) => agent.status === 'published'),
+);
+
 function openCreateModal(): void {
   form.name = '';
-  form.agentName = workspaceStore.agents[0]?.name ?? '';
+  form.agentId = publishedAgents.value[0]?.id ?? '';
+  workspaceStore.clearLatestSecretKey();
   createModalOpen.value = true;
 }
 
-function createApplication(): void {
-  if (!form.name.trim() || !form.agentName) {
+async function createApplication(): Promise<void> {
+  if (!form.name.trim() || !form.agentId) {
     return;
   }
 
-  workspaceStore.createApiApplication({
-    agentName: form.agentName,
-    name: form.name.trim(),
-  });
-  createModalOpen.value = false;
+  try {
+    await workspaceStore.createApiApplication({
+      agentId: form.agentId,
+      name: form.name.trim(),
+    });
+    createModalOpen.value = false;
+  } catch {
+    return;
+  }
 }
 
-async function copyEndpoint(
-  applicationId: string,
-  endpoint: string,
-): Promise<void> {
+function absoluteEndpoint(endpoint: string): string {
+  return new URL(
+    `${webApplicationConfig.apiBaseUrl}${endpoint}`,
+    window.location.origin,
+  ).toString();
+}
+
+async function copyValue(id: string, value: string): Promise<void> {
   if (!navigator.clipboard) {
     return;
   }
 
   try {
-    await navigator.clipboard.writeText(`${window.location.origin}${endpoint}`);
+    await navigator.clipboard.writeText(value);
+    copiedValue.value = id;
+    window.setTimeout(() => {
+      copiedValue.value = '';
+    }, 1200);
   } catch {
     return;
   }
-
-  copiedApplicationId.value = applicationId;
-  window.setTimeout(() => {
-    copiedApplicationId.value = '';
-  }, 1200);
 }
 </script>
 
@@ -57,9 +75,9 @@ async function copyEndpoint(
   <div class="admin-page">
     <section class="api-overview">
       <div class="api-overview__copy">
-        <span class="section-kicker">智能体应用接入</span>
-        <h2>将已发布智能体安全接入业务系统</h2>
-        <p>为每个应用创建独立访问凭证，统一控制调用权限和使用状态。</p>
+        <span class="section-kicker">OpenAI 兼容调用</span>
+        <h2>将已发布智能体接入真实业务系统</h2>
+        <p>每个应用使用独立密钥，后端完成鉴权、知识检索和模型调用。</p>
       </div>
       <button class="primary-button" type="button" @click="openCreateModal">
         <BaseIcon name="plus" />
@@ -69,9 +87,9 @@ async function copyEndpoint(
         <span><BaseIcon name="api" /></span>
         <div>
           <small>标准对话接口</small>
-          <code>/v1/chat/completions</code>
+          <code>/api/v1/chat/completions</code>
         </div>
-        <span class="status-badge status-badge--published">服务正常</span>
+        <span class="status-badge status-badge--published">Bearer 鉴权</span>
       </div>
     </section>
 
@@ -79,10 +97,10 @@ async function copyEndpoint(
       <header class="panel-card__header">
         <div>
           <h2>接入应用</h2>
-          <p>密钥创建后只展示一次，列表中仅保留脱敏信息。</p>
+          <p>原始密钥只在创建成功后展示一次，数据库仅保存哈希。</p>
         </div>
       </header>
-      <div class="data-table">
+      <div v-if="workspaceStore.apiApplications.length" class="data-table">
         <div class="data-table__header">
           <span>应用名称</span>
           <span>关联智能体</span>
@@ -100,10 +118,10 @@ async function copyEndpoint(
             <i><BaseIcon name="api" /></i>
             <span>
               <strong>{{ application.name }}</strong>
-              <small>创建于 {{ application.createdAt }}</small>
+              <small>{{ formatDate(application.createdAt) }}</small>
             </span>
           </span>
-          <span>{{ application.agentName }}</span>
+          <span>{{ workspaceStore.agentName(application.agentId) }}</span>
           <code>{{ application.maskedKey }}</code>
           <span>{{ formatCount(application.requestCount) }}</span>
           <span
@@ -116,24 +134,23 @@ async function copyEndpoint(
             <button
               class="icon-button"
               type="button"
-              :aria-label="
-                copiedApplicationId === application.id
-                  ? '已复制'
-                  : '复制接口地址'
+              aria-label="复制接口地址"
+              @click="
+                copyValue(
+                  application.id,
+                  absoluteEndpoint(application.endpoint),
+                )
               "
-              @click="copyEndpoint(application.id, application.endpoint)"
             >
               <BaseIcon
-                :name="
-                  copiedApplicationId === application.id ? 'check' : 'copy'
-                "
+                :name="copiedValue === application.id ? 'check' : 'copy'"
               />
-            </button>
-            <button class="icon-button" type="button" aria-label="更多操作">
-              <BaseIcon name="more" />
             </button>
           </span>
         </div>
+      </div>
+      <div v-else class="empty-state empty-state--compact">
+        <p>还没有接入应用，请先发布智能体。</p>
       </div>
     </section>
 
@@ -141,22 +158,22 @@ async function copyEndpoint(
       <article>
         <span>01</span>
         <div>
-          <h3>选择已发布智能体</h3>
-          <p>草稿和停用状态的智能体不能创建正式应用。</p>
+          <h3>发布智能体</h3>
+          <p>草稿和停用状态不能通过正式 API 调用。</p>
         </div>
       </article>
       <article>
         <span>02</span>
         <div>
-          <h3>生成独立访问凭证</h3>
-          <p>不同业务系统使用不同凭证，便于停用和审计。</p>
+          <h3>保存一次性密钥</h3>
+          <p>密钥关闭后无法再次查看，可重新创建应用。</p>
         </div>
       </article>
       <article>
         <span>03</span>
         <div>
-          <h3>通过后端发起调用</h3>
-          <p>业务端不得把访问凭证直接暴露在公开网页中。</p>
+          <h3>后端安全调用</h3>
+          <p>使用 Authorization: Bearer ag_live_... 请求接口。</p>
         </div>
       </article>
     </section>
@@ -164,38 +181,30 @@ async function copyEndpoint(
     <BaseModal
       :open="createModalOpen"
       title="创建接入应用"
-      description="为业务系统创建独立的智能体访问凭证。"
+      description="只允许选择已经发布的智能体。"
       @close="createModalOpen = false"
     >
       <form class="admin-form" @submit.prevent="createApplication">
         <label>
           <span>应用名称</span>
-          <input
-            v-model="form.name"
-            type="text"
-            maxlength="40"
-            placeholder="例如：企业官网对话"
-            required
-          />
+          <input v-model="form.name" maxlength="80" required />
         </label>
         <label>
           <span>关联智能体</span>
-          <select v-model="form.agentName">
+          <select v-model="form.agentId" required>
+            <option disabled value="">请选择已发布智能体</option>
             <option
-              v-for="agent in workspaceStore.agents.filter(
-                (item) => item.status === 'published',
-              )"
+              v-for="agent in publishedAgents"
               :key="agent.id"
-              :value="agent.name"
+              :value="agent.id"
             >
               {{ agent.name }}
             </option>
           </select>
+          <small v-if="!publishedAgents.length">
+            暂无已发布智能体，请先到智能体管理页发布。
+          </small>
         </label>
-        <div class="form-notice">
-          <BaseIcon name="check" />
-          <p>正式版本由后端生成密钥，本演示只创建脱敏记录。</p>
-        </div>
         <div class="form-actions">
           <button
             class="secondary-button"
@@ -204,9 +213,34 @@ async function copyEndpoint(
           >
             取消
           </button>
-          <button class="primary-button" type="submit">创建应用</button>
+          <button
+            class="primary-button"
+            type="submit"
+            :disabled="workspaceStore.isSaving"
+          >
+            {{ workspaceStore.isSaving ? '正在创建…' : '创建应用' }}
+          </button>
         </div>
       </form>
+    </BaseModal>
+
+    <BaseModal
+      :open="Boolean(workspaceStore.latestSecretKey)"
+      title="请立即保存访问密钥"
+      description="这是唯一一次展示原始密钥，关闭后无法找回。"
+      @close="workspaceStore.clearLatestSecretKey"
+    >
+      <div class="secret-key-panel">
+        <code>{{ workspaceStore.latestSecretKey }}</code>
+        <button
+          class="primary-button"
+          type="button"
+          @click="copyValue('secret', workspaceStore.latestSecretKey)"
+        >
+          <BaseIcon :name="copiedValue === 'secret' ? 'check' : 'copy'" />
+          {{ copiedValue === 'secret' ? '已复制' : '复制密钥' }}
+        </button>
+      </div>
     </BaseModal>
   </div>
 </template>

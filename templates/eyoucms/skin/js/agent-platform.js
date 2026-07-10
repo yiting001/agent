@@ -9,6 +9,9 @@
   const sidebarBackdrop = document.querySelector('[data-chat-backdrop]');
   const sidebarOpenButton = document.querySelector('[data-chat-sidebar-open]');
   const historyItems = document.querySelectorAll('[data-chat-history]');
+  const query = new URLSearchParams(window.location.search);
+  const configuredApiBase = document.body.dataset.apiBase || '/api';
+  const configuredAgentId = document.body.dataset.agentId || '';
 
   if (
     !conversation ||
@@ -20,6 +23,9 @@
 
   const initialConversation = conversation.innerHTML;
   let replying = false;
+  let ready = false;
+  let agentId = '';
+  const messages = [];
 
   function createMessage(role, content) {
     const message = document.createElement('article');
@@ -72,20 +78,42 @@
     return message;
   }
 
-  function selectResponse(question) {
-    if (question.includes('功能') || question.includes('什么')) {
-      return '我可以根据企业资料回答产品、服务、流程和常见问题，也能协助梳理需求并生成清晰的建议。你可以继续告诉我具体想了解的内容。';
+  function normalizeApiBase(value) {
+    return value.endsWith('/') ? value.slice(0, -1) : value;
+  }
+
+  function validConfiguredValue(value) {
+    return value && !value.includes('{') ? value : '';
+  }
+
+  async function request(path, options) {
+    const apiBase = normalizeApiBase(
+      query.get('apiBase') || validConfiguredValue(configuredApiBase) || '/api',
+    );
+    const response = await fetch(`${apiBase}${path}`, options);
+    const responseBody = await response.json().catch(() => undefined);
+
+    if (!response.ok) {
+      throw new Error(
+        responseBody && typeof responseBody.message === 'string'
+          ? responseBody.message
+          : `服务请求失败（${response.status}）`,
+      );
     }
 
-    if (question.includes('方案') || question.includes('需求')) {
-      return '可以。请告诉我你的使用场景、主要用户和希望解决的问题，我会据此整理一份包含目标、核心能力和实施步骤的建议方案。';
+    return responseBody;
+  }
+
+  async function initializeAgent() {
+    const requestedAgentId =
+      query.get('agentId') || validConfiguredValue(configuredAgentId);
+
+    if (!requestedAgentId) {
+      throw new Error('请通过 agentId 参数指定要测试的智能体。');
     }
 
-    if (question.includes('联系') || question.includes('人工')) {
-      return '如果当前回答没有解决你的问题，请留下需要人工跟进的事项，工作人员会结合完整对话内容继续为你处理。';
-    }
-
-    return '已经收到你的问题。当前页面使用本地演示回复；接入正式服务后，我会结合后台配置的企业资料生成更准确、可追溯的回答。';
+    agentId = requestedAgentId;
+    ready = true;
   }
 
   function scrollToLatest() {
@@ -101,10 +129,10 @@
   }
 
   function updateSendState() {
-    sendButton.disabled = replying || input.value.trim().length === 0;
+    sendButton.disabled = !ready || replying || input.value.trim().length === 0;
   }
 
-  function sendMessage(question) {
+  async function sendMessage(question) {
     const content = question.trim();
 
     if (!content || replying) {
@@ -125,24 +153,43 @@
     }
 
     messageList.appendChild(createMessage('user', content));
+    messages.push({ content, role: 'user' });
     const typingMessage = createTypingMessage();
     messageList.appendChild(typingMessage);
     scrollToLatest();
 
-    window.setTimeout(() => {
+    try {
+      const response = await request(`/public/agents/${agentId}/chat`, {
+        body: JSON.stringify({ messages }),
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+      });
+      const answer = response.answer || '模型没有返回有效内容。';
+
+      messages.push({ content: answer, role: 'assistant' });
+      typingMessage.replaceWith(createMessage('assistant', answer));
+    } catch (error) {
       typingMessage.replaceWith(
-        createMessage('assistant', selectResponse(content)),
+        createMessage(
+          'assistant',
+          error instanceof Error ? error.message : '对话请求失败，请稍后重试。',
+        ),
       );
+    } finally {
       replying = false;
       updateSendState();
       scrollToLatest();
       input.focus();
-    }, 680);
+    }
   }
 
   function resetConversation() {
     conversation.innerHTML = initialConversation;
     input.value = '';
+    messages.length = 0;
     replying = false;
     resizeInput();
     updateSendState();
@@ -209,4 +256,16 @@
 
   resizeInput();
   updateSendState();
+  initializeAgent()
+    .catch((error) => {
+      const messageList = conversation.querySelector('[data-chat-messages]');
+
+      messageList?.appendChild(
+        createMessage(
+          'assistant',
+          error instanceof Error ? error.message : '智能体加载失败。',
+        ),
+      );
+    })
+    .finally(updateSendState);
 })();

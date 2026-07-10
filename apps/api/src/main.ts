@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import { AppModule } from './app.module';
 import type { ApplicationConfig } from './config/application.config';
+import { ApplicationErrorFilter } from './shared/presentation/application-error.filter';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -20,6 +21,7 @@ async function bootstrap(): Promise<void> {
       whitelist: true,
     }),
   );
+  app.useGlobalFilters(new ApplicationErrorFilter());
 
   const openApiConfig = new DocumentBuilder()
     .setTitle('Agent API')

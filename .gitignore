@@ -1,6 +1,8 @@
 node_modules/
 dist/
 coverage/
+.test-data/
+knowledge-storage/
 .env
 .env.local
 *.sqlite

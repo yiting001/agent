@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+
+import { useAdminWorkspaceStore } from '../../stores/admin-workspace.store';
 import BaseIcon from './BaseIcon.vue';
 
 defineProps<{
@@ -8,6 +11,10 @@ defineProps<{
 const emit = defineEmits<{
   close: [];
 }>();
+const workspaceStore = useAdminWorkspaceStore();
+const testRoute = computed(() =>
+  workspaceStore.agents[0] ? `/chat/${workspaceStore.agents[0].id}` : '/agents',
+);
 
 const navigation = [
   { icon: 'home' as const, label: '工作台', to: '/' },
@@ -56,9 +63,7 @@ const navigation = [
         <strong>测试智能体</strong>
         <p>以最终用户视角进行对话测试。</p>
       </div>
-      <RouterLink class="text-link" to="/chat/enterprise-assistant">
-        进入测试页
-      </RouterLink>
+      <RouterLink class="text-link" :to="testRoute"> 进入测试页 </RouterLink>
     </div>
 
     <div class="admin-sidebar__account">

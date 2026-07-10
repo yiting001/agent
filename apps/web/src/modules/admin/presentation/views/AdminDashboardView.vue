@@ -4,7 +4,7 @@ import { onMounted } from 'vue';
 import { useSystemStatusStore } from '@/modules/system/stores/system-status.store';
 
 import BaseIcon from '../components/BaseIcon.vue';
-import { agentStatusLabels, formatCount } from '../admin-display';
+import { agentStatusLabels, formatCount, formatDate } from '../admin-display';
 import { useAdminWorkspaceStore } from '../../stores/admin-workspace.store';
 
 const workspaceStore = useAdminWorkspaceStore();
@@ -73,7 +73,7 @@ onMounted(() => systemStatusStore.refresh());
           </div>
           <RouterLink class="text-link" to="/agents">查看全部</RouterLink>
         </header>
-        <div class="simple-table">
+        <div v-if="workspaceStore.agents.length" class="simple-table">
           <div
             v-for="agent in workspaceStore.agents"
             :key="agent.id"
@@ -82,7 +82,10 @@ onMounted(() => systemStatusStore.refresh());
             <span class="resource-avatar"><BaseIcon name="bot" /></span>
             <span class="simple-table__primary">
               <strong>{{ agent.name }}</strong>
-              <small>{{ agent.model }} · {{ agent.updatedAt }}</small>
+              <small>
+                {{ workspaceStore.providerName(agent.providerId) }} ·
+                {{ formatDate(agent.updatedAt) }}
+              </small>
             </span>
             <span class="status-badge" :class="`status-badge--${agent.status}`">
               {{ agentStatusLabels[agent.status] }}
@@ -95,6 +98,9 @@ onMounted(() => systemStatusStore.refresh());
               <BaseIcon name="chat" />
             </RouterLink>
           </div>
+        </div>
+        <div v-else class="empty-state empty-state--compact">
+          <p>还没有智能体，请先配置模型并创建智能体。</p>
         </div>
       </section>
 
@@ -129,7 +135,7 @@ onMounted(() => systemStatusStore.refresh());
               <p>
                 {{
                   systemStatusStore.errorMessage ||
-                  'NestJS 服务已连接，可继续开发业务接口。'
+                  'NestJS 服务已连接，管理数据来自真实业务接口。'
                 }}
               </p>
             </div>

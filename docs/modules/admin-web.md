@@ -2,205 +2,111 @@
 
 ## 目标
 
-实际 Vue 应用根路径提供中文管理后台，而不是英文项目状态页。管理端负责展示和操作：
+Vue 根路径提供全中文管理后台，所有资源来自 NestJS 真实接口：
 
-- 平台工作台。
-- 智能体创建、状态查看和测试入口。
-- 知识库创建、文件选择和处理状态。
-- DeepSeek、通义千问、豆包与兼容模型配置。
-- 智能体 API 应用与脱敏凭证管理。
-- 后端健康状态检查。
+- OpenAI 兼容模型服务配置和密钥验证。
+- 智能体创建、知识模块绑定、发布和停用。
+- 大容量知识库、可复用模块和分片文档上传。
+- API 应用及一次性访问密钥。
+- 基于真实模型和 Qdrant 检索结果的对话测试。
 
-最终用户对话页使用独立路由，不展示模型、知识库、API 或其他后台配置。
+最终用户对话页使用独立路由，不展示模型、知识库或 API 配置。
 
 ## 路由
 
-| 路径               | 页面       | 责任                                 |
-| ------------------ | ---------- | ------------------------------------ |
-| `/`                | 工作台     | 汇总资源、服务状态和快捷入口         |
-| `/agents`          | 智能体管理 | 创建智能体、查看状态、进入测试       |
-| `/knowledge-bases` | 知识库管理 | 创建知识库、选择文档、查看处理状态   |
-| `/model-providers` | 模型配置   | 管理模型服务地址、模型名称和密钥输入 |
-| `/api-access`      | API 管理   | 创建应用、关联智能体和查看调用量     |
-| `/chat/:agentId?`  | 对话测试   | 只提供最终用户对话体验               |
+| 路径               | 页面       | 责任                             |
+| ------------------ | ---------- | -------------------------------- |
+| `/`                | 工作台     | 汇总真实资源和服务状态           |
+| `/agents`          | 智能体管理 | 创建、发布、停用、绑定共享模块   |
+| `/knowledge-bases` | 知识库管理 | 创建知识库和模块、分片上传文档   |
+| `/model-providers` | 模型配置   | 验证并加密保存模型服务配置       |
+| `/api-access`      | API 管理   | 创建应用、展示一次性密钥和调用量 |
+| `/chat/:agentId`   | 对话测试   | 调用指定智能体的真实检索增强对话 |
 
 ## 目录结构
 
 ```text
-apps/web/src/
-├── app/router/
-│   ├── admin.route.ts
-│   ├── chat.route.ts
-│   └── index.ts
-├── modules/
-│   ├── admin/
-│   │   ├── domain/
-│   │   │   └── admin-workspace.ts
-│   │   ├── stores/
-│   │   │   └── admin-workspace.store.ts
-│   │   └── presentation/
-│   │       ├── components/
-│   │       ├── layouts/
-│   │       └── views/
-│   ├── chat/
-│   │   └── presentation/views/
-│   │       └── AgentChatView.vue
-│   └── system/
-│       ├── application/
-│       ├── domain/
-│       ├── infrastructure/
-│       └── stores/
-└── styles/
-    ├── foundation.css
-    ├── admin-layout.css
-    ├── admin-components.css
-    ├── admin-pages.css
-    ├── chat-page.css
-    └── responsive.css
+apps/web/src/modules/admin/
+├── domain/
+│   └── admin-workspace.ts
+├── application/
+│   └── admin-workspace.gateway.ts
+├── infrastructure/
+│   └── http-admin-workspace.gateway.ts
+├── stores/
+│   └── admin-workspace.store.ts
+└── presentation/
+    ├── components/
+    ├── layouts/
+    └── views/
 ```
 
-## 模块关系
+## 依赖方向
 
 ```mermaid
 flowchart LR
-  Router[Vue Router]
-  Layout[管理后台布局]
-  Dashboard[工作台]
-  Agents[智能体管理]
-  Knowledge[知识库管理]
-  Models[模型配置]
-  Api[API 管理]
-  Chat[独立对话测试]
-  AdminStore[管理端 Pinia 状态]
-  HealthStore[后端状态 Pinia 状态]
-  HealthGateway[健康检查网关]
-
-  Router --> Layout
-  Router --> Chat
-  Layout --> Dashboard
-  Layout --> Agents
-  Layout --> Knowledge
-  Layout --> Models
-  Layout --> Api
-  Dashboard --> AdminStore
-  Dashboard --> HealthStore
-  Agents --> AdminStore
-  Knowledge --> AdminStore
-  Models --> AdminStore
-  Api --> AdminStore
-  HealthStore --> HealthGateway
+  View[Vue 页面] --> Store[Pinia Store]
+  Store --> Port[AdminWorkspaceGateway]
+  Adapter[HTTP Adapter] --> Port
+  Adapter --> API[NestJS API]
+  API --> SQLite[(SQLite 元数据)]
+  API --> Files[(文件存储)]
+  API --> Qdrant[(Qdrant)]
+  API --> Model[模型服务]
 ```
 
-## 页面责任
+- 页面只处理表单、展示和用户反馈。
+- Store 管理资源集合、加载状态、错误和上传进度。
+- Gateway 定义前端应用边界，HTTP 细节只存在于基础设施适配器。
+- API 基础地址统一来自 `VITE_API_BASE_URL`，本地开发由 Vite 代理 `/api`。
 
-### 管理后台布局
-
-`AdminLayout.vue` 只负责：
-
-- 左侧导航。
-- 页面标题和说明。
-- 移动端导航状态。
-- 嵌套路由出口。
-
-具体业务内容由各功能页面负责，不写入布局组件。
-
-### 工作台
-
-工作台读取管理端状态并展示：
-
-- 已发布智能体数量。
-- 知识库文档数量。
-- 已启用模型数量。
-- API 调用次数。
-- 最近智能体。
-- NestJS 后端健康状态。
-
-### 智能体管理
-
-- 支持按名称和描述搜索。
-- 支持填写名称、描述和默认模型创建草稿。
-- 展示模型、知识库数量、对话量和发布状态。
-- “测试”按钮只跳转到独立对话页。
-
-### 知识库管理
-
-- 支持创建知识库。
-- 文件选择限制为 TXT、Word、PDF 和 Markdown。
-- 选择文件后更新文档数量和处理状态。
-- 页面明确说明解析、清洗、切片和索引由后台完成。
+## 真实业务流程
 
 ### 模型配置
 
-- 展示各模型供应商的连接状态。
-- 配置服务地址、模型名称和访问密钥。
-- 访问密钥使用密码输入，不回显。
-- 当前演示状态不会持久化密钥。
+1. 管理员填写服务标识、地址、模型名称和密钥。
+2. NestJS 调用该服务的 `/models` 验证连接。
+3. 验证通过后使用 AES-256-GCM 加密密钥并保存。
+4. 前端只保留不含密钥的模型摘要。
 
-### API 管理
+### 知识文档上传
 
-- 创建接入应用并关联已发布智能体。
-- 展示脱敏访问凭证。
-- 复制标准对话接口地址。
-- 展示调用次数和应用状态。
+1. 浏览器为文件创建上传会话。
+2. 根据服务端返回的分片大小逐片上传，页面显示实际进度。
+3. 服务端逐片流式写盘，完成后合并原文件并创建持久化任务。
+4. Worker 解析、切片、调用嵌入模型并写入 Qdrant。
+5. 页面从 API 重新加载文档数量、容量和处理状态。
 
-### 对话测试
+浏览器不会一次读取或提交整个文件，知识库累计容量不受单次请求内存限制。
 
-- 页面全部为中文。
-- 支持快捷问题、文本输入、发送和重新开始。
-- 页面不包含任何后台配置入口。
-- 当前回复为本地演示回复。
+### 智能体与模块共享
 
-## 数据边界
+创建智能体时可以选择任意知识库下的多个模块。绑定关系为多对多，同一模块可以被多个智能体使用，
+文档只需要解析和索引一次。
 
-当前管理页面使用 `admin-workspace.store.ts` 提供可操作的演示状态，以便先确认信息架构和交互。
-正式业务数据必须通过应用服务和基础设施适配器连接 NestJS API。
+### 对话
 
-```mermaid
-flowchart LR
-  View[管理页面]
-  Store[Pinia 状态]
-  UseCase[前端应用服务]
-  HttpGateway[HTTP 网关]
-  Api[NestJS API]
-  Database[(SQLite)]
+测试页提交当前消息记录和智能体标识。后端按已绑定模块过滤向量检索，将召回片段加入系统上下文，
+再调用智能体选定的真实对话模型。页面显示回答及引用文件名，不包含本地兜底回答。
 
-  View --> Store
-  Store --> UseCase
-  UseCase --> HttpGateway
-  HttpGateway --> Api
-  Api --> Database
-```
+### API 应用
 
-正式接入时必须遵守以下边界：
-
-- 页面组件不直接拼接 API 地址。
-- 页面组件不直接保存模型访问密钥。
-- 密钥由 NestJS 接口接收、加密并持久化。
-- 文档解析状态由后端返回，前端只负责展示。
-- 智能体发布、停用和删除由独立应用用例处理。
-- 对话测试页只提交会话标识和用户消息。
-
-## 响应式设计
-
-- 大屏：固定管理侧栏，多列资源卡片。
-- 平板：缩小侧栏，资源卡片改为两列。
-- 手机：侧栏变为抽屉，资源卡片和数据区改为单列。
-- 对话测试页在手机端保留完整输入和消息区域。
+- 只有已发布智能体可以创建应用。
+- 原始 `ag_live_...` 密钥只返回一次。
+- 数据库只保存 SHA-256 哈希和脱敏值。
+- 标准接口为 `/api/v1/chat/completions`，使用 Bearer 鉴权。
 
 ## 安全要求
 
-- 不在源码、页面状态或浏览器存储中写入真实密钥。
-- API 列表只展示脱敏凭证。
-- 正式密钥只在创建时返回一次。
-- 公开对话页不得展示管理端模型、知识库和 API 配置。
-- 业务系统应从服务端调用智能体接口，不在公开网页中暴露凭证。
+- 不在源码、Pinia 或浏览器存储中保存模型密钥和 API 密钥。
+- 公开页面不得展示后台配置。
+- 生产环境应为管理接口增加账号鉴权，并由服务端代理公开网页的 API 调用。
+- `CREDENTIAL_ENCRYPTION_KEY` 必须通过环境变量提供，不能提交仓库。
 
 ## 验证范围
 
-- Vue 根路径显示中文管理后台。
-- 五个管理路由可以通过左侧导航访问。
-- 管理页面所有主要操作具有可见交互反馈。
-- 智能体测试路由与管理端布局隔离。
-- 后端健康检查仍通过原有网关和应用服务执行。
-- 单个文件不超过 500 行。
-- 格式、lint、类型检查、单元测试和构建全部通过。
+- 管理端不存在业务演示数组或本地模拟回复。
+- 页面创建、配置、上传、发布和对话操作均调用 NestJS API。
+- 5 个管理路由与独立对话路由保持中文。
+- 单文件不超过 500 行。
+- 格式、lint、类型、单元/E2E 测试和构建全部通过。
