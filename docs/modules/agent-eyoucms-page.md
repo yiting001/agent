@@ -110,13 +110,22 @@ http://localhost:4173/preview/agent-platform.html?agentId=<智能体ID>&apiBase=
 
 1. 将 `agent-platform.htm` 复制到当前 EyouCMS 站点的模板目录。
 2. 将 `skin/css` 和 `skin/js` 中以 `agent-` 开头的文件复制到对应模板的 `skin` 目录。
-3. 在 EyouCMS 后台为需要承载智能体的单页或栏目选择 `agent-platform.htm`。
-4. 保存并生成页面后，直接访问该单页或栏目的前台地址。
-5. 创建 `agent_id` 和 `api_base` 自定义字段，分别填写智能体 ID 和 API 基础地址。
-6. 标题、关键词、描述和站点图标读取 EyouCMS 当前页面字段。
+3. 确认站点模板中已有 `skin/css/style.css`、`skin/css/all.min.css`、`header.htm`
+   和 `footer.htm`。
+4. 在 EyouCMS 后台为需要承载智能体的单页或栏目选择 `agent-platform.htm`。
+5. 保存并生成页面后，直接访问该单页或栏目的前台地址。
+6. 创建 `agent_id` 和 `api_base` 自定义字段，分别填写智能体 ID 和 API 基础地址。
+7. 标题、关键词、描述和站点图标读取 EyouCMS 当前页面字段。
 
-模板故意不引入网站公共 `header.htm` 和 `footer.htm`，以保证用户进入后看到的是完整对话界面。
-如果站点必须保留公共头尾，可以在模板的 `<body>` 内按现有站点规范添加。
+模板严格加载站点公共样式和头尾：
+
+```text
+{eyou:static file="skin/css/style.css" /}
+{eyou:static file="skin/css/all.min.css" /}
+{eyou:include file="header.htm" /}
+<!-- 智能体对话主体 -->
+{eyou:include file="footer.htm" /}
+```
 
 ## 测试页交互
 
