@@ -140,7 +140,9 @@
 .chat-main {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
   background: rgb(255 255 255 / 92%);
 }
 
@@ -204,6 +206,7 @@
 
 /* 消息列表与欢迎内容。 */
 .chat-conversation {
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   scroll-behavior: smooth;
@@ -397,6 +400,43 @@
 
 .chat-message__bubble p + p {
   margin-top: 10px;
+}
+
+.chat-message-attachments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.chat-message-attachments figure {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 10%);
+}
+
+.chat-message-attachments img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+}
+
+.chat-message-attachments audio {
+  display: block;
+  width: 100%;
+  min-width: 180px;
+}
+
+.chat-message-attachments figcaption {
+  overflow: hidden;
+  padding: 7px 9px;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chat-typing {

@@ -318,35 +318,70 @@
         </section>
 
         <footer class="chat-composer-wrap">
-          <div class="chat-composer">
-            <label class="chat-visually-hidden" for="agent-chat-input"
-              >输入问题</label
-            >
-            <textarea
-              id="agent-chat-input"
-              data-chat-input
-              rows="1"
-              maxlength="2000"
-              placeholder="输入你的问题，按回车发送…"
-            ></textarea>
-            <button
-              class="chat-send-button"
-              data-chat-send
-              type="button"
-              aria-label="发送消息"
-            >
-              <svg>
-                <use href="#chat-icon-send" xlink:href="#chat-icon-send"></use>
-              </svg>
-            </button>
+          <div class="chat-composer-shell">
+            <div
+              class="chat-pending-attachments"
+              data-chat-pending-attachments
+              hidden
+            ></div>
+            <p
+              class="chat-attachment-error"
+              data-chat-attachment-error
+              role="alert"
+              hidden
+            ></p>
+            <div class="chat-composer">
+              <label
+                class="chat-attachment-button"
+                title="上传图片或音频"
+                aria-label="上传图片或音频"
+              >
+                <svg>
+                  <use
+                    href="#chat-icon-file"
+                    xlink:href="#chat-icon-file"
+                  ></use>
+                </svg>
+                <input
+                  data-chat-attachment-input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif,audio/mpeg,audio/wav"
+                  multiple
+                />
+              </label>
+              <label class="chat-visually-hidden" for="agent-chat-input"
+                >输入问题</label
+              >
+              <textarea
+                id="agent-chat-input"
+                data-chat-input
+                rows="1"
+                maxlength="8000"
+                placeholder="输入问题，或上传图片/音频…"
+              ></textarea>
+              <button
+                class="chat-send-button"
+                data-chat-send
+                type="button"
+                aria-label="发送消息"
+              >
+                <svg>
+                  <use
+                    href="#chat-icon-send"
+                    xlink:href="#chat-icon-send"
+                  ></use>
+                </svg>
+              </button>
+            </div>
           </div>
           <p class="chat-disclaimer">
-            智能体生成的内容仅供参考，请核实重要信息。
+            支持图片和音频输入；智能体生成的内容仅供参考，请核实重要信息。
           </p>
         </footer>
       </main>
     </div>
 
+    <script src="../skin/js/agent-attachments.js"></script>
     <script src="../skin/js/agent-platform.js"></script>
   </body>
 </html>

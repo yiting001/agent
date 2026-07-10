@@ -1,0 +1,144 @@
+.rich-message-content {
+  min-width: 0;
+  border: 1px solid #eaebf1;
+  border-radius: 5px 17px 17px;
+  padding: 13px 15px;
+  color: #303449;
+  background: #ffffff;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.rich-message-content > :first-child {
+  margin-top: 0;
+}
+
+.rich-message-content > :last-child {
+  margin-bottom: 0;
+}
+
+.rich-message-content p,
+.rich-message-content ul,
+.rich-message-content ol,
+.rich-message-content blockquote,
+.rich-message-content pre,
+.rich-message-content table {
+  margin: 10px 0;
+}
+
+.rich-message-content h1,
+.rich-message-content h2,
+.rich-message-content h3 {
+  margin: 18px 0 8px;
+  color: #20243a;
+  line-height: 1.35;
+}
+
+.rich-message-content h1 {
+  font-size: 20px;
+}
+
+.rich-message-content h2 {
+  font-size: 18px;
+}
+
+.rich-message-content h3 {
+  font-size: 16px;
+}
+
+.rich-message-content a {
+  color: var(--admin-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rich-message-content code {
+  border-radius: 5px;
+  padding: 2px 5px;
+  color: #684bd8;
+  background: #f2efff;
+  font-size: 0.9em;
+}
+
+.rich-message-content pre {
+  overflow-x: auto;
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: #e7e9f5;
+  background: #25283b;
+}
+
+.rich-message-content pre code {
+  padding: 0;
+  color: inherit;
+  background: transparent;
+}
+
+.rich-message-content blockquote {
+  border-left: 3px solid #a89cf2;
+  padding-left: 13px;
+  color: #696e82;
+}
+
+.rich-message-content table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rich-message-content th,
+.rich-message-content td {
+  border: 1px solid #e2e4ed;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.rich-message-content th {
+  background: #f7f7fb;
+}
+
+.rich-message-content .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 0;
+}
+
+.rich-visualization {
+  width: 100%;
+  min-height: 360px;
+  margin: 14px 0;
+  overflow: auto;
+  border: 1px solid #e2e4ed;
+  border-radius: 14px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.rich-visualization__loading {
+  display: grid;
+  min-height: 330px;
+  place-items: center;
+  color: #9498aa;
+}
+
+.rich-visualization--error {
+  display: grid;
+  place-items: center;
+  color: #b64444;
+  background: #fff7f7;
+}
+
+.rich-visualization svg {
+  width: 100%;
+  height: auto;
+}
+
+.rich-visualization rect {
+  fill: #7765e8;
+}
+
+.rich-visualization circle,
+.rich-d3-line {
+  fill: #ffffff;
+  stroke: #6654dc;
+  stroke-width: 3;
+}
