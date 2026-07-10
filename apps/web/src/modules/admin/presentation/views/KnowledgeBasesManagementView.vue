@@ -239,7 +239,7 @@ async function handleFiles(moduleId: string, event: Event): Promise<void> {
       <header class="panel-card__header">
         <div>
           <h2>真实文档处理链路</h2>
-          <p>大文件按 8MB 分片上传，后台任务自动解析并写入 Qdrant。</p>
+          <p>大文件按 8MB 分片上传，后台任务自动解析并写入 Zvec。</p>
         </div>
       </header>
       <ol>

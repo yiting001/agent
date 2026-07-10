@@ -42,7 +42,6 @@ templates/
 ```bash
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
-docker compose up -d
 pnpm install
 pnpm dev
 ```
@@ -56,6 +55,7 @@ openssl rand -hex 32
 - API：`http://localhost:3000/api`
 - Swagger：`http://localhost:3000/docs`
 - Web：`http://localhost:5173`
+- Zvec 向量数据：`zvec-data/`
 
 ## 中文管理后台
 

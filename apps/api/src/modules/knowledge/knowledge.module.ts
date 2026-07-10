@@ -19,7 +19,7 @@ import { TextChunker } from './application/text-chunker';
 import { UploadDocumentPartUseCase } from './application/upload-document-part.use-case';
 import { VectorIndex } from './application/vector-index';
 import { IngestionScheduler } from './infrastructure/indexing/ingestion.scheduler';
-import { QdrantVectorIndex } from './infrastructure/indexing/qdrant-vector.index';
+import { ZvecVectorIndex } from './infrastructure/indexing/zvec-vector.index';
 import { CompositeDocumentTextExtractor } from './infrastructure/parsing/composite-document-text.extractor';
 import { IngestionJobEntity } from './infrastructure/persistence/ingestion-job.entity';
 import { KnowledgeBaseEntity } from './infrastructure/persistence/knowledge-base.entity';
@@ -91,7 +91,7 @@ import { UploadDocumentPartController } from './presentation/http/upload-documen
     },
     {
       provide: VectorIndex,
-      useClass: QdrantVectorIndex,
+      useClass: ZvecVectorIndex,
     },
   ],
 })

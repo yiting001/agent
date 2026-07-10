@@ -38,9 +38,9 @@ importers:
       '@nestjs/typeorm':
         specifier: 11.0.0
         version: 11.0.0(@nestjs/common@11.1.11(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.11)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.27(better-sqlite3@12.2.0)(reflect-metadata@0.2.2)(ts-node@10.9.2(@types/node@22.17.0)(typescript@5.8.3)))
-      '@qdrant/js-client-rest':
-        specifier: 1.18.0
-        version: 1.18.0(typescript@5.8.3)
+      '@zvec/zvec':
+        specifier: 0.5.0
+        version: 0.5.0
       better-sqlite3:
         specifier: 12.2.0
         version: 12.2.0
@@ -1106,16 +1106,6 @@ packages:
     resolution: {integrity: sha512-SEeaJLb3qBNF/OaXnaR1NmmBbFYk1zC0ZH/52fATcRPLFg/p791YrcyFFy44Bo9sLaGuSuLp5Q6axbb/O+v/RA==}
     engines: {node: ^14.18.0 || >=16.0.0}
 
-  '@qdrant/js-client-rest@1.18.0':
-    resolution: {integrity: sha512-/0dqX5uV9chC1DnYSnU4gNMrDqse/pt6hHg3Rqqpl5isH7xl1xSNvffjzBoxycDD79luWn7Ho6Rh/61sOs5DNw==}
-    engines: {node: '>=18.17.0', pnpm: '>=8'}
-    peerDependencies:
-      typescript: '>=4.7'
-
-  '@qdrant/openapi-typescript-fetch@1.2.6':
-    resolution: {integrity: sha512-oQG/FejNpItrxRHoyctYvT3rwGZOnK4jr3JdppO/c78ktDvkWiPXPHNsrDf33K9sZdRb6PR7gi4noIapu5q4HA==}
-    engines: {node: '>=18.0.0', pnpm: '>=8'}
-
   '@rollup/rollup-android-arm-eabi@4.62.2':
     resolution: {integrity: sha512-6o7ZLZK+BeenkZCFNDXqpbjw9bD6nuWonvS/lwQJp7NoVVxm6p3qE7qQ5jGuBjiFsgvqjD8mZAU5oWxTmbOeOg==}
     cpu: [arm]
@@ -1715,6 +1705,29 @@ packages:
 
   '@xtuc/long@4.2.2':
     resolution: {integrity: sha512-NuHqBY1PB/D8xU6s/thBgOAiAP7HOYDQ32+BFZILJ8ivkUkAHQnWfn6WhL79Owj1qmUnoN/YPhktdIoucipkAQ==}
+
+  '@zvec/bindings-darwin-arm64@0.5.0':
+    resolution: {integrity: sha512-NeM1XEvc/M0VTKx7dbr/dFsuPa0GbqNbjjAc+tl6NPO/ZYN1z8ORD2nGyheLFLayPBIVg6EliS7V9TIeV31RkQ==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@zvec/bindings-linux-arm64@0.5.0':
+    resolution: {integrity: sha512-Mb3cd2ZHY4xoucpPWNQ/kZUleIsnbsfk1QP67iUPIKen6n+Lydt+S5urQUkfTs/oGv0aLt5i9+b4mzTpPlgsTQ==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@zvec/bindings-linux-x64@0.5.0':
+    resolution: {integrity: sha512-08Cj0xJgOmr0GFAWlUFPyJYq6ysLurcA7Enx4WClCBcbtwQaZ9SHc3A2VRqLZ8dgIm5Dei9ZbDnwMwgMO2yV0w==}
+    cpu: [x64]
+    os: [linux]
+
+  '@zvec/bindings-win32-x64@0.5.0':
+    resolution: {integrity: sha512-EkpcCO4IEDhXYejrQPIgXO49vdicQl3vCsFn3AV/oRPjLsR4lgRCncveq4ejWRdnIIIzZX6nX0rZQ1V0KPJ62A==}
+    cpu: [x64]
+    os: [win32]
+
+  '@zvec/zvec@0.5.0':
+    resolution: {integrity: sha512-00moPv7j7YByeoEdLbitGfd7GO9+dZrPex91S6htmB4ZYbmvdyxz3VWXYuIPnjiE7YPZoY6rdAEFk7MEfMnzxQ==}
 
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
@@ -4194,10 +4207,6 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
-  undici@6.27.0:
-    resolution: {integrity: sha512-YmfV3YnEDzXRC5lZ2jWtWWHKGUm1zIt8AhesR1tens+HTNv+YZlN/dp6G727LOvMJ8xjP9Be7Y2Sdr96LDm+pg==}
-    engines: {node: '>=18.17'}
-
   universalify@2.0.1:
     resolution: {integrity: sha512-gptHNQghINnc/vTGIk0SOFGFNXw7JVrlRUtConJRlvaw6DuX0wO5Jeko9sWrMBhh+PsYAZ7oXAiOnf/UKogyiw==}
     engines: {node: '>= 10.0.0'}
@@ -5480,14 +5489,6 @@ snapshots:
 
   '@pkgr/core@0.3.6': {}
 
-  '@qdrant/js-client-rest@1.18.0(typescript@5.8.3)':
-    dependencies:
-      '@qdrant/openapi-typescript-fetch': 1.2.6
-      typescript: 5.8.3
-      undici: 6.27.0
-
-  '@qdrant/openapi-typescript-fetch@1.2.6': {}
-
   '@rollup/rollup-android-arm-eabi@4.62.2':
     optional: true
 
@@ -6145,6 +6146,27 @@ snapshots:
   '@xtuc/ieee754@1.2.0': {}
 
   '@xtuc/long@4.2.2': {}
+
+  '@zvec/bindings-darwin-arm64@0.5.0':
+    optional: true
+
+  '@zvec/bindings-linux-arm64@0.5.0':
+    optional: true
+
+  '@zvec/bindings-linux-x64@0.5.0':
+    optional: true
+
+  '@zvec/bindings-win32-x64@0.5.0':
+    optional: true
+
+  '@zvec/zvec@0.5.0':
+    dependencies:
+      bindings: 1.5.0
+    optionalDependencies:
+      '@zvec/bindings-darwin-arm64': 0.5.0
+      '@zvec/bindings-linux-arm64': 0.5.0
+      '@zvec/bindings-linux-x64': 0.5.0
+      '@zvec/bindings-win32-x64': 0.5.0
 
   accepts@2.0.0:
     dependencies:
@@ -8785,8 +8807,6 @@ snapshots:
   underscore@1.13.8: {}
 
   undici-types@6.21.0: {}
-
-  undici@6.27.0: {}
 
   universalify@2.0.1: {}
 

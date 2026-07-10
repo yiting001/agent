@@ -40,14 +40,14 @@ flowchart RL
 2. 创建知识库并锁定嵌入模型与维度。
 3. 在知识库中创建业务知识模块。
 4. 将文档分片上传到模块。
-5. Worker 完成解析、清洗、切片、嵌入和 Qdrant 写入。
+5. Worker 完成解析、清洗、切片、嵌入和 Zvec 写入。
 6. 创建智能体时选择一个或多个模块；模块可以同时绑定多个智能体。
 
 ### 对话
 
 1. 对话接口加载智能体和已绑定模块。
 2. 按知识库分组，为问题生成对应嵌入。
-3. 在每个 Qdrant 集合中按模块标识过滤召回。
+3. 在每个 Zvec Collection 中按模块标识过滤召回。
 4. 合并最相关片段并附带来源。
 5. 使用智能体配置的真实模型生成回答。
 
@@ -64,8 +64,16 @@ flowchart RL
 - `KNOWLEDGE_MAX_DOCUMENT_BYTES`：单文件上限。
 - `KNOWLEDGE_UPLOAD_CHUNK_BYTES`：推荐客户端分片大小。
 - `KNOWLEDGE_STORAGE_PATH`：原始文件和临时分片目录。
+- `ZVEC_DATA_PATH`：Zvec Collection、WAL 和向量索引目录。
+- `ZVEC_INDEX_TYPE`：默认 `hnsw`；超大向量规模可在满足 Linux 与
+  `libaio` 条件时使用 `diskann`。
+- `ZVEC_UPSERT_BATCH_SIZE`：单次写入 Zvec 的切片数量。
 - 知识库累计容量通过流式对象存储扩展，不受单次请求内存限制。
 - PDF 和 DOCX 解析器需要读取单个文件，因此生产环境应限制超大单文件，并优先拆分资料。
+
+Zvec 是嵌入 NestJS 进程的本地向量数据库，不需要独立容器。生产部署必须把
+`ZVEC_DATA_PATH` 挂载到持久磁盘；同一路径只允许一个写进程，不能让多个 API 副本同时写入。
+需要水平扩展写入时，应保留 `VectorIndex` 端口并替换为服务型向量数据库适配器。
 
 ## 数据库初始化
 
@@ -76,7 +84,7 @@ flowchart RL
 ## 可替换点
 
 - `KnowledgeObjectStorage`：本地目录可替换 S3、OSS 或 MinIO。
-- `VectorIndex`：Qdrant 可替换其他支持过滤的向量数据库。
+- `VectorIndex`：Zvec 可替换其他支持过滤的向量数据库。
 - `ModelGateway`：当前支持 OpenAI 兼容嵌入与对话协议。
 - `IngestionScheduler`：进程内轮询可替换独立队列消费者。
 
@@ -87,4 +95,5 @@ flowchart RL
 - 模型凭证加密后不以明文出现在数据库或响应。
 - API 应用密钥只返回一次且可校验。
 - 基础文本解析、重叠切片和任务状态测试。
+- Zvec 持久化、重启后读取和模块过滤测试。
 - 前端所有管理数据来自 NestJS API，不再包含业务演示数组或本地模拟回复。

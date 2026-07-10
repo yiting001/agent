@@ -161,7 +161,7 @@ async function saveConfiguration(): Promise<void> {
         <div>
           <span><BaseIcon name="database" /></span>
           <strong>知识向量化</strong>
-          <p>嵌入模型将文档切片写入 Qdrant 向量索引。</p>
+          <p>嵌入模型将文档切片写入本地持久化的 Zvec 向量索引。</p>
         </div>
         <div>
           <span><BaseIcon name="check" /></span>
