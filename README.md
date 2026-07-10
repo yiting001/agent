@@ -50,6 +50,20 @@ pnpm dev
 - Swagger：`http://localhost:3000/docs`
 - Web：`http://localhost:5173`
 
+## 中文管理后台
+
+启动项目后，Web 根路径即为中文管理后台：
+
+- `/`：管理工作台与后端服务状态。
+- `/agents`：智能体创建、列表和测试入口。
+- `/knowledge-bases`：知识库创建、文档上传和处理状态。
+- `/model-providers`：DeepSeek、通义千问、豆包及兼容模型配置。
+- `/api-access`：智能体应用与 API 访问凭证管理。
+- `/chat/enterprise-assistant`：独立用户对话测试页。
+
+管理后台模块结构与后端边界见
+[中文智能体管理后台文档](docs/modules/admin-web.md)。
+
 ## 中文智能体对话页
 
 仓库包含纯中文 EyouCMS 智能体对话模板，以及无需 CMS 环境即可进入的 HTML 测试页。API、模型和知识库配置

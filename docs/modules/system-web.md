@@ -2,21 +2,19 @@
 
 ## 目标
 
-展示工作区说明并读取 API 健康状态，用于验证 Vue、Pinia、Vue Router、应用用例和 HTTP 适配器之间的集成。该模块不包含业务管理功能。
+读取 API 健康状态，为中文管理后台工作台提供真实的后端连接信息。该模块不包含智能体业务管理功能。
 
 ## 结构
 
 ```mermaid
 flowchart LR
-  View[SystemHomeView]
-  Card[SystemStatusCard]
+  Dashboard[AdminDashboardView]
   Store[SystemStatusStore]
   UseCase[GetSystemStatus]
   Port[HealthStatusGateway]
   Adapter[HttpHealthStatusGateway]
   Client[FetchHttpClient]
-  View --> Card
-  View --> Store
+  Dashboard --> Store
   Store --> UseCase
   UseCase --> Port
   Adapter -. implements .-> Port
@@ -30,17 +28,14 @@ system/
 │   ├── health-status.gateway.ts
 │   └── get-system-status.ts
 ├── infrastructure/http-health-status.gateway.ts
-├── stores/system-status.store.ts
-└── presentation/
-    ├── components/SystemStatusCard.vue
-    └── views/SystemHomeView.vue
+└── stores/system-status.store.ts
 ```
 
 ## 功能
 
-- 页面加载时请求 `GET /health`。
+- 管理工作台加载时请求 `GET /health`。
 - Pinia 管理空闲、加载、成功和失败状态。
-- 组件展示服务名称、在线状态和检查时间。
+- 工作台展示后端运行状态和中文错误信息。
 - 用户可主动重新检查连接。
 
 ## 配置

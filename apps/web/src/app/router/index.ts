@@ -1,9 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
-import { homeRoute } from './home.route';
+import { adminRoute } from './admin.route';
+import { chatRoute } from './chat.route';
 
 /** Application router assembled from feature-owned route records. */
 export const router = createRouter({
   history: createWebHistory(),
-  routes: [homeRoute],
+  routes: [adminRoute, chatRoute],
 });
