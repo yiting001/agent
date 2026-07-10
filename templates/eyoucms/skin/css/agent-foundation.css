@@ -17,11 +17,6 @@
   --chat-site-navigation-height: 0px;
 }
 
-.agent-chat-page--eyoucms {
-  --chat-site-navigation-height: 64px;
-  overflow: hidden;
-}
-
 .agent-chat-page,
 .agent-chat-page * {
   box-sizing: border-box;
@@ -49,6 +44,12 @@
   text-rendering: optimizeLegibility;
 }
 
+/* 嵌入 EyouCMS 时随站点正常滚动，背景交给站点主题。 */
+.agent-chat-page--eyoucms {
+  min-height: 0;
+  background: none;
+}
+
 .agent-chat-page button,
 .agent-chat-page textarea {
   font: inherit;
@@ -60,6 +61,19 @@
 
 .agent-chat-page svg {
   display: block;
+}
+
+/* 图标容器内的 SVG 强制水平垂直居中，避免站点全局样式干扰。 */
+.chat-brand__mark svg,
+.chat-agent-avatar svg,
+.chat-icon-button svg,
+.chat-attachment-button svg,
+.chat-send-button svg,
+.chat-history__icon svg,
+.chat-welcome__avatar svg,
+.chat-suggestion__icon svg,
+.chat-pending-attachments button svg {
+  margin: auto;
 }
 
 .agent-chat-page a {
