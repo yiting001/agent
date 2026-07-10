@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = 'http://localhost:3000/api';
+const DEFAULT_API_BASE_URL = '/api';
 
 /** Browser runtime values consumed at the application boundary. */
 export interface WebApplicationConfig {

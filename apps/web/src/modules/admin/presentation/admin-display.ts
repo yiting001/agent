@@ -8,10 +8,33 @@ export const agentStatusLabels: Record<AgentStatus, string> = {
 
 export const resourceStatusLabels: Record<ResourceStatus, string> = {
   disabled: '已停用',
+  empty: '待上传',
+  failed: '处理失败',
   processing: '处理中',
   ready: '可用',
 };
 
 export function formatCount(value: number): string {
   return new Intl.NumberFormat('zh-CN').format(value);
+}
+
+export function formatBytes(value: number): string {
+  if (value === 0) {
+    return '0 B';
+  }
+
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const unitIndex = Math.min(
+    Math.floor(Math.log(value) / Math.log(1024)),
+    units.length - 1,
+  );
+
+  return `${(value / 1024 ** unitIndex).toFixed(unitIndex > 1 ? 1 : 0)} ${units[unitIndex]}`;
+}
+
+export function formatDate(value: string): string {
+  return new Intl.DateTimeFormat('zh-CN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
 }

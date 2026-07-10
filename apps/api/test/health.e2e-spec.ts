@@ -5,6 +5,7 @@ import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
 import type { HealthStatus } from '../src/modules/health/domain/health-status';
+import { IngestionScheduler } from '../src/modules/knowledge/infrastructure/indexing/ingestion.scheduler';
 
 function isHealthStatus(value: unknown): value is HealthStatus {
   if (typeof value !== 'object' || value === null) {
@@ -25,11 +26,19 @@ describe('Health endpoint', () => {
 
   beforeAll(async () => {
     process.env.DATABASE_PATH = ':memory:';
+    process.env.DATABASE_MIGRATIONS_RUN = 'false';
+    process.env.DATABASE_SYNCHRONIZE = 'false';
     process.env.API_SERVICE_NAME = 'agent-api-test';
 
     const testingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(IngestionScheduler)
+      .useValue({
+        onApplicationBootstrap: () => undefined,
+        onApplicationShutdown: () => undefined,
+      })
+      .compile();
 
     app = testingModule.createNestApplication<INestApplication<Server>>();
     app.setGlobalPrefix('api');

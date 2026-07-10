@@ -42,8 +42,15 @@ templates/
 ```bash
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
+docker compose up -d
 pnpm install
 pnpm dev
+```
+
+首次启动前把 `apps/api/.env` 中的 `CREDENTIAL_ENCRYPTION_KEY` 替换为本机生成的 32 字节密钥：
+
+```bash
+openssl rand -hex 32
 ```
 
 - API：`http://localhost:3000/api`
@@ -59,7 +66,7 @@ pnpm dev
 - `/knowledge-bases`：知识库创建、文档上传和处理状态。
 - `/model-providers`：DeepSeek、通义千问、豆包及兼容模型配置。
 - `/api-access`：智能体应用与 API 访问凭证管理。
-- `/chat/enterprise-assistant`：独立用户对话测试页。
+- `/chat/:agentId`：指定智能体的独立真实对话测试页。
 
 管理后台模块结构与后端边界见
 [中文智能体管理后台文档](docs/modules/admin-web.md)。
@@ -73,8 +80,10 @@ pnpm dev
 python3 -m http.server 4173 -d templates/eyoucms
 ```
 
-访问 `http://localhost:4173/preview/agent-platform.html`，也可以直接用浏览器打开
-`templates/eyoucms/preview/agent-platform.html`。EyouCMS 接入方式见
+访问
+`http://localhost:4173/preview/agent-platform.html?agentId=<智能体ID>`。
+页面默认连接 `http://localhost:3000/api`，也可追加
+`&apiBase=<API地址>`。EyouCMS 接入方式见
 [中文智能体对话页文档](docs/modules/agent-eyoucms-page.md)。
 
 ## 质量检查

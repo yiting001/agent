@@ -1,0 +1,145 @@
+.admin-error {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  border: 1px solid #f5c5ca;
+  border-radius: 12px;
+  padding: 11px 14px;
+  color: #9f303d;
+  background: #fff1f2;
+  font-size: 10px;
+}
+
+.admin-error button {
+  color: inherit;
+  background: transparent;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  border: 1px dashed #d8d9e5;
+  border-radius: 18px;
+  padding: 48px 24px;
+  color: #9397a8;
+  background: #ffffff;
+  text-align: center;
+}
+
+.empty-state > .base-icon {
+  width: 34px;
+  height: 34px;
+  color: var(--admin-primary);
+}
+
+.empty-state h2 {
+  margin: 12px 0 0;
+  color: var(--admin-ink);
+  font-size: 15px;
+}
+
+.empty-state p {
+  margin: 8px 0 16px;
+  font-size: 10px;
+}
+
+.empty-state--compact {
+  border: 0;
+  padding: 24px;
+  background: transparent;
+}
+
+.empty-state--compact p {
+  margin: 0;
+}
+
+.module-selector {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--admin-line);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.module-selector legend {
+  padding: 0 5px;
+  color: var(--admin-ink);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.module-selector label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.module-selector input {
+  width: auto;
+}
+
+.secret-key-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.secret-key-panel code {
+  overflow-wrap: anywhere;
+  border: 1px solid #dfe0e9;
+  border-radius: 12px;
+  padding: 14px;
+  color: #4e5068;
+  background: #f7f7fa;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.model-security-note > .primary-button {
+  margin-left: auto;
+}
+
+.knowledge-modules {
+  display: grid;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.knowledge-module {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #ececf3;
+  border-radius: 12px;
+  padding: 10px 11px;
+  background: #fafafd;
+}
+
+.knowledge-module > div {
+  min-width: 0;
+}
+
+.knowledge-module strong,
+.knowledge-module small {
+  display: block;
+}
+
+.knowledge-module strong {
+  color: var(--admin-ink);
+  font-size: 10px;
+}
+
+.knowledge-module small,
+.knowledge-module p {
+  margin-top: 4px;
+  color: #969aaa;
+  font-size: 8px;
+}
+
+.knowledge-module .file-button {
+  flex: 0 0 auto;
+}

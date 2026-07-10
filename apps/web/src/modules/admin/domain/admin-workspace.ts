@@ -1,66 +1,124 @@
-export type AgentStatus = 'published' | 'draft' | 'disabled';
-export type ResourceStatus = 'ready' | 'processing' | 'disabled';
+export type AgentStatus = 'disabled' | 'draft' | 'published';
+export type ResourceStatus =
+  | 'disabled'
+  | 'empty'
+  | 'failed'
+  | 'processing'
+  | 'ready';
 
 export interface AgentSummary {
-  id: string;
-  name: string;
-  description: string;
-  model: string;
-  knowledgeBaseCount: number;
   conversationCount: number;
+  description: string;
+  id: string;
+  moduleIds: string[];
+  name: string;
+  providerId: string;
   status: AgentStatus;
+  systemPrompt: string;
+  temperature: number;
+  updatedAt: string;
+}
+
+export interface KnowledgeModuleSummary {
+  description: string;
+  documentCount: number;
+  id: string;
+  knowledgeBaseId: string;
+  name: string;
+  sizeBytes: number;
+  status: Exclude<ResourceStatus, 'disabled'>;
   updatedAt: string;
 }
 
 export interface KnowledgeBaseSummary {
-  id: string;
-  name: string;
   description: string;
   documentCount: number;
-  size: string;
-  status: ResourceStatus;
+  embeddingDimensions: number;
+  embeddingModel: string;
+  embeddingProviderId: string;
+  id: string;
+  modules: KnowledgeModuleSummary[];
+  name: string;
+  sizeBytes: number;
+  status: Exclude<ResourceStatus, 'disabled'>;
   updatedAt: string;
 }
 
 export interface ModelProviderSummary {
-  id: string;
-  name: string;
-  description: string;
-  model: string;
-  endpoint: string;
+  baseUrl: string;
+  chatModel?: string;
   configured: boolean;
+  description: string;
+  embeddingDimensions?: number;
+  embeddingModel?: string;
   enabled: boolean;
+  id: string;
+  key: string;
+  name: string;
+  updatedAt: string;
 }
 
 export interface ApiApplicationSummary {
-  id: string;
-  name: string;
-  agentName: string;
-  endpoint: string;
-  maskedKey: string;
-  status: ResourceStatus;
-  requestCount: number;
+  agentId: string;
   createdAt: string;
+  endpoint: string;
+  id: string;
+  maskedKey: string;
+  name: string;
+  requestCount: number;
+  secretKey?: string;
+  status: 'disabled' | 'ready';
 }
 
 export interface CreateAgentInput {
-  name: string;
   description: string;
-  model: string;
+  moduleIds: string[];
+  name: string;
+  providerId: string;
+  systemPrompt: string;
+  temperature: number;
 }
 
 export interface CreateKnowledgeBaseInput {
-  name: string;
   description: string;
+  embeddingProviderId: string;
+  name: string;
+}
+
+export interface CreateKnowledgeModuleInput {
+  description: string;
+  knowledgeBaseId: string;
+  name: string;
 }
 
 export interface ConfigureProviderInput {
-  providerId: string;
-  model: string;
-  endpoint: string;
+  apiKey: string;
+  baseUrl: string;
+  chatModel?: string;
+  description: string;
+  embeddingDimensions?: number;
+  embeddingModel?: string;
+  key: string;
+  name: string;
 }
 
 export interface CreateApiApplicationInput {
+  agentId: string;
   name: string;
-  agentName: string;
+}
+
+export interface ConversationMessage {
+  content: string;
+  role: 'assistant' | 'user';
+}
+
+export interface AgentChatResponse {
+  agentId: string;
+  answer: string;
+  citations: Array<{
+    documentId: string;
+    fileName: string;
+    moduleId: string;
+    score: number;
+  }>;
 }

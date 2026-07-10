@@ -10,7 +10,11 @@
     <link rel="stylesheet" href="../skin/css/agent-composer.css" />
     <link rel="stylesheet" href="../skin/css/agent-responsive.css" />
   </head>
-  <body class="agent-chat-page">
+  <body
+    class="agent-chat-page"
+    data-api-base="http://localhost:3000/api"
+    data-agent-id=""
+  >
     <!-- 页面图标全部内置，测试时无需联网加载第三方资源。 -->
     <svg class="chat-icon-sprite" aria-hidden="true">
       <symbol id="chat-icon-bot" viewBox="0 0 24 24">
@@ -146,8 +150,8 @@
           <svg><use href="#chat-icon-plus"></use></svg>
           开始新对话
         </button>
-        <p class="chat-sidebar__label">最近对话</p>
-        <nav class="chat-history" aria-label="最近对话">
+        <p class="chat-sidebar__label">当前会话</p>
+        <nav class="chat-history" aria-label="当前会话">
           <button
             class="chat-history__item is-active"
             data-chat-history
@@ -157,23 +161,7 @@
               ><svg><use href="#chat-icon-message"></use></svg
             ></span>
             <span class="chat-history__copy"
-              ><strong>产品功能咨询</strong><span>刚刚</span></span
-            >
-          </button>
-          <button class="chat-history__item" data-chat-history type="button">
-            <span class="chat-history__icon"
-              ><svg><use href="#chat-icon-message"></use></svg
-            ></span>
-            <span class="chat-history__copy"
-              ><strong>业务方案建议</strong><span>昨天</span></span
-            >
-          </button>
-          <button class="chat-history__item" data-chat-history type="button">
-            <span class="chat-history__icon"
-              ><svg><use href="#chat-icon-message"></use></svg
-            ></span>
-            <span class="chat-history__copy"
-              ><strong>服务流程说明</strong><span>3 天前</span></span
+              ><strong>新对话</strong><span>本次访问</span></span
             >
           </button>
         </nav>

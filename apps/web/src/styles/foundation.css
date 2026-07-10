@@ -213,6 +213,7 @@ p {
 }
 
 .status-badge--draft,
+.status-badge--empty,
 .status-badge--processing {
   color: #9a681f;
   background: #fff1d9;
@@ -221,6 +222,11 @@ p {
 .status-badge--disabled {
   color: #8b6f72;
   background: #f3eaeb;
+}
+
+.status-badge--failed {
+  color: #a83a45;
+  background: #fde7e9;
 }
 
 .status-badge--processing i {
