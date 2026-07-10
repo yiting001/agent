@@ -13,7 +13,7 @@ export class FetchHttpClient implements HttpClient {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP request failed with status ${response.status}.`);
+      throw new Error(`后端请求失败，状态码：${response.status}。`);
     }
 
     return response.json() as Promise<unknown>;

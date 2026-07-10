@@ -25,7 +25,7 @@ export class HttpHealthStatusGateway implements HealthStatusGateway {
     const response = await this.httpClient.get('/health');
 
     if (!isSystemStatus(response)) {
-      throw new Error('The health endpoint returned an invalid response.');
+      throw new Error('后端健康检查返回了无效数据。');
     }
 
     return response;

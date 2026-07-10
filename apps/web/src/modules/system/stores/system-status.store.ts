@@ -25,7 +25,7 @@ export const useSystemStatusStore = defineStore('system-status', () => {
     } catch (error: unknown) {
       status.value = undefined;
       errorMessage.value =
-        error instanceof Error ? error.message : 'Unable to load API status.';
+        error instanceof Error ? error.message : '无法获取后端服务状态。';
       requestState.value = 'error';
     }
   }
