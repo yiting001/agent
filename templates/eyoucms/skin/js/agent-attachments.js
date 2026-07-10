@@ -42,7 +42,8 @@
 
       button.type = 'button';
       button.setAttribute('aria-label', `移除附件 ${attachment.fileName}`);
-      button.textContent = '×';
+      button.innerHTML =
+        '<svg aria-hidden="true"><use href="#chat-icon-close" xlink:href="#chat-icon-close"></use></svg>';
       button.addEventListener('click', remove);
       figure.appendChild(button);
     }

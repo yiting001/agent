@@ -3,7 +3,8 @@
 ## 功能范围
 
 - 智能体后台与公开接口默认使用 SSE 流式输出。
-- 回答支持 Markdown、LaTeX、ECharts、D3 和 Mermaid。
+- Vue 管理端回答支持 Markdown、LaTeX、ECharts、D3 和 Mermaid；
+  EyouCMS 用户页支持 Markdown、LaTeX、表格、ECharts（含仪表盘）和 Mermaid。
 - Vue 管理端和 EyouCMS 用户页都可在单条消息中上传图片或音频，并与文本一并提交模型。
 - 所有智能体入口共用 `ChatWithAgentUseCase`，后台测试、公开页面和 API 应用具有一致的多模态能力。
 - 附件存储、模型协议和界面渲染通过端口分离，便于替换对象存储或模型厂商。
@@ -26,6 +27,7 @@ flowchart LR
   Chat -->|delta / citations / done| Eyou
   Vue --> Markdown[Markdown + KaTeX]
   Vue --> Charts[ECharts / D3 / Mermaid]
+  Eyou --> EyouRich[Markdown + KaTeX + ECharts + Mermaid]
 ```
 
 ## 输出格式
@@ -58,8 +60,18 @@ flowchart LR
 ```
 ````
 
-ECharts 配置必须是 JSON；D3 当前提供 `bar` 和 `line` 两种结构化图表。
+ECharts 配置必须是 JSON，支持全部原生图表类型，仪表盘使用 `gauge` 系列：
+
+````text
+```echarts
+{"series":[{"type":"gauge","data":[{"name":"完成率","value":72}]}]}
+```
+````
+
+D3 仅 Vue 管理端支持，当前提供 `bar` 和 `line` 两种结构化图表。
 Markdown 渲染禁止原始 HTML，避免模型输出脚本进入页面。
+EyouCMS 页的渲染库由 `templates/eyoucms/skin/js/agent-rich-content.js`
+按需懒加载，版本与 Vue 管理端依赖保持一致，图表在流式回答结束后统一绘制。
 
 ## 流式协议
 

@@ -238,7 +238,7 @@ onBeforeUnmount(revokePreviewUrls);
     <header class="vue-chat-header">
       <div class="vue-chat-back-area">
         <RouterLink class="vue-chat-back" to="/agents">
-          <span>←</span>
+          <BaseIcon name="back" />
           返回管理后台
         </RouterLink>
         <span class="vue-chat-product">

@@ -16,6 +16,7 @@
     {eyou:static file="skin/css/agent-foundation.css" /}
     {eyou:static file="skin/css/agent-chat.css" /}
     {eyou:static file="skin/css/agent-composer.css" /}
+    {eyou:static file="skin/css/agent-rich-content.css" /}
     {eyou:static file="skin/css/agent-responsive.css" /}
   </head>
   <body class="agent-chat-page agent-chat-page--eyoucms" data-agent-id="{$eyou.field.agent_id}">
@@ -53,6 +54,17 @@
       <symbol id="chat-icon-file" viewBox="0 0 24 24">
         <path d="M6 3h8l4 4v14H6V3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
         <path d="M14 3v5h5M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+      </symbol>
+      <symbol id="chat-icon-close" viewBox="0 0 24 24">
+        <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+      </symbol>
+      <symbol id="chat-icon-chart" viewBox="0 0 24 24">
+        <path d="M4 4v16h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        <path d="M8 16v-5M12 16V8M16 16v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+      </symbol>
+      <symbol id="chat-icon-formula" viewBox="0 0 24 24">
+        <path d="M15 4h-3.5a2 2 0 0 0-2 2.2L10.5 18a2 2 0 0 1-2 1.9H7M6.5 11H14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        <path d="M15.5 14l4 5M19.5 14l-4 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
       </symbol>
     </svg>
 
@@ -145,6 +157,14 @@
                   <span class="chat-suggestion__icon"><svg><use href="#chat-icon-file" xlink:href="#chat-icon-file"></use></svg></span>
                   <span><strong>获取方案建议</strong><span>说明场景后生成初步建议</span></span>
                 </button>
+                <button class="chat-suggestion" data-quick-question="请用表格对比两种方案，并用仪表盘展示推荐度。" type="button">
+                  <span class="chat-suggestion__icon"><svg><use href="#chat-icon-chart" xlink:href="#chat-icon-chart"></use></svg></span>
+                  <span><strong>表格与仪表盘</strong><span>用图表直观展示对比结果</span></span>
+                </button>
+                <button class="chat-suggestion" data-quick-question="请用公式推导一个复利计算示例。" type="button">
+                  <span class="chat-suggestion__icon"><svg><use href="#chat-icon-formula" xlink:href="#chat-icon-formula"></use></svg></span>
+                  <span><strong>公式推导</strong><span>数学公式与计算过程渲染</span></span>
+                </button>
               </div>
             </div>
             <div class="chat-message-list" data-chat-messages>
@@ -196,6 +216,7 @@
     </div>
 
     {eyou:static file="skin/js/agent-attachments.js" /}
+    {eyou:static file="skin/js/agent-rich-content.js" /}
     {eyou:static file="skin/js/agent-platform.js" /}
     {eyou:include file="footer.htm" /}
   </body>
