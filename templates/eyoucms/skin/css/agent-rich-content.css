@@ -1,0 +1,137 @@
+/* 智能体回答中的富内容：Markdown、公式、表格与图表。 */
+.chat-message__bubble > :first-child {
+  margin-top: 0;
+}
+
+.chat-message__bubble > :last-child {
+  margin-bottom: 0;
+}
+
+.chat-message__bubble p,
+.chat-message__bubble ul,
+.chat-message__bubble ol,
+.chat-message__bubble blockquote,
+.chat-message__bubble pre,
+.chat-message__bubble table {
+  margin: 10px 0;
+}
+
+.chat-message__bubble ul,
+.chat-message__bubble ol {
+  padding-left: 22px;
+}
+
+.chat-message__bubble h1,
+.chat-message__bubble h2,
+.chat-message__bubble h3,
+.chat-message__bubble h4 {
+  margin: 16px 0 8px;
+  color: var(--chat-ink);
+  line-height: 1.35;
+}
+
+.chat-message__bubble h1 {
+  font-size: 20px;
+}
+
+.chat-message__bubble h2 {
+  font-size: 18px;
+}
+
+.chat-message__bubble h3,
+.chat-message__bubble h4 {
+  font-size: 16px;
+}
+
+.chat-message__bubble a {
+  color: var(--chat-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.chat-message__bubble code {
+  border-radius: 5px;
+  padding: 2px 5px;
+  color: var(--chat-primary-dark);
+  background: var(--chat-primary-soft);
+  font-size: 0.9em;
+}
+
+.chat-message__bubble pre {
+  overflow-x: auto;
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: #e7e9f5;
+  background: #25283b;
+}
+
+.chat-message__bubble pre code {
+  padding: 0;
+  color: inherit;
+  background: transparent;
+}
+
+.chat-message__bubble blockquote {
+  border-left: 3px solid var(--chat-primary);
+  margin-left: 0;
+  padding-left: 13px;
+  color: var(--chat-muted);
+}
+
+.chat-message__bubble table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.chat-message__bubble th,
+.chat-message__bubble td {
+  border: 1px solid var(--chat-line);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.chat-message__bubble th {
+  background: var(--chat-surface-soft);
+}
+
+.chat-message__bubble .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 0;
+}
+
+/* ECharts（含仪表盘）与 Mermaid 图表容器。 */
+.chat-visualization {
+  width: 100%;
+  min-height: 320px;
+  margin: 12px 0;
+  overflow: auto;
+  border: 1px solid var(--chat-line);
+  border-radius: var(--chat-radius-sm);
+  padding: 12px;
+  background: var(--chat-surface);
+}
+
+.chat-visualization__loading {
+  display: grid;
+  min-height: 290px;
+  place-items: center;
+  color: var(--chat-muted);
+}
+
+.chat-visualization--error {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  color: #b64444;
+  background: #fff7f7;
+}
+
+.chat-visualization svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}

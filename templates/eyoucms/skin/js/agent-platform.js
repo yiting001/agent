@@ -42,6 +42,9 @@ const AGENT_BACKEND_BASE_URL = '/api';
   let ready = false;
   let agentId = '';
   let attachmentController;
+  const richContent = window.AgentRichContent
+    ? window.AgentRichContent.create()
+    : undefined;
   const messages = [];
 
   function createMessage(role, content, attachments = []) {
@@ -296,6 +299,7 @@ const AGENT_BACKEND_BASE_URL = '/api';
 
     let typingMessage;
     let answerMessage;
+    let answerBubble;
     let answerParagraph;
 
     try {
@@ -334,11 +338,14 @@ const AGENT_BACKEND_BASE_URL = '/api';
 
           if (!answerMessage) {
             answerMessage = createMessage('assistant', '');
+            answerBubble = answerMessage.querySelector('.chat-message__bubble');
             answerParagraph = answerMessage.querySelector('p');
             typingMessage?.replaceWith(answerMessage);
           }
 
-          if (answerParagraph) {
+          if (richContent && answerBubble) {
+            richContent.render(answerBubble, answer, false);
+          } else if (answerParagraph) {
             answerParagraph.textContent = answer;
           }
 
@@ -349,6 +356,8 @@ const AGENT_BACKEND_BASE_URL = '/api';
       if (!answer) {
         answer = '模型没有返回有效内容。';
         typingMessage?.replaceWith(createMessage('assistant', answer));
+      } else if (richContent && answerBubble) {
+        await richContent.render(answerBubble, answer, true);
       }
 
       messages.push({ content: answer, role: 'assistant' });
@@ -381,6 +390,7 @@ const AGENT_BACKEND_BASE_URL = '/api';
     messages.length = 0;
     replying = false;
     attachmentController?.reset();
+    richContent?.reset();
     resizeInput();
     updateSendState();
     conversation.scrollTop = 0;

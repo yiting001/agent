@@ -8,6 +8,7 @@
 - 查看当前浏览器会话。
 - 输入问题并发送。
 - 上传图片或音频，与文本一起发送给当前智能体。
+- 查看富内容回答：Markdown、数学公式、表格、ECharts（含仪表盘）与 Mermaid 图表。
 - 点击常用问题快速发起对话。
 - 清空当前对话。
 - 在手机端打开或关闭对话列表。
@@ -39,9 +40,11 @@ templates/eyoucms/
     │   ├── agent-foundation.css     # 中文排版、颜色和基础组件
     │   ├── agent-chat.css           # 侧栏、头部、消息和欢迎区
     │   ├── agent-composer.css       # 底部输入框
+    │   ├── agent-rich-content.css   # 回答中的 Markdown、公式、表格与图表样式
     │   └── agent-responsive.css     # 平板与手机适配
     └── js/
         ├── agent-attachments.js     # 附件选择、预览、移除和上传
+        ├── agent-rich-content.js    # Markdown、KaTeX、ECharts 与 Mermaid 渲染
         └── agent-platform.js        # 后台地址、品牌加载、对话和移动侧栏
 ```
 
@@ -54,6 +57,7 @@ flowchart LR
   Composer[输入区样式]
   Responsive[响应式样式]
   Attachments[多模态附件交互]
+  Rich[富内容渲染]
   Script[对话交互脚本]
 
   Eyou --> Foundation
@@ -61,12 +65,14 @@ flowchart LR
   Eyou --> Composer
   Eyou --> Responsive
   Eyou --> Attachments
+  Eyou --> Rich
   Eyou --> Script
   Preview --> Foundation
   Preview --> Chat
   Preview --> Composer
   Preview --> Responsive
   Preview --> Attachments
+  Preview --> Rich
   Preview --> Script
 ```
 
@@ -101,6 +107,7 @@ EyouCMS 模板通过 `agent-chat-page--eyoucms` 为站点公共导航预留 64px
 左侧会话列表拥有独立滚动区域，记录增多时品牌、新建按钮和底部说明保持可见。
 内置 SVG 图标同时声明现代 `href` 与兼容 `xlink:href` 引用，
 避免部分浏览器出现图标缺失或错位。
+页面所有图标均来自内置 SVG 图标集（sprite），不使用 emoji 字符。
 
 ## 如何进入测试页面
 
@@ -132,6 +139,12 @@ http://localhost:4173/preview/agent-platform.html?agentId=<智能体ID>
 同域部署使用 `/api`；前后端分离部署时改为完整地址，例如
 `https://api.example.com/api`。
 
+富内容渲染库（markdown-it、KaTeX、ECharts、Mermaid）按需懒加载，
+基础地址统一保存在 `skin/js/agent-rich-content.js` 顶部的
+`AGENT_RICH_ASSET_BASE_URL` 常量中，默认使用公共 CDN；内网或离线部署时
+改为自托管目录即可，目录内部结构需与 npm 包路径一致。
+渲染库加载失败时回退为纯文本显示，不影响对话。
+
 ## EyouCMS 接入
 
 1. 将 `agent-platform.htm` 复制到当前 EyouCMS 站点的模板目录。
@@ -162,6 +175,10 @@ http://localhost:4173/preview/agent-platform.html?agentId=<智能体ID>
 - 附件先上传到 `/api/chat-attachments`，对话消息只提交后端返回的附件标识。
 - 已发送的图片和音频在当前会话中显示预览，重新开始时释放本地预览资源。
 - 发送后先展示“正在回复”，再通过 SSE 逐段显示真实模型和知识检索生成的回答。
+- 回答按 Markdown 渲染，支持标题、列表、代码块、表格与 `$...$`/`$$...$$` 数学公式；
+  `echarts` 代码块渲染图表（含仪表盘 gauge），`mermaid` 代码块渲染流程图，
+  图表在回答结束后统一绘制，避免流式半截 JSON 渲染失败。
+- Markdown 渲染禁用原始 HTML，避免模型输出脚本进入页面。
 - 点击“开始新对话”“重新开始”或清空按钮会恢复初始状态。
 - 手机端点击左上角菜单按钮可打开最近对话抽屉。
 
@@ -214,5 +231,6 @@ flowchart LR
 - 输入、快捷问题、回复、清空和移动侧栏交互可用。
 - 短窗口和 EyouCMS 公共导航同时存在时输入区保持可见。
 - 图片和音频可选择、预览、移除、上传，并通过公开智能体接口发送。
+- 回答中的 Markdown、公式、表格、ECharts 仪表盘与 Mermaid 图表可正常渲染。
 - 单个源文件不超过 500 行。
 - 项目格式、lint、类型检查、测试和构建保持通过。
