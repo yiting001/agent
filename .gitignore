@@ -2,6 +2,7 @@ node_modules/
 dist/
 coverage/
 .test-data/
+brand-storage/
 knowledge-storage/
 zvec-data/
 .env

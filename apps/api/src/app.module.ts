@@ -7,6 +7,8 @@ import {
   type ApplicationConfig,
 } from './config/application.config';
 import { InitialKnowledgePlatform1752150000000 } from './database/migrations/1752150000000-initial-knowledge-platform';
+import { AddBrandSettings1752151000000 } from './database/migrations/1752151000000-add-brand-settings';
+import { BrandingModule } from './modules/branding/branding.module';
 import { HealthModule } from './modules/health/health.module';
 import { AgentsModule } from './modules/agents/agents.module';
 import { ApiAccessModule } from './modules/api-access/api-access.module';
@@ -30,7 +32,10 @@ import { ModelProvidersModule } from './modules/model-providers/model-providers.
         return {
           autoLoadEntities: true,
           database: config.databasePath,
-          migrations: [InitialKnowledgePlatform1752150000000],
+          migrations: [
+            InitialKnowledgePlatform1752150000000,
+            AddBrandSettings1752151000000,
+          ],
           migrationsRun: config.databaseMigrationsRun,
           synchronize: config.databaseSynchronize,
           type: 'better-sqlite3' as const,
@@ -38,6 +43,7 @@ import { ModelProvidersModule } from './modules/model-providers/model-providers.
       },
     }),
     ModelProvidersModule,
+    BrandingModule,
     KnowledgeModule,
     AgentsModule,
     ApiAccessModule,

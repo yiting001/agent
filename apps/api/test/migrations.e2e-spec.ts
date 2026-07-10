@@ -41,5 +41,15 @@ describe('Database migrations', () => {
     await request(app.getHttpServer())
       .get('/api/model-providers')
       .expect(200, []);
+    await request(app.getHttpServer())
+      .get('/api/branding')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toEqual(
+          expect.objectContaining({
+            hasCustomIcon: false,
+          }),
+        );
+      });
   });
 });

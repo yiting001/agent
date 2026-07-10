@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 
 import BaseIcon from '@/modules/admin/presentation/components/BaseIcon.vue';
 import { useAdminWorkspaceStore } from '@/modules/admin/stores/admin-workspace.store';
+import { useBrandSettingsStore } from '@/modules/branding/stores/brand-settings.store';
 
 interface ChatMessage {
   content: string;
@@ -14,6 +15,7 @@ interface ChatMessage {
 
 const route = useRoute();
 const workspaceStore = useAdminWorkspaceStore();
+const brandStore = useBrandSettingsStore();
 const messages = ref<ChatMessage[]>([]);
 const message = ref('');
 const replying = ref(false);
@@ -110,10 +112,19 @@ onMounted(async () => {
 <template>
   <main class="vue-chat-page">
     <header class="vue-chat-header">
-      <RouterLink class="vue-chat-back" to="/agents">
-        <span>←</span>
-        返回管理后台
-      </RouterLink>
+      <div class="vue-chat-back-area">
+        <RouterLink class="vue-chat-back" to="/agents">
+          <span>←</span>
+          返回管理后台
+        </RouterLink>
+        <span class="vue-chat-product">
+          <span>
+            <img v-if="brandStore.iconUrl" :src="brandStore.iconUrl" alt="" />
+            <BaseIcon v-else name="bot" />
+          </span>
+          {{ brandStore.softwareName }}
+        </span>
+      </div>
       <div class="vue-chat-identity">
         <span><BaseIcon name="bot" /><i></i></span>
         <div>

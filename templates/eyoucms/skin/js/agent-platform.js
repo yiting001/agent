@@ -9,6 +9,9 @@
   const sidebarBackdrop = document.querySelector('[data-chat-backdrop]');
   const sidebarOpenButton = document.querySelector('[data-chat-sidebar-open]');
   const historyItems = document.querySelectorAll('[data-chat-history]');
+  const brandRoots = document.querySelectorAll('[data-brand-root]');
+  const brandNames = document.querySelectorAll('[data-brand-name]');
+  const brandIcons = document.querySelectorAll('[data-brand-icon]');
   const query = new URLSearchParams(window.location.search);
   const configuredApiBase = document.body.dataset.apiBase || '/api';
   const configuredAgentId = document.body.dataset.agentId || '';
@@ -86,11 +89,16 @@
     return value && !value.includes('{') ? value : '';
   }
 
-  async function request(path, options) {
+  function apiUrl(path) {
     const apiBase = normalizeApiBase(
       query.get('apiBase') || validConfiguredValue(configuredApiBase) || '/api',
     );
-    const response = await fetch(`${apiBase}${path}`, options);
+
+    return `${apiBase}${path}`;
+  }
+
+  async function request(path, options) {
+    const response = await fetch(apiUrl(path), options);
     const responseBody = await response.json().catch(() => undefined);
 
     if (!response.ok) {
@@ -102,6 +110,35 @@
     }
 
     return responseBody;
+  }
+
+  async function initializeBranding() {
+    const branding = await request('/branding');
+
+    if (!branding || typeof branding.softwareName !== 'string') {
+      return;
+    }
+
+    brandNames.forEach((element) => {
+      element.textContent = branding.softwareName;
+    });
+    brandRoots.forEach((element) => {
+      element.setAttribute('aria-label', branding.softwareName);
+    });
+
+    if (!branding.hasCustomIcon) {
+      return;
+    }
+
+    brandIcons.forEach((element) => {
+      const icon = document.createElement('img');
+
+      icon.alt = '';
+      icon.src = apiUrl(
+        `/branding/icon?v=${encodeURIComponent(branding.updatedAt || '')}`,
+      );
+      element.replaceChildren(icon);
+    });
   }
 
   async function initializeAgent() {
@@ -256,6 +293,7 @@
 
   resizeInput();
   updateSendState();
+  initializeBranding().catch(() => undefined);
   initializeAgent()
     .catch((error) => {
       const messageList = conversation.querySelector('[data-chat-messages]');

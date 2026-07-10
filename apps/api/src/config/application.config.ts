@@ -1,8 +1,11 @@
 import { registerAs } from '@nestjs/config';
 
 const DEFAULT_API_PORT = 3000;
+const DEFAULT_BRAND_ICON_MAX_BYTES = 1024 * 1024;
+const DEFAULT_BRAND_STORAGE_PATH = 'brand-storage';
 const DEFAULT_CORS_ORIGIN = 'http://localhost:5173';
 const DEFAULT_DATABASE_PATH = 'agent.sqlite';
+const DEFAULT_SOFTWARE_NAME = '灵枢智能体';
 const DEFAULT_SERVICE_NAME = 'agent-api';
 const DEFAULT_STORAGE_PATH = 'knowledge-storage';
 const DEFAULT_ZVEC_DATA_PATH = 'zvec-data';
@@ -20,6 +23,8 @@ const DEFAULT_EMBEDDING_BATCH_SIZE = 24;
 export type ZvecIndexType = 'diskann' | 'hnsw';
 
 export interface ApplicationConfig {
+  brandIconMaxBytes: number;
+  brandStoragePath: string;
   corsOrigin: string[];
   credentialEncryptionKey?: string;
   databasePath: string;
@@ -35,6 +40,7 @@ export interface ApplicationConfig {
   modelRequestTimeoutMs: number;
   port: number;
   serviceName: string;
+  defaultSoftwareName: string;
   zvecCollectionPrefix: string;
   zvecDataPath: string;
   zvecIndexType: ZvecIndexType;
@@ -126,6 +132,13 @@ export const applicationConfig = registerAs(
     }
 
     return {
+      brandIconMaxBytes: parsePositiveInteger(
+        'BRAND_ICON_MAX_BYTES',
+        process.env.BRAND_ICON_MAX_BYTES,
+        DEFAULT_BRAND_ICON_MAX_BYTES,
+      ),
+      brandStoragePath:
+        process.env.BRAND_STORAGE_PATH ?? DEFAULT_BRAND_STORAGE_PATH,
       corsOrigin: parseCorsOrigins(process.env.CORS_ORIGIN),
       credentialEncryptionKey: optionalValue(
         process.env.CREDENTIAL_ENCRYPTION_KEY,
@@ -133,6 +146,9 @@ export const applicationConfig = registerAs(
       databasePath: process.env.DATABASE_PATH ?? DEFAULT_DATABASE_PATH,
       databaseMigrationsRun: parseBoolean(process.env.DATABASE_MIGRATIONS_RUN),
       databaseSynchronize: parseBoolean(process.env.DATABASE_SYNCHRONIZE),
+      defaultSoftwareName:
+        optionalValue(process.env.DEFAULT_SOFTWARE_NAME) ??
+        DEFAULT_SOFTWARE_NAME,
       embeddingBatchSize: parsePositiveInteger(
         'EMBEDDING_BATCH_SIZE',
         process.env.EMBEDDING_BATCH_SIZE,
