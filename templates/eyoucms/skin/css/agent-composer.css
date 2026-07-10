@@ -1,0 +1,96 @@
+/* 固定在对话底部的输入区。 */
+.chat-composer-wrap {
+  position: relative;
+  border-top: 1px solid rgb(232 234 241 / 72%);
+  padding: 16px 24px 18px;
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 70%),
+    rgb(255 255 255 / 98%) 24%
+  );
+}
+
+.chat-composer {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  width: min(820px, 100%);
+  margin: 0 auto;
+  border: 1px solid #dfe2eb;
+  border-radius: 18px;
+  padding: 9px 9px 9px 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 34px rgb(43 45 75 / 9%);
+  transition:
+    border-color 170ms ease,
+    box-shadow 170ms ease;
+}
+
+.chat-composer:focus-within {
+  border-color: rgb(101 88 245 / 55%);
+  box-shadow: 0 14px 38px rgb(101 88 245 / 13%);
+}
+
+.chat-composer textarea {
+  width: 100%;
+  min-height: 42px;
+  max-height: 132px;
+  flex: 1;
+  resize: none;
+  border: 0;
+  outline: 0;
+  padding: 10px 0 8px;
+  color: #343847;
+  background: transparent;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.chat-composer textarea::placeholder {
+  color: #a3a7b4;
+}
+
+.chat-send-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 13px;
+  color: #ffffff;
+  background: linear-gradient(
+    135deg,
+    var(--chat-primary),
+    var(--chat-primary-dark)
+  );
+  cursor: pointer;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.chat-send-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.chat-send-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.chat-send-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.chat-disclaimer {
+  margin: 9px auto 0;
+  color: #a0a4b1;
+  font-size: 10px;
+  text-align: center;
+}
+
+.chat-sidebar-backdrop {
+  display: none;
+}
