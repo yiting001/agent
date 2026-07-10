@@ -64,11 +64,11 @@
       <!-- 侧栏只包含对话记录，不提供模型、知识库或接口配置。 -->
       <aside class="chat-sidebar" data-chat-sidebar>
         <div class="chat-sidebar__brand">
-          <a class="chat-brand" href="#" aria-label="灵枢智能体">
-            <span class="chat-brand__mark">
+          <a class="chat-brand" href="#" aria-label="灵枢智能体" data-brand-root>
+            <span class="chat-brand__mark" data-brand-icon>
               <svg aria-hidden="true"><use href="#chat-icon-bot"></use></svg>
             </span>
-            灵枢智能体
+            <span data-brand-name>灵枢智能体</span>
           </a>
         </div>
         <button class="chat-button chat-new-button" data-chat-clear type="button">

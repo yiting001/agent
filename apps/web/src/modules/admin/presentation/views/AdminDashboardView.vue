@@ -2,12 +2,14 @@
 import { onMounted } from 'vue';
 
 import { useSystemStatusStore } from '@/modules/system/stores/system-status.store';
+import { useBrandSettingsStore } from '@/modules/branding/stores/brand-settings.store';
 
 import BaseIcon from '../components/BaseIcon.vue';
 import { agentStatusLabels, formatCount, formatDate } from '../admin-display';
 import { useAdminWorkspaceStore } from '../../stores/admin-workspace.store';
 
 const workspaceStore = useAdminWorkspaceStore();
+const brandStore = useBrandSettingsStore();
 const systemStatusStore = useSystemStatusStore();
 
 onMounted(() => systemStatusStore.refresh());
@@ -17,7 +19,7 @@ onMounted(() => systemStatusStore.refresh());
   <div class="admin-page dashboard-page">
     <section class="welcome-panel">
       <div>
-        <span class="section-kicker">智能体管理平台</span>
+        <span class="section-kicker">{{ brandStore.softwareName }}</span>
         <h2>上午好，管理员</h2>
         <p>在这里统一创建智能体、管理知识资料、配置模型并发布接口。</p>
       </div>

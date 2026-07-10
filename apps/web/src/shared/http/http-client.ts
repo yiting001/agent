@@ -1,15 +1,21 @@
 /** Minimal HTTP boundary shared by infrastructure adapters. */
 export interface HttpClient {
+  delete<Response>(path: string): Promise<Response>;
   get<Response>(path: string): Promise<Response>;
   patch<Response, Body>(path: string, body: Body): Promise<Response>;
   post<Response, Body>(path: string, body: Body): Promise<Response>;
   put<Response, Body>(path: string, body: Body): Promise<Response>;
   putBlob<Response>(path: string, body: Blob): Promise<Response>;
+  putFile<Response>(path: string, body: File): Promise<Response>;
 }
 
 /** Browser fetch implementation with consistent HTTP error handling. */
 export class FetchHttpClient implements HttpClient {
   constructor(private readonly baseUrl: string) {}
+
+  delete<Response>(path: string): Promise<Response> {
+    return this.request<Response>(path, { method: 'DELETE' });
+  }
 
   get<Response>(path: string): Promise<Response> {
     return this.request<Response>(path, { method: 'GET' });
@@ -33,6 +39,17 @@ export class FetchHttpClient implements HttpClient {
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/octet-stream',
+      },
+      method: 'PUT',
+    });
+  }
+
+  putFile<Response>(path: string, body: File): Promise<Response> {
+    return this.request<Response>(path, {
+      body,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': body.type,
       },
       method: 'PUT',
     });

@@ -31,6 +31,49 @@
   font-weight: 700;
 }
 
+.vue-chat-back-area {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  min-width: 0;
+}
+
+.vue-chat-product {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  overflow: hidden;
+  color: #44485a;
+  font-size: 10px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vue-chat-product > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #6a5ce9, #42b8d0);
+}
+
+.vue-chat-product img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.vue-chat-product .base-icon {
+  width: 15px;
+  height: 15px;
+}
+
 .vue-chat-back:hover {
   color: var(--admin-primary);
 }

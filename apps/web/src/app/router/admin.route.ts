@@ -61,5 +61,15 @@ export const adminRoute: RouteRecordRaw = {
       name: 'api-access-management',
       path: 'api-access',
     },
+    {
+      component: () =>
+        import('@/modules/admin/presentation/views/BrandSettingsView.vue'),
+      meta: {
+        description: '统一设置管理端与用户对话页面的软件名称和图标。',
+        title: '系统设置',
+      },
+      name: 'brand-settings',
+      path: 'settings',
+    },
   ],
 };

@@ -1,0 +1,235 @@
+.brand-settings-intro {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #e5e2fb;
+  border-radius: var(--admin-radius-lg);
+  padding: 25px 28px;
+  background:
+    radial-gradient(circle at 88% 15%, rgb(74 190 213 / 16%), transparent 28%),
+    linear-gradient(135deg, #ffffff, #f8f6ff);
+}
+
+.brand-settings-intro h2 {
+  margin: 6px 0 0;
+  font-size: clamp(22px, 3vw, 29px);
+  letter-spacing: -0.035em;
+}
+
+.brand-settings-intro p {
+  margin-top: 9px;
+  color: var(--admin-muted);
+  font-size: 11px;
+}
+
+.brand-settings-intro__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 62px;
+  height: 62px;
+  flex: 0 0 auto;
+  border-radius: 20px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #7465ef, #43bcd2);
+  box-shadow: 0 15px 30px rgb(103 89 235 / 20%);
+}
+
+.brand-settings-intro__icon .base-icon {
+  width: 29px;
+  height: 29px;
+}
+
+.brand-settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.7fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.brand-settings-form__body {
+  border-top: 1px solid var(--admin-line);
+  padding: 21px;
+}
+
+.brand-settings-field {
+  display: grid;
+  gap: 8px;
+}
+
+.brand-settings-field + .brand-settings-field {
+  margin-top: 22px;
+}
+
+.brand-settings-field > span {
+  color: #4c5062;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.brand-settings-field > input {
+  width: 100%;
+  min-height: 45px;
+  border: 1px solid var(--admin-line);
+  border-radius: 12px;
+  padding: 0 13px;
+  color: var(--admin-ink);
+  outline: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.brand-settings-field > input:focus {
+  border-color: #aaa3f0;
+  box-shadow: 0 0 0 4px rgb(103 89 235 / 8%);
+}
+
+.brand-settings-field small,
+.brand-icon-editor small {
+  color: #969aaa;
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.brand-icon-editor {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  border: 1px dashed #d9d6ee;
+  border-radius: 16px;
+  padding: 16px;
+  background: #fbfaff;
+}
+
+.brand-icon-editor > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+}
+
+.brand-icon-editor small {
+  width: 100%;
+}
+
+.brand-icon-preview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  flex: 0 0 auto;
+  border-radius: 21px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #7465ef, #43bcd2);
+  box-shadow: 0 12px 28px rgb(103 89 235 / 18%);
+}
+
+.brand-icon-preview img,
+.brand-preview__mark img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.brand-icon-preview .base-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.brand-icon-upload {
+  position: relative;
+  min-height: 38px;
+  padding: 0 13px;
+  overflow: hidden;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.brand-icon-upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.form-message {
+  margin-top: 17px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 10px;
+}
+
+.form-message--error {
+  color: #a33b3b;
+  background: #fff0f0;
+}
+
+.form-message--success {
+  color: #16764c;
+  background: #e9f8f1;
+}
+
+.brand-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 22px;
+  border-top: 1px solid var(--admin-line);
+  padding-top: 18px;
+}
+
+.brand-preview-card__body {
+  border-top: 1px solid var(--admin-line);
+  padding: 22px;
+}
+
+.brand-preview {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border-radius: 16px;
+  padding: 18px;
+  background: linear-gradient(145deg, #f6f4ff, #ffffff);
+}
+
+.brand-preview__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 45px;
+  height: 45px;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #7465ef, #43bcd2);
+}
+
+.brand-preview strong,
+.brand-preview small {
+  display: block;
+}
+
+.brand-preview strong {
+  max-width: 190px;
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand-preview small {
+  margin-top: 4px;
+  color: #999cac;
+  font-size: 9px;
+}
+
+.brand-preview-card__body > p {
+  margin-top: 14px;
+  color: var(--admin-muted);
+  font-size: 9px;
+  line-height: 1.65;
+}

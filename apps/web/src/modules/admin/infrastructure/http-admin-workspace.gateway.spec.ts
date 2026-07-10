@@ -5,6 +5,10 @@ import type { HttpClient } from '@/shared/http/http-client';
 import { HttpAdminWorkspaceGateway } from './http-admin-workspace.gateway';
 
 class UploadHttpClient implements HttpClient {
+  delete<Response>(path: string): Promise<Response> {
+    return this.unsupported(path);
+  }
+
   readonly partSizes: number[] = [];
   readonly paths: string[] = [];
 
@@ -44,6 +48,12 @@ class UploadHttpClient implements HttpClient {
     this.partSizes.push(body.size);
 
     return Promise.resolve(undefined as Response);
+  }
+
+  putFile<Response>(path: string, body: File): Promise<Response> {
+    void body;
+
+    return this.unsupported(path);
   }
 
   private unsupported<Response>(path: string): Promise<Response> {

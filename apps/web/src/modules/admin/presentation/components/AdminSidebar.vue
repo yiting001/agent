@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import { useBrandSettingsStore } from '@/modules/branding/stores/brand-settings.store';
+
 import { useAdminWorkspaceStore } from '../../stores/admin-workspace.store';
 import BaseIcon from './BaseIcon.vue';
 
@@ -12,6 +14,7 @@ const emit = defineEmits<{
   close: [];
 }>();
 const workspaceStore = useAdminWorkspaceStore();
+const brandStore = useBrandSettingsStore();
 const testRoute = computed(() =>
   workspaceStore.agents[0] ? `/chat/${workspaceStore.agents[0].id}` : '/agents',
 );
@@ -22,6 +25,7 @@ const navigation = [
   { icon: 'database' as const, label: '知识库管理', to: '/knowledge-bases' },
   { icon: 'model' as const, label: '模型配置', to: '/model-providers' },
   { icon: 'api' as const, label: 'API 管理', to: '/api-access' },
+  { icon: 'settings' as const, label: '系统设置', to: '/settings' },
 ];
 </script>
 
@@ -29,8 +33,14 @@ const navigation = [
   <aside class="admin-sidebar" :class="{ 'is-open': open }">
     <div class="admin-sidebar__brand">
       <RouterLink class="admin-brand" to="/" @click="emit('close')">
-        <span class="admin-brand__mark"><BaseIcon name="bot" /></span>
-        <span><strong>灵枢智能体</strong><small>管理控制台</small></span>
+        <span class="admin-brand__mark">
+          <img v-if="brandStore.iconUrl" :src="brandStore.iconUrl" alt="" />
+          <BaseIcon v-else name="bot" />
+        </span>
+        <span
+          ><strong>{{ brandStore.softwareName }}</strong
+          ><small>管理控制台</small></span
+        >
       </RouterLink>
       <button
         class="icon-button admin-sidebar__close"
