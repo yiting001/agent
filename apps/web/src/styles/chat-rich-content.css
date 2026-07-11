@@ -121,10 +121,25 @@
 }
 
 .rich-visualization--error {
-  display: grid;
-  place-items: center;
+  display: block;
+  min-height: auto;
   color: #b64444;
   background: #fff7f7;
+}
+
+.rich-visualization__error-message {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.rich-visualization__error-source {
+  margin: 0;
+  overflow-x: auto;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f6f7fb;
+  color: #3c4257;
+  font-size: 12.5px;
 }
 
 .rich-visualization svg {

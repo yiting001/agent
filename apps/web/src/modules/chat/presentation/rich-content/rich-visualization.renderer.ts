@@ -74,6 +74,9 @@ async function renderMermaid(
     theme: 'neutral',
   });
 
+  // 渲染前先做语法校验，不支持的图类型（如 gauge）在此抛出可读错误。
+  await mermaid.parse(source);
+
   const { svg } = await mermaid.render(`mermaid-${createRandomId()}`, source);
 
   element.innerHTML = svg;
@@ -144,10 +147,31 @@ async function renderD3(element: HTMLElement, source: string): Promise<void> {
     .attr('rx', 5);
 }
 
+/** 兜底降级：展示友好错误提示与原始图表代码，保证内容始终可读。 */
+function renderFallback(
+  element: HTMLElement,
+  source: string,
+  error: unknown,
+): void {
+  const message = document.createElement('p');
+  message.className = 'rich-visualization__error-message';
+  message.textContent = `图表渲染失败，已展示原始内容：${
+    error instanceof Error ? error.message : '未知错误'
+  }`;
+
+  const code = document.createElement('pre');
+  code.className = 'rich-visualization__error-source';
+  code.textContent = source;
+
+  element.replaceChildren(message, code);
+  element.classList.add('rich-visualization--error');
+}
+
 export async function renderVisualizations(
   root: HTMLElement,
 ): Promise<() => void> {
   const charts: ECharts[] = [];
+  const observers: ResizeObserver[] = [];
   const elements = root.querySelectorAll<HTMLElement>('[data-visualization]');
 
   await Promise.all(
@@ -158,21 +182,27 @@ export async function renderVisualizations(
 
       try {
         if (element.dataset.visualization === 'echarts') {
-          charts.push(await renderECharts(element, source));
+          const chart = await renderECharts(element, source);
+          const observer = new ResizeObserver(() => chart.resize());
+
+          observer.observe(element);
+          charts.push(chart);
+          observers.push(observer);
         } else if (element.dataset.visualization === 'mermaid') {
           await renderMermaid(element, source);
         } else {
           await renderD3(element, source);
         }
       } catch (error) {
-        element.textContent =
-          error instanceof Error ? error.message : '图表渲染失败。';
-        element.classList.add('rich-visualization--error');
+        renderFallback(element, source, error);
       }
     }),
   );
 
   return () => {
+    for (const observer of observers) {
+      observer.disconnect();
+    }
     for (const chart of charts) {
       chart.dispose();
     }

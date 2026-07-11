@@ -122,11 +122,25 @@
 }
 
 .chat-visualization--error {
-  display: grid;
-  min-height: 120px;
-  place-items: center;
+  display: block;
+  min-height: auto;
   color: #b64444;
   background: #fff7f7;
+}
+
+.chat-visualization__error-message {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.chat-visualization__error-source {
+  margin: 0;
+  overflow-x: auto;
+  padding: 10px;
+  border-radius: var(--chat-radius-sm);
+  background: var(--chat-surface);
+  color: inherit;
+  font-size: 12.5px;
 }
 
 .chat-visualization svg {
