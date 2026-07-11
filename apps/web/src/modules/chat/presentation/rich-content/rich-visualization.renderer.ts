@@ -1,5 +1,7 @@
 import type { ECharts, EChartsOption } from 'echarts';
 
+import { createRandomId } from '@/shared/identity/random-id';
+
 interface D3Datum {
   name: string;
   value: number;
@@ -72,10 +74,7 @@ async function renderMermaid(
     theme: 'neutral',
   });
 
-  const { svg } = await mermaid.render(
-    `mermaid-${crypto.randomUUID()}`,
-    source,
-  );
+  const { svg } = await mermaid.render(`mermaid-${createRandomId()}`, source);
 
   element.innerHTML = svg;
 }

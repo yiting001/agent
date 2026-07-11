@@ -114,6 +114,21 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     agents.value.unshift(created);
   }
 
+  async function updateAgent(
+    agentId: string,
+    input: CreateAgentInput,
+  ): Promise<void> {
+    const updated = await execute(() => gateway.updateAgent(agentId, input));
+
+    agents.value = replaceById(agents.value, updated);
+  }
+
+  async function deleteAgent(agentId: string): Promise<void> {
+    await execute(() => gateway.deleteAgent(agentId));
+
+    agents.value = agents.value.filter((agent) => agent.id !== agentId);
+  }
+
   async function updateAgentStatus(
     agentId: string,
     status: AgentStatus,
@@ -244,6 +259,7 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     createApiApplication,
     createKnowledgeBase,
     createKnowledgeModule,
+    deleteAgent,
     documentCount,
     enabledProviderCount,
     errorMessage,
@@ -257,6 +273,7 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     publishedAgentCount,
     refreshKnowledgeBases,
     requestCount,
+    updateAgent,
     updateAgentStatus,
     uploadChatAttachment,
     uploadKnowledgeFile,

@@ -53,7 +53,7 @@ export class OpenAiChatCompletionController {
     const command = {
       agentId: application.agentId,
       messages: body.messages,
-      requirePublished: true,
+      access: 'api' as const,
     };
     const completionId = `chatcmpl_${randomUUID()}`;
     const model = body.model ?? application.agentId;

@@ -14,9 +14,10 @@ import type { AgentChatResponse, ConversationMessage } from '../domain/chat';
 import { ChatAttachmentStorage } from './chat-attachment.storage';
 
 export interface ChatWithAgentCommand {
+  /** 调用方来源：admin 无限制；public 排除已停用；api 仅限已发布。 */
+  access: 'admin' | 'api' | 'public';
   agentId: string;
   messages: ConversationMessage[];
-  requirePublished: boolean;
 }
 
 export interface StreamingAgentChatResponse {
@@ -71,10 +72,17 @@ export class ChatWithAgentUseCase {
   ): Promise<StreamingAgentChatResponse> {
     const agent = await this.agents.get(command.agentId);
 
-    if (command.requirePublished && agent.status !== 'published') {
+    if (command.access === 'api' && agent.status !== 'published') {
       throw new ApplicationError(
         'invalid_operation',
         '智能体尚未发布，不能通过正式 API 调用。',
+      );
+    }
+
+    if (command.access === 'public' && agent.status === 'disabled') {
+      throw new ApplicationError(
+        'invalid_operation',
+        '智能体已停用，暂时无法对话。',
       );
     }
 

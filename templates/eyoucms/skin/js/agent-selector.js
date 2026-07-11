@@ -1,6 +1,6 @@
 /**
  * 智能体选择器：页面未配置智能体 ID 时，
- * 从公开接口加载已发布智能体列表，让访问者自行选择要对话的智能体。
+ * 从公开接口加载平台全部可用智能体列表，让访问者自行选择要对话的智能体。
  * 选择结果通过 Promise 返回给对话脚本。
  */
 (function () {
@@ -47,7 +47,7 @@
     const agents = await options.loadAgents();
 
     if (!Array.isArray(agents) || agents.length === 0) {
-      throw new Error('当前没有可对话的智能体，请先在后台发布智能体。');
+      throw new Error('当前没有可对话的智能体，请先在后台创建智能体。');
     }
 
     return new Promise((resolve) => {

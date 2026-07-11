@@ -10,7 +10,7 @@ export class ListPublishedAgentsController {
   constructor(private readonly useCase: ListPublishedAgentsUseCase) {}
 
   @Get()
-  @ApiOperation({ summary: '列出可公开对话的已发布智能体' })
+  @ApiOperation({ summary: '列出可公开对话的智能体（除已停用外的全部智能体）' })
   execute(): Promise<PublicAgentSummary[]> {
     return this.useCase.execute();
   }

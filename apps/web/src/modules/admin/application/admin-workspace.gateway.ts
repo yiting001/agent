@@ -40,6 +40,8 @@ export abstract class AdminWorkspaceGateway {
     input: CreateKnowledgeModuleInput,
   ): Promise<KnowledgeModuleSummary>;
 
+  abstract deleteAgent(agentId: string): Promise<void>;
+
   abstract listAgents(): Promise<AgentSummary[]>;
 
   abstract listApiApplications(): Promise<ApiApplicationSummary[]>;
@@ -47,6 +49,11 @@ export abstract class AdminWorkspaceGateway {
   abstract listKnowledgeBases(): Promise<KnowledgeBaseSummary[]>;
 
   abstract listModelProviders(): Promise<ModelProviderSummary[]>;
+
+  abstract updateAgent(
+    agentId: string,
+    input: CreateAgentInput,
+  ): Promise<AgentSummary>;
 
   abstract updateAgentStatus(
     agentId: string,

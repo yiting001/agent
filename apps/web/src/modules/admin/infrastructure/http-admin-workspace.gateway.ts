@@ -135,6 +135,10 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
     });
   }
 
+  deleteAgent(agentId: string): Promise<void> {
+    return this.httpClient.delete<void>(`/agents/${agentId}`);
+  }
+
   listAgents(): Promise<AgentSummary[]> {
     return this.httpClient.get<AgentSummary[]>('/agents');
   }
@@ -149,6 +153,13 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
 
   listModelProviders(): Promise<ModelProviderSummary[]> {
     return this.httpClient.get<ModelProviderSummary[]>('/model-providers');
+  }
+
+  updateAgent(agentId: string, input: CreateAgentInput): Promise<AgentSummary> {
+    return this.httpClient.put<AgentSummary, CreateAgentInput>(
+      `/agents/${agentId}`,
+      input,
+    );
   }
 
   updateAgentStatus(

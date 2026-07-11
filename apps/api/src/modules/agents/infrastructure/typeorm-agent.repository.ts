@@ -25,6 +25,15 @@ export class TypeOrmAgentRepository extends AgentRepository {
     super();
   }
 
+  async delete(id: string): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      await manager
+        .getRepository(AgentKnowledgeModuleEntity)
+        .delete({ agentId: id });
+      await manager.getRepository(AgentEntity).delete({ id });
+    });
+  }
+
   async findById(id: string): Promise<AgentDetail | undefined> {
     const [agent, bindings] = await Promise.all([
       this.agents.findOneBy({ id }),
@@ -68,6 +77,9 @@ export class TypeOrmAgentRepository extends AgentRepository {
   async save(agent: Agent, moduleIds: string[]): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
       await manager.getRepository(AgentEntity).save(agent);
+      await manager
+        .getRepository(AgentKnowledgeModuleEntity)
+        .delete({ agentId: agent.id });
       await manager.getRepository(AgentKnowledgeModuleEntity).save(
         [...new Set(moduleIds)].map((moduleId) => ({
           agentId: agent.id,

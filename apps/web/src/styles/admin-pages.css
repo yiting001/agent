@@ -115,6 +115,26 @@
   font-size: 8px;
 }
 
+.agent-card__identity {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 10px;
+  color: #999dab;
+  font-size: 9px;
+}
+
+.agent-card__identity code {
+  overflow: hidden;
+  border-radius: 6px;
+  padding: 2px 6px;
+  color: #4c5062;
+  background: #f2f3f8;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .agent-card__meta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

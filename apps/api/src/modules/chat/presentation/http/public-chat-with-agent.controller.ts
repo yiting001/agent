@@ -22,7 +22,7 @@ export class PublicChatWithAgentController {
     const command = {
       agentId,
       messages: body.messages,
-      requirePublished: true,
+      access: 'public' as const,
     };
 
     if (body.stream === false) {

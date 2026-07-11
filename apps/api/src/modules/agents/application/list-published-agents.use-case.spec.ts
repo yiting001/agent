@@ -19,12 +19,17 @@ function summary(overrides: Partial<AgentSummary>): AgentSummary {
 }
 
 describe('ListPublishedAgentsUseCase', () => {
-  it('只返回已发布智能体，且只暴露展示必需字段', async () => {
+  it('返回除已停用外的全部智能体，且只暴露展示必需字段', async () => {
     const repository = {
       list: () =>
         Promise.resolve([
           summary({ description: '答疑', id: 'a1', name: '助手A' }),
-          summary({ id: 'a2', status: 'draft' }),
+          summary({
+            description: '草稿',
+            id: 'a2',
+            name: '助手B',
+            status: 'draft',
+          }),
           summary({ id: 'a3', status: 'disabled' }),
         ]),
     } as AgentRepository;
@@ -32,6 +37,7 @@ describe('ListPublishedAgentsUseCase', () => {
 
     await expect(useCase.execute()).resolves.toEqual([
       { description: '答疑', id: 'a1', name: '助手A' },
+      { description: '草稿', id: 'a2', name: '助手B' },
     ]);
   });
 });
