@@ -59,4 +59,32 @@
   applyNavigationHeight();
   window.addEventListener('load', applyNavigationHeight);
   window.addEventListener('resize', applyNavigationHeight);
+
+  /** 移动端会话侧栏的展开/收起控制，供其他脚本调用。 */
+  const sidebar = document.querySelector('[data-chat-sidebar]');
+  const backdrop = document.querySelector('[data-chat-backdrop]');
+  const openButton = document.querySelector('[data-chat-sidebar-open]');
+
+  function setSidebarOpen(open) {
+    if (!sidebar || !backdrop) {
+      return;
+    }
+
+    sidebar.classList.toggle('is-open', open);
+    backdrop.classList.toggle('is-visible', open);
+    backdrop.setAttribute('aria-hidden', open ? 'false' : 'true');
+  }
+
+  openButton?.addEventListener('click', () => setSidebarOpen(true));
+  backdrop?.addEventListener('click', () => setSidebarOpen(false));
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      setSidebarOpen(false);
+    }
+  });
+
+  window.AgentSidebar = {
+    close: () => setSidebarOpen(false),
+    open: () => setSidebarOpen(true),
+  };
 })();

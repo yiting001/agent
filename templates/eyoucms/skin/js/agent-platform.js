@@ -20,10 +20,7 @@ const AGENT_DEFAULT_AGENT_ID = '';
     '[data-chat-attachment-error]',
   );
   const clearButtons = document.querySelectorAll('[data-chat-clear]');
-  const sidebar = document.querySelector('[data-chat-sidebar]');
-  const sidebarBackdrop = document.querySelector('[data-chat-backdrop]');
-  const sidebarOpenButton = document.querySelector('[data-chat-sidebar-open]');
-  const historyItems = document.querySelectorAll('[data-chat-history]');
+  const historyNav = document.querySelector('[data-chat-history-list]');
   const query = new URLSearchParams(window.location.search);
   const configuredAgentId = document.body.dataset.agentId || '';
 
@@ -42,6 +39,7 @@ const AGENT_DEFAULT_AGENT_ID = '';
   let ready = false;
   let agentId = '';
   let attachmentController;
+  let conversationStore;
   const richContent = window.AgentRichContent
     ? window.AgentRichContent.create()
     : undefined;
@@ -240,6 +238,53 @@ const AGENT_DEFAULT_AGENT_ID = '';
     focusInput();
   }
 
+  /** 智能体就绪后启用本地会话历史，切换会话时重建消息区。 */
+  function setupConversations() {
+    if (!window.AgentConversations || !historyNav || !agentId) {
+      return;
+    }
+
+    conversationStore = window.AgentConversations.create({
+      agentId,
+      nav: historyNav,
+      onSelect: (selected) => {
+        restoreConversation(selected ? selected.messages : []);
+        window.AgentSidebar?.close();
+      },
+    });
+  }
+
+  function restoreConversation(savedMessages) {
+    conversation.replaceChildren(
+      ...initialConversation.map((node) => node.cloneNode(true)),
+    );
+    messages.length = 0;
+    richContent?.reset();
+    attachmentController?.reset();
+
+    const messageList = conversation.querySelector('[data-chat-messages]');
+
+    for (const saved of savedMessages) {
+      messages.push({ ...saved });
+
+      const element = createMessage(saved.role, saved.content);
+      const bubble = element.querySelector('.chat-message__bubble');
+
+      if (saved.role === 'assistant' && richContent && bubble) {
+        richContent.render(bubble, saved.content, true);
+      }
+
+      messageList?.appendChild(element);
+    }
+
+    input.value = '';
+    replying = false;
+    resizeInput();
+    updateSendState();
+    scrollToLatest();
+    focusInput();
+  }
+
   function scrollToLatest() {
     conversation.scrollTo({
       top: conversation.scrollHeight,
@@ -347,6 +392,7 @@ const AGENT_DEFAULT_AGENT_ID = '';
       }
 
       messages.push({ content: answer, role: 'assistant' });
+      conversationStore?.save(messages);
     } catch (error) {
       const errorMessage = createMessage(
         'assistant',
@@ -369,32 +415,14 @@ const AGENT_DEFAULT_AGENT_ID = '';
   }
 
   function resetConversation() {
-    conversation.replaceChildren(
-      ...initialConversation.map((node) => node.cloneNode(true)),
-    );
-    input.value = '';
-    messages.length = 0;
-    replying = false;
-    attachmentController?.reset();
-    richContent?.reset();
-    resizeInput();
-    updateSendState();
+    conversationStore?.startNew();
+    restoreConversation([]);
     conversation.scrollTop = 0;
-    focusInput();
+    window.AgentSidebar?.close();
 
     if (!ready) {
       startAgent();
     }
-  }
-
-  function setSidebarOpen(open) {
-    if (!sidebar || !sidebarBackdrop) {
-      return;
-    }
-
-    sidebar.classList.toggle('is-open', open);
-    sidebarBackdrop.classList.toggle('is-visible', open);
-    sidebarBackdrop.setAttribute('aria-hidden', open ? 'false' : 'true');
   }
 
   if (
@@ -441,26 +469,10 @@ const AGENT_DEFAULT_AGENT_ID = '';
   clearButtons.forEach((button) =>
     button.addEventListener('click', resetConversation),
   );
-  historyItems.forEach((item) => {
-    item.addEventListener('click', () => {
-      historyItems.forEach((historyItem) =>
-        historyItem.classList.remove('is-active'),
-      );
-      item.classList.add('is-active');
-      setSidebarOpen(false);
-    });
-  });
-
-  sidebarOpenButton?.addEventListener('click', () => setSidebarOpen(true));
-  sidebarBackdrop?.addEventListener('click', () => setSidebarOpen(false));
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      setSidebarOpen(false);
-    }
-  });
 
   function startAgent() {
     initializeAgent()
+      .then(setupConversations)
       .catch((error) => {
         const messageList = conversation.querySelector('[data-chat-messages]');
 

@@ -74,19 +74,61 @@
 
 .chat-history__item {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px;
   align-items: center;
   width: 100%;
   border-radius: 13px;
-  padding: 10px;
+  padding: 4px 6px 4px 0;
   color: #686e80;
   background: transparent;
+  transition:
+    color 160ms ease,
+    background 160ms ease;
+}
+
+.chat-history__main {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 6px 4px 6px 10px;
+  color: inherit;
+  background: transparent;
   text-align: left;
+  cursor: pointer;
+}
+
+.chat-history__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  color: #a0a4b2;
+  background: transparent;
   cursor: pointer;
   transition:
     color 160ms ease,
     background 160ms ease;
+}
+
+.chat-history__remove:hover {
+  color: #d64550;
+  background: rgb(255 255 255 / 82%);
+}
+
+.chat-history__remove svg {
+  width: 13px;
+  height: 13px;
+}
+
+.chat-history__empty {
+  padding: 10px;
+  color: #9a9faf;
+  font-size: 11px;
 }
 
 .chat-history__item:hover,

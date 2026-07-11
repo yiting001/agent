@@ -90,6 +90,8 @@ p {
   line-height: 1;
   border: 0;
   cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
