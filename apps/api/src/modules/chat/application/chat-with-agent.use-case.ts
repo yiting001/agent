@@ -41,6 +41,23 @@ function buildKnowledgeContext(
     .join('\n\n');
 }
 
+function buildTextOnlyMessages(
+  messages: ConversationMessage[],
+): ChatMessageInput[] {
+  return messages.map((message) => {
+    const attachmentNote = message.attachments?.length
+      ? `\n\n（用户上传了附件：${message.attachments
+          .map((attachment) => attachment.fileName)
+          .join('、')}，当前模型不支持解析多模态内容，附件已省略。）`
+      : '';
+
+    return {
+      content: `${message.content}${attachmentNote}`,
+      role: message.role,
+    };
+  });
+}
+
 @Injectable()
 export class ChatWithAgentUseCase {
   constructor(
@@ -115,23 +132,30 @@ export class ChatWithAgentUseCase {
     const conversationMessages = await this.buildConversationMessages(
       command.messages,
     );
-    const content = this.modelGateway.streamChat({
-      apiKey: provider.apiKey,
-      baseUrl: provider.baseUrl,
-      messages: [
-        {
-          content: `${agent.systemPrompt}
+    const systemMessage: ChatMessageInput = {
+      content: `${agent.systemPrompt}
 
 请优先依据下列企业知识回答；无法从资料确认时应明确说明，不得编造。
 
 ${buildKnowledgeContext(knowledge)}`,
-          role: 'system',
-        },
-        ...conversationMessages,
-      ],
+      role: 'system',
+    };
+    const request = {
+      apiKey: provider.apiKey,
+      baseUrl: provider.baseUrl,
+      messages: [systemMessage, ...conversationMessages],
       model: provider.chatModel,
       temperature: agent.temperature,
-    });
+    };
+    const hasMultimodalContent = conversationMessages.some(
+      (message) => typeof message.content !== 'string',
+    );
+    const content = hasMultimodalContent
+      ? this.streamWithTextOnlyFallback(request, [
+          systemMessage,
+          ...buildTextOnlyMessages(command.messages),
+        ])
+      : this.modelGateway.streamChat(request);
 
     return {
       agentId: agent.id,
@@ -197,6 +221,35 @@ ${buildKnowledgeContext(knowledge)}`,
         return { content: parts, role: message.role };
       }),
     );
+  }
+
+  /**
+   * 先按多模态格式调用；若模型服务在输出任何内容前拒绝（如不支持
+   * image_url/input_audio 的纯文本模型），自动降级为纯文本消息重试。
+   */
+  private async *streamWithTextOnlyFallback(
+    request: Parameters<ModelGateway['streamChat']>[0],
+    textOnlyMessages: ChatMessageInput[],
+  ): AsyncIterable<string> {
+    let yielded = false;
+
+    try {
+      for await (const delta of this.modelGateway.streamChat(request)) {
+        yielded = true;
+        yield delta;
+      }
+
+      return;
+    } catch (error) {
+      if (yielded) {
+        throw error;
+      }
+    }
+
+    yield* this.modelGateway.streamChat({
+      ...request,
+      messages: textOnlyMessages,
+    });
   }
 
   private async *trackConversation(
