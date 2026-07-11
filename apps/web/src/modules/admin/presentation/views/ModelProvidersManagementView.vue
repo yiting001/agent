@@ -187,7 +187,7 @@ async function saveConfiguration(): Promise<void> {
           <span>服务标识</span>
           <input
             v-model="form.key"
-            pattern="[a-z0-9_-]+"
+            pattern="[a-z0-9_\-]+"
             placeholder="例如 deepseek"
             :disabled="Boolean(selectedProvider)"
             required
@@ -253,6 +253,9 @@ async function saveConfiguration(): Promise<void> {
           />
           <small>密钥仅提交一次；修改配置时需要重新输入。</small>
         </label>
+        <p v-if="workspaceStore.errorMessage" class="form-error">
+          {{ workspaceStore.errorMessage }}
+        </p>
         <div class="form-actions">
           <button
             class="secondary-button"
