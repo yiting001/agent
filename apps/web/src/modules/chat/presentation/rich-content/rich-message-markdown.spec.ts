@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+// DOMPurify 消毒依赖 DOM 环境，本文件在 jsdom 中运行。
 import { describe, expect, it } from 'vitest';
 
 import { renderRichMarkdown } from './rich-message-markdown';
@@ -20,5 +22,20 @@ describe('renderRichMarkdown', () => {
     expect(output).toContain('class="katex"');
     expect(output).toContain('data-visualization="echarts"');
     expect(output).not.toContain("<script>alert('xss')</script>");
+  });
+
+  it('keeps safe inline html such as <br> in table cells', () => {
+    const output = renderRichMarkdown(
+      '| 项目 | 内容 |\n| --- | --- |\n| 步骤 | 1. 总则<br>2. 描述 |',
+    );
+
+    expect(output).toContain('1. 总则<br>2. 描述');
+  });
+
+  it('strips dangerous attributes while keeping the element', () => {
+    const output = renderRichMarkdown('<em onclick="alert(1)">重点</em>');
+
+    expect(output).toContain('<em>重点</em>');
+    expect(output).not.toContain('onclick');
   });
 });

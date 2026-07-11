@@ -10,6 +10,7 @@ const AGENT_RICH_ASSET_BASE_URLS = [
 
 /** 各渲染库路径与 Vue 管理端依赖版本保持一致，升级时需同步修改。 */
 const AGENT_RICH_LIBRARIES = {
+  dompurify: 'dompurify@3.4.11/dist/purify.min.js',
   echarts: 'echarts@6.1.0/dist/echarts.min.js',
   katex: 'katex@0.16.47/dist/katex.min.js',
   katexAutoRender: 'katex@0.16.47/dist/contrib/auto-render.min.js',
@@ -33,7 +34,7 @@ const AGENT_RICH_LIBRARIES = {
   const MATH_PATTERN =
     /\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^$\n]+?\$/g;
   const loaders = new Map();
-  let markdown;
+  const markdownRenderers = new Map();
   let mermaidReady = false;
 
   function assetUrl(base, library) {
@@ -93,16 +94,19 @@ const AGENT_RICH_LIBRARIES = {
     return placeholder.join('');
   }
 
-  /** Markdown 渲染禁用原始 HTML，避免模型输出脚本进入页面。 */
-  async function getMarkdown() {
-    if (markdown) {
-      return markdown;
+  /**
+   * 获取 Markdown 渲染器：默认允许内联 HTML（如表格内的 <br>），
+   * 配合 DOMPurify 消毒使用；消毒库不可用时降级为禁用 HTML 的安全模式。
+   */
+  async function getMarkdown(allowHtml) {
+    if (markdownRenderers.has(allowHtml)) {
+      return markdownRenderers.get(allowHtml);
     }
 
     await loadAsset('markdownIt', 'script');
-    markdown = window.markdownit({
+    const markdown = window.markdownit({
       breaks: true,
-      html: false,
+      html: allowHtml,
       linkify: true,
       typographer: true,
     });
@@ -120,7 +124,21 @@ const AGENT_RICH_LIBRARIES = {
       return renderFence(tokens, index, options, env, self);
     };
 
+    markdownRenderers.set(allowHtml, markdown);
     return markdown;
+  }
+
+  /**
+   * 获取 HTML 消毒器；加载失败（如无外网环境）时返回 null，
+   * 调用方据此降级为禁用原始 HTML 的渲染模式。
+   */
+  async function getSanitizer() {
+    try {
+      await loadAsset('dompurify', 'script');
+      return (html) => window.DOMPurify.sanitize(html);
+    } catch {
+      return null;
+    }
   }
 
   function escapeHtml(text) {
@@ -221,18 +239,20 @@ const AGENT_RICH_LIBRARIES = {
      */
     async function render(element, content, final) {
       try {
-        const renderer = await getMarkdown();
+        const sanitize = await getSanitizer();
+        const renderer = await getMarkdown(Boolean(sanitize));
         const mathSegments = [];
         const masked = content.replace(
           MATH_PATTERN,
           (segment) => `@@AGENT-MATH-${mathSegments.push(segment) - 1}@@`,
         );
-
-        element.innerHTML = renderer
+        const html = renderer
           .render(masked)
           .replace(/@@AGENT-MATH-(\d+)@@/g, (match, index) =>
             escapeHtml(mathSegments[Number(index)] ?? match),
           );
+
+        element.innerHTML = sanitize ? sanitize(html) : html;
         await renderMath(element);
       } catch {
         element.textContent = content;

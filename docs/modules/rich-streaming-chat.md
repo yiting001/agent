@@ -74,7 +74,10 @@ D3 仅 Vue 管理端支持，当前提供 `bar` 和 `line` 两种结构化图表
 类型不支持（如 Mermaid 不存在的 `gauge`）时降级为友好错误提示加原始代码块，
 不中断消息内其余内容；ECharts 图表随容器尺寸变化自动 `resize`。仪表盘请使用
 ECharts 的 `gauge` 系列。
-Markdown 渲染禁止原始 HTML，避免模型输出脚本进入页面。
+Markdown 渲染允许模型输出的内联 HTML（如表格单元格中的 `<br>` 换行），
+渲染结果经 DOMPurify 白名单消毒后再进入页面，脚本与危险属性会被移除。
+EyouCMS 页的 DOMPurify 由 CDN 按需加载，加载失败时自动降级为禁用
+原始 HTML 的安全模式，保证任何浏览器环境下内容都可读且无注入风险。
 EyouCMS 页的渲染库由 `templates/eyoucms/skin/js/agent-rich-content.js`
 按需懒加载，版本与 Vue 管理端依赖保持一致，图表在流式回答结束后统一绘制。
 
