@@ -15,11 +15,11 @@
   backdrop-filter: blur(18px);
 }
 
-/* 嵌入 EyouCMS 时工作区随文档流排布，位于站点头尾之间。 */
+/* 嵌入 EyouCMS 时工作区位于站点头尾之间，并为固定导航预留空间。 */
 .agent-chat-page--eyoucms .chat-workspace {
-  height: min(860px, calc(100dvh - 96px));
+  height: min(860px, calc(100dvh - var(--chat-site-navigation-height) - 64px));
   min-height: 560px;
-  margin: 32px auto;
+  margin: calc(var(--chat-site-navigation-height) + 32px) auto 32px;
 }
 
 /* 左侧仅提供新建与历史对话，不出现任何后台配置入口。 */
@@ -274,7 +274,7 @@
 .chat-suggestion {
   display: flex;
   gap: 12px;
-  align-items: flex-start;
+  align-items: center;
   border: 1px solid var(--chat-line);
   border-radius: 16px;
   padding: 16px;
@@ -311,16 +311,17 @@
   height: 17px;
 }
 
-.chat-suggestion strong,
-.chat-suggestion span {
+/* 文案区单独限定选择器，避免影响图标容器的布局。 */
+.chat-suggestion__copy strong,
+.chat-suggestion__copy span {
   display: block;
 }
 
-.chat-suggestion strong {
+.chat-suggestion__copy strong {
   font-size: 13px;
 }
 
-.chat-suggestion span {
+.chat-suggestion__copy span {
   margin-top: 5px;
   color: #8a8f9f;
   font-size: 11px;

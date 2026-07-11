@@ -179,8 +179,9 @@ TLS 证书，并只开放 Nginx 的 80/443 端口。
 6. 为目标单页或栏目选择 `agent-platform.htm`，重新生成页面并清理模板缓存。
 7. 将 EyouCMS 站点域名加入 API 的 `CORS_ORIGIN`。
 
-模板默认给固定公共导航预留 `64px`。如果当前站点导航高度不同，只修改
-`agent-foundation.css`：
+`agent-site-layout.js` 会在页面加载和窗口变化时自动测量站点固定/粘性导航的
+高度并写入 `--chat-site-navigation-height`，通常无需手动配置。特殊主题下
+自动测量不准时，可在 `agent-foundation.css` 中手动覆盖：
 
 ```css
 .agent-chat-page--eyoucms {

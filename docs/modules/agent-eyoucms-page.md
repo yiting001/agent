@@ -43,6 +43,7 @@ templates/eyoucms/
     │   ├── agent-rich-content.css   # 回答中的 Markdown、公式、表格与图表样式
     │   └── agent-responsive.css     # 平板与手机适配
     └── js/
+        ├── agent-site-layout.js     # 自动测量站点固定导航高度
         ├── agent-attachments.js     # 附件选择、预览、移除和上传
         ├── agent-rich-content.js    # Markdown、KaTeX、ECharts 与 Mermaid 渲染
         └── agent-platform.js        # 后台地址、品牌加载、对话和移动侧栏
@@ -59,7 +60,10 @@ flowchart LR
   Attachments[多模态附件交互]
   Rich[富内容渲染]
   Script[对话交互脚本]
+  Layout[导航高度自适应]
 
+  Eyou --> Layout
+  Preview --> Layout
   Eyou --> Foundation
   Eyou --> Chat
   Eyou --> Composer
@@ -99,9 +103,12 @@ flowchart TD
 ```
 
 页面没有后台导航、模型选择、知识库管理或 API 配置入口。
-EyouCMS 模板通过 `agent-chat-page--eyoucms` 为站点公共导航预留 64px，
-避免固定导航覆盖对话头部；站点导航高度不同时只需修改
-`agent-foundation.css` 中的 `--chat-site-navigation-height`。
+`agent-site-layout.js` 在页面加载和窗口变化时自动测量站点固定/粘性导航的高度，
+并写入 CSS 变量 `--chat-site-navigation-height`，工作区据此下移，
+避免固定导航覆盖对话头部；特殊主题也可在
+`agent-foundation.css` 中手动覆盖该变量。
+快捷问题文案包裹在 `chat-suggestion__copy` 中，文案样式不再命中图标容器，
+图标与文案垂直居中对齐。
 工作区固定在公共导航与视口底部之间，不受站点页脚样式或页面内容高度影响。
 主内容网格显式允许对话区收缩和滚动，短窗口恢复初始欢迎内容时输入区仍固定可见。
 左侧会话列表拥有独立滚动区域，记录增多时品牌、新建按钮和底部说明保持可见。
