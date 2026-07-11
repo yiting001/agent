@@ -16,6 +16,8 @@
 
 .chat-agent-picker__list {
   display: grid;
+  max-height: 60vh;
+  overflow-y: auto;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
 }

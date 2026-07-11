@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { webApplicationConfig } from '@/config/application.config';
+import { createRandomId } from '@/shared/identity/random-id';
 import type { ChatAttachmentSummary } from '@/modules/admin/domain/admin-workspace';
 import BaseIcon from '@/modules/admin/presentation/components/BaseIcon.vue';
 import { useAdminWorkspaceStore } from '@/modules/admin/stores/admin-workspace.store';
@@ -107,7 +108,7 @@ async function sendMessage(content = message.value): Promise<void> {
     messages.value.push({
       attachments,
       content: question,
-      id: crypto.randomUUID(),
+      id: createRandomId(),
       role: 'user',
     });
     pendingAttachments.value = [];
@@ -130,7 +131,7 @@ async function sendMessage(content = message.value): Promise<void> {
       }));
     const reply: ChatMessage = {
       content: '',
-      id: crypto.randomUUID(),
+      id: createRandomId(),
       role: 'assistant',
     };
 

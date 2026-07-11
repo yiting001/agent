@@ -19,7 +19,7 @@ export class ChatWithAgentController {
     const command = {
       agentId,
       messages: body.messages,
-      requirePublished: false,
+      access: 'admin' as const,
     };
 
     if (body.stream === false) {

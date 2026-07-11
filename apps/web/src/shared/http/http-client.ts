@@ -146,6 +146,10 @@ export class FetchHttpClient implements HttpClient {
 
     await this.ensureSuccessful(response);
 
+    if (response.status === 204) {
+      return undefined as Response;
+    }
+
     return response.json() as Promise<Response>;
   }
 

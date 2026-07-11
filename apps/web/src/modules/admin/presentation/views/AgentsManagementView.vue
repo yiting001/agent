@@ -1,23 +1,30 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
 
-import type { AgentStatus } from '../../domain/admin-workspace';
+import type { AgentStatus, AgentSummary } from '../../domain/admin-workspace';
 import { useAdminWorkspaceStore } from '../../stores/admin-workspace.store';
 import { agentStatusLabels, formatCount, formatDate } from '../admin-display';
 import BaseIcon from '../components/BaseIcon.vue';
 import BaseModal from '../components/BaseModal.vue';
 
+const DEFAULT_SYSTEM_PROMPT =
+  '你是专业、严谨的企业知识助手，请依据知识库准确回答。';
+
 const workspaceStore = useAdminWorkspaceStore();
-const createModalOpen = ref(false);
+const formModalOpen = ref(false);
+const editingAgentId = ref('');
+const copiedAgentId = ref('');
 const searchTerm = ref('');
 const form = reactive({
   description: '',
   moduleIds: [] as string[],
   name: '',
   providerId: '',
-  systemPrompt: '你是专业、严谨的企业知识助手，请依据知识库准确回答。',
+  systemPrompt: DEFAULT_SYSTEM_PROMPT,
   temperature: 0.3,
 });
+
+const isEditing = computed(() => editingAgentId.value !== '');
 
 const availableProviders = computed(() =>
   workspaceStore.modelProviders.filter(
@@ -45,16 +52,28 @@ const filteredAgents = computed(() => {
 });
 
 function openCreateModal(): void {
+  editingAgentId.value = '';
   form.name = '';
   form.description = '';
   form.providerId = availableProviders.value[0]?.id ?? '';
   form.moduleIds = [];
-  form.systemPrompt = '你是专业、严谨的企业知识助手，请依据知识库准确回答。';
+  form.systemPrompt = DEFAULT_SYSTEM_PROMPT;
   form.temperature = 0.3;
-  createModalOpen.value = true;
+  formModalOpen.value = true;
 }
 
-async function createAgent(): Promise<void> {
+function openEditModal(agent: AgentSummary): void {
+  editingAgentId.value = agent.id;
+  form.name = agent.name;
+  form.description = agent.description;
+  form.providerId = agent.providerId;
+  form.moduleIds = [...agent.moduleIds];
+  form.systemPrompt = agent.systemPrompt;
+  form.temperature = agent.temperature;
+  formModalOpen.value = true;
+}
+
+async function submitAgentForm(): Promise<void> {
   if (
     !form.name.trim() ||
     !form.description.trim() ||
@@ -64,16 +83,51 @@ async function createAgent(): Promise<void> {
     return;
   }
 
+  const input = {
+    description: form.description.trim(),
+    moduleIds: form.moduleIds,
+    name: form.name.trim(),
+    providerId: form.providerId,
+    systemPrompt: form.systemPrompt.trim(),
+    temperature: form.temperature,
+  };
+
   try {
-    await workspaceStore.createAgent({
-      description: form.description.trim(),
-      moduleIds: form.moduleIds,
-      name: form.name.trim(),
-      providerId: form.providerId,
-      systemPrompt: form.systemPrompt.trim(),
-      temperature: form.temperature,
-    });
-    createModalOpen.value = false;
+    if (isEditing.value) {
+      await workspaceStore.updateAgent(editingAgentId.value, input);
+    } else {
+      await workspaceStore.createAgent(input);
+    }
+
+    formModalOpen.value = false;
+  } catch {
+    return;
+  }
+}
+
+async function removeAgent(agent: AgentSummary): Promise<void> {
+  if (!window.confirm(`确定删除智能体“${agent.name}”吗？删除后不可恢复。`)) {
+    return;
+  }
+
+  try {
+    await workspaceStore.deleteAgent(agent.id);
+  } catch {
+    return;
+  }
+}
+
+async function copyAgentId(agentId: string): Promise<void> {
+  if (!navigator.clipboard) {
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(agentId);
+    copiedAgentId.value = agentId;
+    window.setTimeout(() => {
+      copiedAgentId.value = '';
+    }, 1200);
   } catch {
     return;
   }
@@ -147,6 +201,17 @@ async function toggleStatus(
         <div class="resource-card__body">
           <h2>{{ agent.name }}</h2>
           <p>{{ agent.description }}</p>
+          <div class="agent-card__identity">
+            <span>ID</span>
+            <code>{{ agent.id }}</code>
+            <button
+              class="text-button"
+              type="button"
+              @click="copyAgentId(agent.id)"
+            >
+              {{ copiedAgentId === agent.id ? '已复制' : '复制' }}
+            </button>
+          </div>
           <dl class="agent-card__meta">
             <div>
               <dt>使用模型</dt>
@@ -164,13 +229,31 @@ async function toggleStatus(
         </div>
         <footer class="resource-card__footer">
           <span>更新于 {{ formatDate(agent.updatedAt) }}</span>
-          <RouterLink
-            class="primary-button primary-button--small"
-            :to="`/chat/${agent.id}`"
-          >
-            <BaseIcon name="chat" />
-            测试
-          </RouterLink>
+          <div class="resource-card__footer-actions">
+            <button
+              class="secondary-button secondary-button--small"
+              type="button"
+              :disabled="workspaceStore.isSaving"
+              @click="openEditModal(agent)"
+            >
+              编辑
+            </button>
+            <button
+              class="secondary-button secondary-button--small secondary-button--danger"
+              type="button"
+              :disabled="workspaceStore.isSaving"
+              @click="removeAgent(agent)"
+            >
+              删除
+            </button>
+            <RouterLink
+              class="primary-button primary-button--small"
+              :to="`/chat/${agent.id}`"
+            >
+              <BaseIcon name="chat" />
+              测试
+            </RouterLink>
+          </div>
         </footer>
       </article>
 
@@ -195,12 +278,12 @@ async function toggleStatus(
     </section>
 
     <BaseModal
-      :open="createModalOpen"
-      title="创建智能体"
+      :open="formModalOpen"
+      :title="isEditing ? '编辑智能体' : '创建智能体'"
       description="模型、提示词和知识模块均会保存到真实后端。"
-      @close="createModalOpen = false"
+      @close="formModalOpen = false"
     >
-      <form class="admin-form" @submit.prevent="createAgent">
+      <form class="admin-form" @submit.prevent="submitAgentForm">
         <label>
           <span>智能体名称</span>
           <input v-model="form.name" maxlength="80" required />
@@ -267,7 +350,7 @@ async function toggleStatus(
           <button
             class="secondary-button"
             type="button"
-            @click="createModalOpen = false"
+            @click="formModalOpen = false"
           >
             取消
           </button>
@@ -276,7 +359,13 @@ async function toggleStatus(
             type="submit"
             :disabled="workspaceStore.isSaving"
           >
-            {{ workspaceStore.isSaving ? '正在创建…' : '创建智能体' }}
+            {{
+              workspaceStore.isSaving
+                ? '正在保存…'
+                : isEditing
+                  ? '保存修改'
+                  : '创建智能体'
+            }}
           </button>
         </div>
       </form>
