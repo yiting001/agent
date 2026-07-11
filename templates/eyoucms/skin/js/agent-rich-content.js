@@ -168,9 +168,14 @@ const AGENT_RICH_LIBRARIES = {
       mermaidReady = true;
     }
 
+    const source = decodeURIComponent(element.dataset.source);
+
+    // 渲染前先做语法校验，不支持的图类型（如 gauge）在此抛出可读错误。
+    await window.mermaid.parse(source);
+
     const { svg } = await window.mermaid.render(
       `chat-mermaid-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
-      decodeURIComponent(element.dataset.source),
+      source,
     );
 
     element.innerHTML = svg;
@@ -186,10 +191,24 @@ const AGENT_RICH_LIBRARIES = {
         await renderMermaid(element);
       }
     } catch (error) {
-      element.textContent =
-        error instanceof Error ? error.message : '图表渲染失败。';
-      element.classList.add('chat-visualization--error');
+      renderVisualizationFallback(element, error);
     }
+  }
+
+  /** 兜底降级：展示友好错误提示与原始图表代码，保证内容始终可读。 */
+  function renderVisualizationFallback(element, error) {
+    const message = document.createElement('p');
+    message.className = 'chat-visualization__error-message';
+    message.textContent = `图表渲染失败，已展示原始内容：${
+      error instanceof Error ? error.message : '未知错误'
+    }`;
+
+    const code = document.createElement('pre');
+    code.className = 'chat-visualization__error-source';
+    code.textContent = decodeURIComponent(element.dataset.source || '');
+
+    element.replaceChildren(message, code);
+    element.classList.add('chat-visualization--error');
   }
 
   function createController() {

@@ -69,6 +69,11 @@ ECharts 配置必须是 JSON，支持全部原生图表类型，仪表盘使用 
 ````
 
 D3 仅 Vue 管理端支持，当前提供 `bar` 和 `line` 两种结构化图表。
+
+图表渲染有统一兜底：Mermaid 渲染前先 `parse` 语法校验，任一图表配置非法或
+类型不支持（如 Mermaid 不存在的 `gauge`）时降级为友好错误提示加原始代码块，
+不中断消息内其余内容；ECharts 图表随容器尺寸变化自动 `resize`。仪表盘请使用
+ECharts 的 `gauge` 系列。
 Markdown 渲染禁止原始 HTML，避免模型输出脚本进入页面。
 EyouCMS 页的渲染库由 `templates/eyoucms/skin/js/agent-rich-content.js`
 按需懒加载，版本与 Vue 管理端依赖保持一致，图表在流式回答结束后统一绘制。
