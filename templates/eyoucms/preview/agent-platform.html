@@ -204,24 +204,9 @@
           </svg>
           开始新对话
         </button>
-        <p class="chat-sidebar__label">当前会话</p>
-        <nav class="chat-history" aria-label="当前会话">
-          <button
-            class="chat-history__item is-active"
-            data-chat-history
-            type="button"
-          >
-            <span class="chat-history__icon"
-              ><svg>
-                <use
-                  href="#chat-icon-message"
-                  xlink:href="#chat-icon-message"
-                ></use></svg
-            ></span>
-            <span class="chat-history__copy"
-              ><strong>新对话</strong><span>本次访问</span></span
-            >
-          </button>
+        <p class="chat-sidebar__label">历史会话</p>
+        <nav class="chat-history" aria-label="历史会话" data-chat-history-list>
+          <p class="chat-history__empty">暂无历史会话</p>
         </nav>
         <div class="chat-sidebar__footer">
           <p>随时开始新的对话，获取你需要的帮助。</p>
@@ -462,6 +447,7 @@
     <script src="../skin/js/agent-branding.js"></script>
     <script src="../skin/js/agent-selector.js"></script>
     <script src="../skin/js/agent-attachments.js"></script>
+    <script src="../skin/js/agent-conversations.js"></script>
     <script src="../skin/js/agent-rich-content.js"></script>
     <script src="../skin/js/agent-platform.js"></script>
   </body>

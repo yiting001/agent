@@ -1,5 +1,12 @@
-/** 富内容渲染库的基础地址；内网部署时改为自托管目录，例如 "/static/vendor"。 */
-const AGENT_RICH_ASSET_BASE_URL = 'https://cdn.jsdelivr.net/npm';
+/**
+ * 富内容渲染库的候选基础地址，按顺序依次尝试，前一个加载失败自动切换下一个。
+ * 国内网络优先命中 jsdmirror（jsdelivr 国内镜像）；内网部署可改为自托管目录，例如 ['/static/vendor']。
+ */
+const AGENT_RICH_ASSET_BASE_URLS = [
+  'https://cdn.jsdmirror.com/npm',
+  'https://cdn.jsdelivr.net/npm',
+  'https://unpkg.com',
+];
 
 /** 各渲染库路径与 Vue 管理端依赖版本保持一致，升级时需同步修改。 */
 const AGENT_RICH_LIBRARIES = {
@@ -22,42 +29,53 @@ const AGENT_RICH_LIBRARIES = {
     { display: true, left: '\\[', right: '\\]' },
     { display: false, left: '\\(', right: '\\)' },
   ];
+  /** 先把公式段替换为占位符，避免 Markdown 把 \\[ \\( 等定界符当作转义字符吃掉。 */
+  const MATH_PATTERN =
+    /\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^$\n]+?\$/g;
   const loaders = new Map();
   let markdown;
   let mermaidReady = false;
 
-  function assetUrl(library) {
-    const base = AGENT_RICH_ASSET_BASE_URL.endsWith('/')
-      ? AGENT_RICH_ASSET_BASE_URL.slice(0, -1)
-      : AGENT_RICH_ASSET_BASE_URL;
+  function assetUrl(base, library) {
+    const normalized = base.endsWith('/') ? base.slice(0, -1) : base;
 
-    return `${base}/${AGENT_RICH_LIBRARIES[library]}`;
+    return `${normalized}/${AGENT_RICH_LIBRARIES[library]}`;
   }
 
-  /** 按需加载脚本或样式，同一资源只请求一次。 */
-  function loadAsset(library, kind) {
-    if (loaders.has(library)) {
-      return loaders.get(library);
-    }
-
-    const promise = new Promise((resolve, reject) => {
+  function loadFrom(base, library, kind) {
+    return new Promise((resolve, reject) => {
       let element;
 
       if (kind === 'style') {
         element = document.createElement('link');
         element.rel = 'stylesheet';
-        element.href = assetUrl(library);
+        element.href = assetUrl(base, library);
       } else {
         element = document.createElement('script');
-        element.src = assetUrl(library);
+        element.src = assetUrl(base, library);
       }
 
       element.addEventListener('load', () => resolve());
       element.addEventListener('error', () => {
-        loaders.delete(library);
+        element.remove();
         reject(new Error(`渲染资源 ${library} 加载失败。`));
       });
       document.head.appendChild(element);
+    });
+  }
+
+  /** 按需加载脚本或样式，同一资源只请求一次；失败时自动切换备用 CDN。 */
+  function loadAsset(library, kind) {
+    if (loaders.has(library)) {
+      return loaders.get(library);
+    }
+
+    const promise = AGENT_RICH_ASSET_BASE_URLS.reduce(
+      (attempt, base) => attempt.catch(() => loadFrom(base, library, kind)),
+      Promise.reject(new Error('no-cdn')),
+    ).catch((error) => {
+      loaders.delete(library);
+      throw error;
     });
 
     loaders.set(library, promise);
@@ -103,6 +121,13 @@ const AGENT_RICH_LIBRARIES = {
     };
 
     return markdown;
+  }
+
+  function escapeHtml(text) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   async function renderMath(element) {
@@ -178,8 +203,17 @@ const AGENT_RICH_LIBRARIES = {
     async function render(element, content, final) {
       try {
         const renderer = await getMarkdown();
+        const mathSegments = [];
+        const masked = content.replace(
+          MATH_PATTERN,
+          (segment) => `@@AGENT-MATH-${mathSegments.push(segment) - 1}@@`,
+        );
 
-        element.innerHTML = renderer.render(content);
+        element.innerHTML = renderer
+          .render(masked)
+          .replace(/@@AGENT-MATH-(\d+)@@/g, (match, index) =>
+            escapeHtml(mathSegments[Number(index)] ?? match),
+          );
         await renderMath(element);
       } catch {
         element.textContent = content;

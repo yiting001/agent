@@ -275,7 +275,8 @@
 
 .resource-card__footer {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   align-items: center;
   justify-content: space-between;
   min-height: 54px;
