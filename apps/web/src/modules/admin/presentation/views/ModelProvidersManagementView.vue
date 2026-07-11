@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 import type { ModelProviderSummary } from '../../domain/admin-workspace';
+import { matchModelProviderPreset } from '../../domain/model-provider-presets';
 import { useAdminWorkspaceStore } from '../../stores/admin-workspace.store';
 import BaseIcon from '../components/BaseIcon.vue';
 import BaseModal from '../components/BaseModal.vue';
@@ -18,6 +19,32 @@ const form = reactive({
   embeddingModel: '',
   key: '',
   name: '',
+});
+
+const matchedPreset = computed(() =>
+  matchModelProviderPreset(form.baseUrl, form.key),
+);
+const embeddingHint = computed(() => {
+  const preset = matchedPreset.value;
+
+  if (!preset) {
+    return '';
+  }
+
+  return preset.embeddingModel
+    ? `已识别 ${preset.name}，推荐嵌入模型 ${preset.embeddingModel}。`
+    : `${preset.name} 不提供嵌入模型，请留空；知识库请改用其他服务商。`;
+});
+
+watch(matchedPreset, (preset, previous) => {
+  if (!modalOpen.value || !preset || preset === previous) {
+    return;
+  }
+
+  if (!form.embeddingModel.trim() && preset.embeddingModel) {
+    form.embeddingModel = preset.embeddingModel;
+    form.embeddingDimensions = '';
+  }
 });
 
 function openConfiguration(provider?: ModelProviderSummary): void {
@@ -230,6 +257,7 @@ async function saveConfiguration(): Promise<void> {
             v-model="form.embeddingModel"
             placeholder="例如 text-embedding-3-small"
           />
+          <small v-if="embeddingHint">{{ embeddingHint }}</small>
         </label>
         <label v-if="form.embeddingModel">
           <span>向量维度（可选）</span>
