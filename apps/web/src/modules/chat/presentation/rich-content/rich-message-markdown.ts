@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify';
 import MarkdownIt from 'markdown-it';
 import markdownItKatex from 'markdown-it-katex';
 
@@ -15,7 +16,7 @@ function visualizationPlaceholder(type: string, source: string): string {
 function createMarkdownRenderer(): MarkdownIt {
   const markdown = new MarkdownIt({
     breaks: true,
-    html: false,
+    html: true,
     linkify: true,
     typographer: true,
   }).use(markdownItKatex);
@@ -45,6 +46,10 @@ function createMarkdownRenderer(): MarkdownIt {
 
 const markdown = createMarkdownRenderer();
 
+/**
+ * 允许模型输出的内联 HTML（如表格单元格内的 <br>、<ul>）参与渲染，
+ * 再经 DOMPurify 白名单消毒去除脚本等危险内容，兼顾排版与安全。
+ */
 export function renderRichMarkdown(content: string): string {
-  return markdown.render(content);
+  return DOMPurify.sanitize(markdown.render(content));
 }
