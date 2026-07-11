@@ -17,6 +17,13 @@ export interface AgentDetail extends Agent {
   moduleIds: string[];
 }
 
+/** 面向公开对话页的智能体信息，只暴露展示必需字段。 */
+export interface PublicAgentSummary {
+  description: string;
+  id: string;
+  name: string;
+}
+
 export interface AgentSummary {
   conversationCount: number;
   description: string;

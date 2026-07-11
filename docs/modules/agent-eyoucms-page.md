@@ -10,6 +10,7 @@
 - 上传图片或音频，与文本一起发送给当前智能体。
 - 查看富内容回答：Markdown、数学公式、表格、ECharts（含仪表盘）与 Mermaid 图表。
 - 点击常用问题快速发起对话。
+- 未配置智能体 ID 时，从已发布智能体列表中选择要对话的智能体。
 - 清空当前对话。
 - 在手机端打开或关闭对话列表。
 - 从 `/api/branding` 读取后台配置的软件名称和图标。
@@ -41,9 +42,12 @@ templates/eyoucms/
     │   ├── agent-chat.css           # 侧栏、头部、消息和欢迎区
     │   ├── agent-composer.css       # 底部输入框
     │   ├── agent-rich-content.css   # 回答中的 Markdown、公式、表格与图表样式
+    │   ├── agent-selector.css       # 智能体选择器样式
     │   └── agent-responsive.css     # 平板与手机适配
     └── js/
         ├── agent-site-layout.js     # 自动测量站点固定导航高度
+        ├── agent-branding.js        # 品牌名称与图标加载
+        ├── agent-selector.js        # 未指定智能体时的选择器
         ├── agent-attachments.js     # 附件选择、预览、移除和上传
         ├── agent-rich-content.js    # Markdown、KaTeX、ECharts 与 Mermaid 渲染
         └── agent-platform.js        # 后台地址、品牌加载、对话和移动侧栏
@@ -143,8 +147,17 @@ http://localhost:4173/preview/agent-platform.html?agentId=<智能体ID>
 
 页面与 NestJS 后台通信的基础地址统一保存在
 `skin/js/agent-platform.js` 顶部的 `AGENT_BACKEND_BASE_URL` 常量中。
-同域部署使用 `/api`；前后端分离部署时改为完整地址，例如
-`https://api.example.com/api`。
+
+智能体 ID 的确定顺序（优先级从高到低）：
+
+1. URL 查询参数 `agentId`。
+2. EyouCMS 页面的 `agent_id` 自定义字段。
+3. `agent-platform.js` 顶部的 `AGENT_DEFAULT_AGENT_ID` 常量。
+4. 以上均未配置时，页面请求公开接口 `GET /api/public/agents`，
+   展示已发布智能体列表供访问者选择；接口只返回
+   `id`、`name`、`description`，不泄露提示词与模型信息。
+   同域部署使用 `/api`；前后端分离部署时改为完整地址，例如
+   `https://api.example.com/api`。
 
 富内容渲染库（markdown-it、KaTeX、ECharts、Mermaid）按需懒加载，
 基础地址统一保存在 `skin/js/agent-rich-content.js` 顶部的
@@ -160,7 +173,8 @@ http://localhost:4173/preview/agent-platform.html?agentId=<智能体ID>
    和 `footer.htm`。
 4. 在 EyouCMS 后台为需要承载智能体的单页或栏目选择 `agent-platform.htm`。
 5. 保存并生成页面后，直接访问该单页或栏目的前台地址。
-6. 创建 `agent_id` 自定义字段并填写智能体 ID。
+6. 可选：创建 `agent_id` 自定义字段并填写智能体 ID；
+   不填写时访问者可在页面上自行选择已发布智能体。
 7. 在 `agent-platform.js` 中设置 `AGENT_BACKEND_BASE_URL`。
 8. 标题、关键词、描述和站点图标读取 EyouCMS 当前页面字段。
 

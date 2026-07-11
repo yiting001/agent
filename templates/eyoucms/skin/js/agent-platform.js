@@ -1,6 +1,9 @@
 /** Change this deployment value when the NestJS API uses another origin. */
 const AGENT_BACKEND_BASE_URL = '/api';
 
+/** 可选：固定访问某个智能体的 ID；留空则由访问者在页面上选择。 */
+const AGENT_DEFAULT_AGENT_ID = '';
+
 (function () {
   'use strict';
 
@@ -21,9 +24,6 @@ const AGENT_BACKEND_BASE_URL = '/api';
   const sidebarBackdrop = document.querySelector('[data-chat-backdrop]');
   const sidebarOpenButton = document.querySelector('[data-chat-sidebar-open]');
   const historyItems = document.querySelectorAll('[data-chat-history]');
-  const brandRoots = document.querySelectorAll('[data-brand-root]');
-  const brandNames = document.querySelectorAll('[data-brand-name]');
-  const brandIcons = document.querySelectorAll('[data-brand-icon]');
   const query = new URLSearchParams(window.location.search);
   const configuredAgentId = document.body.dataset.agentId || '';
 
@@ -213,45 +213,31 @@ const AGENT_BACKEND_BASE_URL = '/api';
     }
   }
 
-  async function initializeBranding() {
-    const branding = await request('/branding');
-
-    if (!branding || typeof branding.softwareName !== 'string') {
-      return;
-    }
-
-    brandNames.forEach((element) => {
-      element.textContent = branding.softwareName;
-    });
-    brandRoots.forEach((element) => {
-      element.setAttribute('aria-label', branding.softwareName);
-    });
-
-    if (!branding.hasCustomIcon) {
-      return;
-    }
-
-    brandIcons.forEach((element) => {
-      const icon = document.createElement('img');
-
-      icon.alt = '';
-      icon.src = apiUrl(
-        `/branding/icon?v=${encodeURIComponent(branding.updatedAt || '')}`,
-      );
-      element.replaceChildren(icon);
-    });
-  }
-
   async function initializeAgent() {
     const requestedAgentId =
-      query.get('agentId') || validConfiguredValue(configuredAgentId);
+      query.get('agentId') ||
+      validConfiguredValue(configuredAgentId) ||
+      AGENT_DEFAULT_AGENT_ID;
 
-    if (!requestedAgentId) {
+    if (requestedAgentId) {
+      agentId = requestedAgentId;
+      ready = true;
+      return;
+    }
+
+    if (!window.AgentSelector) {
       throw new Error('请通过 agentId 参数指定要测试的智能体。');
     }
 
-    agentId = requestedAgentId;
+    const agent = await window.AgentSelector.pick({
+      container: conversation.querySelector('[data-chat-messages]'),
+      loadAgents: () => request('/public/agents'),
+    });
+
+    agentId = agent.id;
     ready = true;
+    updateSendState();
+    focusInput();
   }
 
   function scrollToLatest() {
@@ -395,6 +381,10 @@ const AGENT_BACKEND_BASE_URL = '/api';
     updateSendState();
     conversation.scrollTop = 0;
     focusInput();
+
+    if (!ready) {
+      startAgent();
+    }
   }
 
   function setSidebarOpen(open) {
@@ -469,19 +459,23 @@ const AGENT_BACKEND_BASE_URL = '/api';
     }
   });
 
+  function startAgent() {
+    initializeAgent()
+      .catch((error) => {
+        const messageList = conversation.querySelector('[data-chat-messages]');
+
+        messageList?.appendChild(
+          createMessage(
+            'assistant',
+            error instanceof Error ? error.message : '智能体加载失败。',
+          ),
+        );
+      })
+      .finally(updateSendState);
+  }
+
   resizeInput();
   updateSendState();
-  initializeBranding().catch(() => undefined);
-  initializeAgent()
-    .catch((error) => {
-      const messageList = conversation.querySelector('[data-chat-messages]');
-
-      messageList?.appendChild(
-        createMessage(
-          'assistant',
-          error instanceof Error ? error.message : '智能体加载失败。',
-        ),
-      );
-    })
-    .finally(updateSendState);
+  window.AgentBranding?.apply({ apiUrl, request }).catch(() => undefined);
+  startAgent();
 })();
