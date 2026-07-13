@@ -10,9 +10,12 @@ import type {
   CreateApiApplicationInput,
   CreateKnowledgeBaseInput,
   CreateKnowledgeModuleInput,
+  InstallSkillInput,
   KnowledgeBaseSummary,
   KnowledgeModuleSummary,
   ModelProviderSummary,
+  SkillSummary,
+  UpdateSkillInput,
 } from '../domain/admin-workspace';
 
 export abstract class AdminWorkspaceGateway {
@@ -42,6 +45,10 @@ export abstract class AdminWorkspaceGateway {
 
   abstract deleteAgent(agentId: string): Promise<void>;
 
+  abstract deleteSkill(skillId: string): Promise<void>;
+
+  abstract installSkill(input: InstallSkillInput): Promise<SkillSummary>;
+
   abstract listAgents(): Promise<AgentSummary[]>;
 
   abstract listApiApplications(): Promise<ApiApplicationSummary[]>;
@@ -49,6 +56,8 @@ export abstract class AdminWorkspaceGateway {
   abstract listKnowledgeBases(): Promise<KnowledgeBaseSummary[]>;
 
   abstract listModelProviders(): Promise<ModelProviderSummary[]>;
+
+  abstract listSkills(): Promise<SkillSummary[]>;
 
   abstract updateAgent(
     agentId: string,
@@ -59,6 +68,11 @@ export abstract class AdminWorkspaceGateway {
     agentId: string,
     status: AgentStatus,
   ): Promise<AgentSummary>;
+
+  abstract updateSkill(
+    skillId: string,
+    input: UpdateSkillInput,
+  ): Promise<SkillSummary>;
 
   abstract uploadChatAttachment(file: File): Promise<ChatAttachmentSummary>;
 

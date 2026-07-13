@@ -164,6 +164,36 @@
   white-space: nowrap;
 }
 
+.skill-tool-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.skill-tool-list li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-top: 6px;
+  overflow: hidden;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-tool-list code {
+  border-radius: 6px;
+  padding: 2px 6px;
+  color: #4c5062;
+  background: #f2f3f8;
+}
+
+.skill-tool-list span {
+  overflow: hidden;
+  color: #999dab;
+  text-overflow: ellipsis;
+}
+
 .knowledge-overview,
 .api-overview {
   display: flex;

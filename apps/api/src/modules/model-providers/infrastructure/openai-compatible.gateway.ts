@@ -5,8 +5,11 @@ import type { ApplicationConfig } from '../../../config/application.config';
 import { ApplicationError } from '../../../shared/application/application-error';
 import {
   type ChatCompletionInput,
+  type ChatToolCall,
   type EmbeddingInput,
   ModelGateway,
+  type ToolChatInput,
+  type ToolChatResult,
 } from '../application/model-gateway';
 
 interface JsonRecord {
@@ -48,6 +51,42 @@ function readChatDelta(value: unknown): string | undefined {
   return typeof firstChoice.delta.content === 'string'
     ? firstChoice.delta.content
     : undefined;
+}
+
+function readToolCalls(value: unknown): ChatToolCall[] {
+  if (!isRecord(value) || !Array.isArray(value.choices)) {
+    return [];
+  }
+
+  const firstChoice: unknown = value.choices[0];
+
+  if (
+    !isRecord(firstChoice) ||
+    !isRecord(firstChoice.message) ||
+    !Array.isArray(firstChoice.message.tool_calls)
+  ) {
+    return [];
+  }
+
+  const toolCalls: ChatToolCall[] = [];
+
+  for (const item of firstChoice.message.tool_calls) {
+    if (
+      isRecord(item) &&
+      typeof item.id === 'string' &&
+      isRecord(item.function) &&
+      typeof item.function.name === 'string' &&
+      typeof item.function.arguments === 'string'
+    ) {
+      toolCalls.push({
+        arguments: item.function.arguments,
+        id: item.id,
+        name: item.function.name,
+      });
+    }
+  }
+
+  return toolCalls;
 }
 
 function readEmbeddings(value: unknown): number[][] | undefined {
@@ -178,6 +217,25 @@ export class OpenAiCompatibleGateway extends ModelGateway {
         }
       }
     }
+  }
+
+  async chatWithTools(input: ToolChatInput): Promise<ToolChatResult> {
+    const response = await this.request(`${input.baseUrl}/chat/completions`, {
+      body: JSON.stringify({
+        messages: input.messages,
+        model: input.model,
+        temperature: input.temperature,
+        tools: input.tools,
+      }),
+      headers: this.headers(input.apiKey),
+      method: 'POST',
+    });
+    const body = await parseResponse(response);
+
+    return {
+      content: readChatContent(body) ?? '',
+      toolCalls: readToolCalls(body),
+    };
   }
 
   async embed(input: EmbeddingInput): Promise<number[][]> {

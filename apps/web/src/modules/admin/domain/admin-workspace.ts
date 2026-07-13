@@ -6,6 +6,45 @@ export type ResourceStatus =
   | 'processing'
   | 'ready';
 
+export type SkillType = 'mcp' | 'prompt';
+
+export interface SkillTool {
+  description: string;
+  inputSchema: Record<string, unknown>;
+  name: string;
+}
+
+export interface SkillSummary {
+  content: string;
+  createdAt: string;
+  description: string;
+  enabled: boolean;
+  endpoint: string;
+  id: string;
+  name: string;
+  tools: SkillTool[];
+  type: SkillType;
+  updatedAt: string;
+}
+
+export interface InstallSkillInput {
+  content: string;
+  description: string;
+  endpoint: string;
+  headers: Record<string, string>;
+  name: string;
+  type: SkillType;
+}
+
+export interface UpdateSkillInput {
+  content: string;
+  description: string;
+  enabled: boolean;
+  endpoint: string;
+  headers?: Record<string, string>;
+  name: string;
+}
+
 export interface AgentSummary {
   conversationCount: number;
   description: string;
@@ -13,6 +52,7 @@ export interface AgentSummary {
   moduleIds: string[];
   name: string;
   providerId: string;
+  skillIds: string[];
   status: AgentStatus;
   systemPrompt: string;
   temperature: number;
@@ -75,6 +115,7 @@ export interface CreateAgentInput {
   moduleIds: string[];
   name: string;
   providerId: string;
+  skillIds: string[];
   systemPrompt: string;
   temperature: number;
 }

@@ -27,6 +27,11 @@ export class CreateAgentDto {
   @IsUUID()
   providerId: string;
 
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID(undefined, { each: true })
+  skillIds: string[] = [];
+
   @IsString()
   @Length(1, 4_000)
   systemPrompt: string;

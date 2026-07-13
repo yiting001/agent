@@ -23,6 +23,7 @@ describe('useAdminWorkspaceStore', () => {
     const listApiApplications = vi
       .spyOn(gateway, 'listApiApplications')
       .mockResolvedValue([]);
+    const listSkills = vi.spyOn(gateway, 'listSkills').mockResolvedValue([]);
     const store = useAdminWorkspaceStore();
 
     await store.initialize();
@@ -31,6 +32,7 @@ describe('useAdminWorkspaceStore', () => {
     expect(listKnowledgeBases).toHaveBeenCalledOnce();
     expect(listModelProviders).toHaveBeenCalledOnce();
     expect(listApiApplications).toHaveBeenCalledOnce();
+    expect(listSkills).toHaveBeenCalledOnce();
     expect(store.errorMessage).toBe('');
     expect(store.isLoading).toBe(false);
   });
@@ -45,6 +47,7 @@ describe('useAdminWorkspaceStore', () => {
     vi.spyOn(gateway, 'listKnowledgeBases').mockResolvedValue([]);
     vi.spyOn(gateway, 'listModelProviders').mockResolvedValue([]);
     vi.spyOn(gateway, 'listApiApplications').mockResolvedValue([]);
+    vi.spyOn(gateway, 'listSkills').mockResolvedValue([]);
     const store = useAdminWorkspaceStore();
 
     await store.initialize();

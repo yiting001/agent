@@ -31,6 +31,7 @@ export class UpdateAgentStatusUseCase {
       moduleIds: agent.moduleIds,
       name: agent.name,
       providerId: agent.providerId,
+      skillIds: agent.skillIds,
       status,
       systemPrompt: agent.systemPrompt,
       temperature: agent.temperature,

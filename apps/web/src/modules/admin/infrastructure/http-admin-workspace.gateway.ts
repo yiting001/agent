@@ -13,9 +13,12 @@ import type {
   CreateApiApplicationInput,
   CreateKnowledgeBaseInput,
   CreateKnowledgeModuleInput,
+  InstallSkillInput,
   KnowledgeBaseSummary,
   KnowledgeModuleSummary,
   ModelProviderSummary,
+  SkillSummary,
+  UpdateSkillInput,
 } from '../domain/admin-workspace';
 
 interface UploadSessionSummary {
@@ -139,6 +142,17 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
     return this.httpClient.delete<void>(`/agents/${agentId}`);
   }
 
+  deleteSkill(skillId: string): Promise<void> {
+    return this.httpClient.delete<void>(`/skills/${skillId}`);
+  }
+
+  installSkill(input: InstallSkillInput): Promise<SkillSummary> {
+    return this.httpClient.post<SkillSummary, InstallSkillInput>(
+      '/skills',
+      input,
+    );
+  }
+
   listAgents(): Promise<AgentSummary[]> {
     return this.httpClient.get<AgentSummary[]>('/agents');
   }
@@ -155,6 +169,10 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
     return this.httpClient.get<ModelProviderSummary[]>('/model-providers');
   }
 
+  listSkills(): Promise<SkillSummary[]> {
+    return this.httpClient.get<SkillSummary[]>('/skills');
+  }
+
   updateAgent(agentId: string, input: CreateAgentInput): Promise<AgentSummary> {
     return this.httpClient.put<AgentSummary, CreateAgentInput>(
       `/agents/${agentId}`,
@@ -169,6 +187,13 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
     return this.httpClient.patch<AgentSummary, { status: AgentStatus }>(
       `/agents/${agentId}/status`,
       { status },
+    );
+  }
+
+  updateSkill(skillId: string, input: UpdateSkillInput): Promise<SkillSummary> {
+    return this.httpClient.put<SkillSummary, UpdateSkillInput>(
+      `/skills/${skillId}`,
+      input,
     );
   }
 

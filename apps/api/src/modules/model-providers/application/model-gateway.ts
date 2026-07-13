@@ -31,6 +31,57 @@ export interface ChatCompletionInput {
   temperature: number;
 }
 
+export interface ChatToolDefinition {
+  function: {
+    description: string;
+    name: string;
+    parameters: Record<string, unknown>;
+  };
+  type: 'function';
+}
+
+export interface ChatToolCall {
+  /** 模型输出的 JSON 字符串参数。 */
+  arguments: string;
+  id: string;
+  name: string;
+}
+
+export interface AssistantToolCallMessage {
+  content: string;
+  role: 'assistant';
+  tool_calls: Array<{
+    function: { arguments: string; name: string };
+    id: string;
+    type: 'function';
+  }>;
+}
+
+export interface ToolResultMessage {
+  content: string;
+  role: 'tool';
+  tool_call_id: string;
+}
+
+export type ToolLoopMessage =
+  | AssistantToolCallMessage
+  | ChatMessageInput
+  | ToolResultMessage;
+
+export interface ToolChatInput {
+  apiKey: string;
+  baseUrl: string;
+  messages: ToolLoopMessage[];
+  model: string;
+  temperature: number;
+  tools: ChatToolDefinition[];
+}
+
+export interface ToolChatResult {
+  content: string;
+  toolCalls: ChatToolCall[];
+}
+
 export interface EmbeddingInput {
   apiKey: string;
   baseUrl: string;
@@ -41,6 +92,7 @@ export interface EmbeddingInput {
 
 export abstract class ModelGateway {
   abstract chat(input: ChatCompletionInput): Promise<string>;
+  abstract chatWithTools(input: ToolChatInput): Promise<ToolChatResult>;
   abstract embed(input: EmbeddingInput): Promise<number[][]>;
   abstract streamChat(input: ChatCompletionInput): AsyncIterable<string>;
   abstract verify(baseUrl: string, apiKey: string): Promise<void>;

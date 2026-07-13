@@ -20,6 +20,7 @@ const form = reactive({
   moduleIds: [] as string[],
   name: '',
   providerId: '',
+  skillIds: [] as string[],
   systemPrompt: DEFAULT_SYSTEM_PROMPT,
   temperature: 0.3,
 });
@@ -57,6 +58,7 @@ function openCreateModal(): void {
   form.description = '';
   form.providerId = availableProviders.value[0]?.id ?? '';
   form.moduleIds = [];
+  form.skillIds = [];
   form.systemPrompt = DEFAULT_SYSTEM_PROMPT;
   form.temperature = 0.3;
   formModalOpen.value = true;
@@ -68,6 +70,7 @@ function openEditModal(agent: AgentSummary): void {
   form.description = agent.description;
   form.providerId = agent.providerId;
   form.moduleIds = [...agent.moduleIds];
+  form.skillIds = [...agent.skillIds];
   form.systemPrompt = agent.systemPrompt;
   form.temperature = agent.temperature;
   formModalOpen.value = true;
@@ -88,6 +91,7 @@ async function submitAgentForm(): Promise<void> {
     moduleIds: form.moduleIds,
     name: form.name.trim(),
     providerId: form.providerId,
+    skillIds: form.skillIds,
     systemPrompt: form.systemPrompt.trim(),
     temperature: form.temperature,
   };
@@ -222,6 +226,10 @@ async function toggleStatus(
               <dd>{{ agent.moduleIds.length }} 个</dd>
             </div>
             <div>
+              <dt>绑定技能</dt>
+              <dd>{{ agent.skillIds.length }} 个</dd>
+            </div>
+            <div>
               <dt>对话次数</dt>
               <dd>{{ formatCount(agent.conversationCount) }}</dd>
             </div>
@@ -344,6 +352,16 @@ async function toggleStatus(
           </label>
           <small v-if="!knowledgeModules.length"
             >暂无知识模块，可稍后创建。</small
+          >
+        </fieldset>
+        <fieldset class="module-selector">
+          <legend>绑定技能</legend>
+          <label v-for="skill in workspaceStore.skills" :key="skill.id">
+            <input v-model="form.skillIds" type="checkbox" :value="skill.id" />
+            <span>{{ skill.name }}</span>
+          </label>
+          <small v-if="!workspaceStore.skills.length"
+            >暂无技能，可到“技能管理”安装。</small
           >
         </fieldset>
         <div class="form-actions">
