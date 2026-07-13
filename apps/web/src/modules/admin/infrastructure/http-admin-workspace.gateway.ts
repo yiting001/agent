@@ -15,9 +15,12 @@ import type {
   CreateKnowledgeModuleInput,
   InstallSkillInput,
   KnowledgeBaseSummary,
+  KnowledgeDocumentContent,
+  KnowledgeDocumentSummary,
   KnowledgeModuleSummary,
   ModelProviderSummary,
   SkillSummary,
+  UpdateKnowledgeResourceInput,
   UpdateSkillInput,
 } from '../domain/admin-workspace';
 
@@ -142,8 +145,28 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
     return this.httpClient.delete<void>(`/agents/${agentId}`);
   }
 
+  deleteKnowledgeBase(knowledgeBaseId: string): Promise<void> {
+    return this.httpClient.delete<void>(`/knowledge-bases/${knowledgeBaseId}`);
+  }
+
+  deleteKnowledgeDocument(documentId: string): Promise<void> {
+    return this.httpClient.delete<void>(`/knowledge-documents/${documentId}`);
+  }
+
+  deleteKnowledgeModule(moduleId: string): Promise<void> {
+    return this.httpClient.delete<void>(`/knowledge-modules/${moduleId}`);
+  }
+
   deleteSkill(skillId: string): Promise<void> {
     return this.httpClient.delete<void>(`/skills/${skillId}`);
+  }
+
+  getKnowledgeDocumentContent(
+    documentId: string,
+  ): Promise<KnowledgeDocumentContent> {
+    return this.httpClient.get<KnowledgeDocumentContent>(
+      `/knowledge-documents/${documentId}/content`,
+    );
   }
 
   installSkill(input: InstallSkillInput): Promise<SkillSummary> {
@@ -169,6 +192,12 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
     return this.httpClient.get<ModelProviderSummary[]>('/model-providers');
   }
 
+  listModuleDocuments(moduleId: string): Promise<KnowledgeDocumentSummary[]> {
+    return this.httpClient.get<KnowledgeDocumentSummary[]>(
+      `/knowledge-modules/${moduleId}/documents`,
+    );
+  }
+
   listSkills(): Promise<SkillSummary[]> {
     return this.httpClient.get<SkillSummary[]>('/skills');
   }
@@ -188,6 +217,30 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
       `/agents/${agentId}/status`,
       { status },
     );
+  }
+
+  updateKnowledgeBase(
+    input: UpdateKnowledgeResourceInput,
+  ): Promise<KnowledgeBaseSummary> {
+    return this.httpClient.put<
+      KnowledgeBaseSummary,
+      Omit<UpdateKnowledgeResourceInput, 'id'>
+    >(`/knowledge-bases/${input.id}`, {
+      description: input.description,
+      name: input.name,
+    });
+  }
+
+  updateKnowledgeModule(
+    input: UpdateKnowledgeResourceInput,
+  ): Promise<KnowledgeModuleSummary> {
+    return this.httpClient.put<
+      KnowledgeModuleSummary,
+      Omit<UpdateKnowledgeResourceInput, 'id'>
+    >(`/knowledge-modules/${input.id}`, {
+      description: input.description,
+      name: input.name,
+    });
   }
 
   updateSkill(skillId: string, input: UpdateSkillInput): Promise<SkillSummary> {

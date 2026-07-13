@@ -143,3 +143,85 @@
 .knowledge-module .file-button {
   flex: 0 0 auto;
 }
+
+.knowledge-module__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.icon-button--danger {
+  color: #d64545;
+}
+
+.documents-hint {
+  color: #969aaa;
+  font-size: 12px;
+}
+
+.documents-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.documents-list li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #ececf3;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fafafd;
+}
+
+.documents-list__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.documents-list__main strong,
+.documents-list__main small {
+  display: block;
+}
+
+.documents-list__main small {
+  margin-top: 4px;
+  color: #969aaa;
+}
+
+.documents-list__error {
+  color: #d64545;
+}
+
+.document-preview {
+  margin-top: 14px;
+  border: 1px solid #ececf3;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fafafd;
+}
+
+.document-preview header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.document-preview pre {
+  margin: 8px 0 0;
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  color: #4a4e60;
+}
+
+.document-preview small {
+  color: #969aaa;
+}

@@ -59,6 +59,40 @@ export interface AgentSummary {
   updatedAt: string;
 }
 
+export type KnowledgeDocumentStatus =
+  | 'failed'
+  | 'processing'
+  | 'queued'
+  | 'ready'
+  | 'uploading';
+
+export interface KnowledgeDocumentContent {
+  content: string;
+  fileName: string;
+  id: string;
+  mimeType: string;
+  truncated: boolean;
+}
+
+export interface KnowledgeDocumentSummary {
+  chunkCount: number;
+  createdAt: string;
+  errorMessage?: string;
+  fileName: string;
+  id: string;
+  mimeType: string;
+  moduleId: string;
+  sizeBytes: number;
+  status: KnowledgeDocumentStatus;
+  updatedAt: string;
+}
+
+export interface UpdateKnowledgeResourceInput {
+  description: string;
+  id: string;
+  name: string;
+}
+
 export interface KnowledgeModuleSummary {
   description: string;
   documentCount: number;

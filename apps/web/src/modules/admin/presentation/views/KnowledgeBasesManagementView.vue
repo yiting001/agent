@@ -2,13 +2,10 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 
 import { useAdminWorkspaceStore } from '../../stores/admin-workspace.store';
-import {
-  formatBytes,
-  formatDate,
-  resourceStatusLabels,
-} from '../admin-display';
 import BaseIcon from '../components/BaseIcon.vue';
 import BaseModal from '../components/BaseModal.vue';
+import KnowledgeBaseCard from '../components/KnowledgeBaseCard.vue';
+import KnowledgeDocumentsModal from '../components/KnowledgeDocumentsModal.vue';
 
 const workspaceStore = useAdminWorkspaceStore();
 const createModalOpen = ref(false);
@@ -23,6 +20,15 @@ const moduleForm = reactive({
   description: '',
   name: '',
 });
+const editForm = reactive({
+  description: '',
+  id: '',
+  name: '',
+  target: 'base' as 'base' | 'module',
+});
+const editModalOpen = ref(false);
+const documentsModule = ref({ id: '', name: '' });
+const documentsModalOpen = ref(false);
 let refreshTimer: number | undefined;
 
 const embeddingProviders = computed(() =>
@@ -110,6 +116,81 @@ async function createKnowledgeModule(): Promise<void> {
   }
 }
 
+function openEditModal(
+  target: 'base' | 'module',
+  resource: { description: string; id: string; name: string },
+): void {
+  editForm.target = target;
+  editForm.id = resource.id;
+  editForm.name = resource.name;
+  editForm.description = resource.description;
+  editModalOpen.value = true;
+}
+
+async function saveEdit(): Promise<void> {
+  if (!editForm.name.trim() || !editForm.description.trim()) {
+    return;
+  }
+
+  const input = {
+    description: editForm.description.trim(),
+    id: editForm.id,
+    name: editForm.name.trim(),
+  };
+
+  try {
+    await (editForm.target === 'base'
+      ? workspaceStore.updateKnowledgeBase(input)
+      : workspaceStore.updateKnowledgeModule(input));
+    editModalOpen.value = false;
+  } catch {
+    return;
+  }
+}
+
+async function deleteKnowledgeBase(knowledgeBase: {
+  id: string;
+  name: string;
+}): Promise<void> {
+  if (
+    !window.confirm(
+      `确认删除知识库「${knowledgeBase.name}」？其下所有模块、文档和向量索引都会被清理。`,
+    )
+  ) {
+    return;
+  }
+
+  try {
+    await workspaceStore.deleteKnowledgeBase(knowledgeBase.id);
+  } catch {
+    return;
+  }
+}
+
+async function deleteKnowledgeModule(module: {
+  id: string;
+  name: string;
+}): Promise<void> {
+  if (
+    !window.confirm(
+      `确认删除模块「${module.name}」？模块内文档和向量索引都会被清理。`,
+    )
+  ) {
+    return;
+  }
+
+  try {
+    await workspaceStore.deleteKnowledgeModule(module.id);
+  } catch {
+    return;
+  }
+}
+
+function openDocumentsModal(module: { id: string; name: string }): void {
+  documentsModule.value = { id: module.id, name: module.name };
+  documentsModalOpen.value = true;
+}
+
 async function handleFiles(moduleId: string, event: Event): Promise<void> {
   const input = event.target;
 
@@ -144,86 +225,18 @@ async function handleFiles(moduleId: string, event: Event): Promise<void> {
     </section>
 
     <section v-if="workspaceStore.knowledgeBases.length" class="knowledge-grid">
-      <article
+      <KnowledgeBaseCard
         v-for="knowledgeBase in workspaceStore.knowledgeBases"
         :key="knowledgeBase.id"
-        class="resource-card knowledge-card"
-      >
-        <header class="resource-card__header">
-          <span class="resource-avatar resource-avatar--database">
-            <BaseIcon name="database" />
-          </span>
-          <span
-            class="status-badge"
-            :class="`status-badge--${knowledgeBase.status}`"
-          >
-            <i v-if="knowledgeBase.status === 'processing'"></i>
-            {{ resourceStatusLabels[knowledgeBase.status] }}
-          </span>
-          <button
-            class="text-button"
-            type="button"
-            @click="openModuleModal(knowledgeBase.id)"
-          >
-            <BaseIcon name="plus" />
-            新增模块
-          </button>
-        </header>
-        <div class="resource-card__body">
-          <h2>{{ knowledgeBase.name }}</h2>
-          <p>{{ knowledgeBase.description }}</p>
-          <div class="knowledge-card__stats">
-            <span
-              ><strong>{{ knowledgeBase.documentCount }}</strong> 个文档</span
-            >
-            <span
-              ><strong>{{ formatBytes(knowledgeBase.sizeBytes) }}</strong>
-              总大小</span
-            >
-          </div>
-          <small>
-            {{ knowledgeBase.embeddingModel }} ·
-            {{ knowledgeBase.embeddingDimensions }} 维
-          </small>
-          <div class="knowledge-modules">
-            <section
-              v-for="module in knowledgeBase.modules"
-              :key="module.id"
-              class="knowledge-module"
-            >
-              <div>
-                <strong>{{ module.name }}</strong>
-                <small>
-                  {{ module.documentCount }} 个文档 ·
-                  {{ formatBytes(module.sizeBytes) }}
-                </small>
-                <p>{{ module.description }}</p>
-              </div>
-              <label class="text-button file-button">
-                <BaseIcon name="upload" />
-                {{
-                  workspaceStore.uploadProgress[module.id] === undefined
-                    ? '上传文档'
-                    : `${workspaceStore.uploadProgress[module.id]}%`
-                }}
-                <input
-                  type="file"
-                  accept=".txt,.docx,.pdf,.md,.markdown,.html,.htm,.csv,.json"
-                  multiple
-                  :disabled="
-                    workspaceStore.uploadProgress[module.id] !== undefined
-                  "
-                  @change="handleFiles(module.id, $event)"
-                />
-              </label>
-            </section>
-          </div>
-        </div>
-        <footer class="resource-card__footer">
-          <span>更新于 {{ formatDate(knowledgeBase.updatedAt) }}</span>
-          <span>{{ knowledgeBase.modules.length }} 个可复用模块</span>
-        </footer>
-      </article>
+        :knowledge-base="knowledgeBase"
+        @create-module="openModuleModal(knowledgeBase.id)"
+        @edit-base="openEditModal('base', knowledgeBase)"
+        @delete-base="deleteKnowledgeBase(knowledgeBase)"
+        @edit-module="(module) => openEditModal('module', module)"
+        @delete-module="(module) => deleteKnowledgeModule(module)"
+        @view-documents="(module) => openDocumentsModal(module)"
+        @upload-files="handleFiles"
+      />
     </section>
 
     <section v-else-if="!workspaceStore.isLoading" class="empty-state">
@@ -367,5 +380,50 @@ async function handleFiles(moduleId: string, event: Event): Promise<void> {
         </div>
       </form>
     </BaseModal>
+    <BaseModal
+      :open="editModalOpen"
+      :title="editForm.target === 'base' ? '编辑知识库' : '编辑知识模块'"
+      description="修改名称和用途说明，嵌入模型创建后不可更换。"
+      @close="editModalOpen = false"
+    >
+      <form class="admin-form" @submit.prevent="saveEdit">
+        <label>
+          <span>名称</span>
+          <input v-model="editForm.name" maxlength="80" required />
+        </label>
+        <label>
+          <span>用途说明</span>
+          <textarea
+            v-model="editForm.description"
+            rows="3"
+            maxlength="240"
+            required
+          ></textarea>
+        </label>
+        <div class="form-actions">
+          <button
+            class="secondary-button"
+            type="button"
+            @click="editModalOpen = false"
+          >
+            取消
+          </button>
+          <button
+            class="primary-button"
+            type="submit"
+            :disabled="workspaceStore.isSaving"
+          >
+            {{ workspaceStore.isSaving ? '正在保存…' : '保存修改' }}
+          </button>
+        </div>
+      </form>
+    </BaseModal>
+
+    <KnowledgeDocumentsModal
+      :open="documentsModalOpen"
+      :module-id="documentsModule.id"
+      :module-name="documentsModule.name"
+      @close="documentsModalOpen = false"
+    />
   </div>
 </template>

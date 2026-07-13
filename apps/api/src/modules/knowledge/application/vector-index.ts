@@ -19,6 +19,11 @@ export interface KnowledgeSearchResult {
 }
 
 export abstract class VectorIndex {
+  abstract deleteDocuments(
+    knowledgeBase: KnowledgeBase,
+    documentIds: string[],
+  ): Promise<void>;
+  abstract dropCollection(knowledgeBase: KnowledgeBase): Promise<void>;
   abstract ensureCollection(knowledgeBase: KnowledgeBase): Promise<void>;
   abstract search(
     knowledgeBase: KnowledgeBase,

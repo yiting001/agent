@@ -12,6 +12,7 @@ defineProps<{
     | 'copy'
     | 'database'
     | 'document'
+    | 'edit'
     | 'home'
     | 'menu'
     | 'model'
@@ -20,6 +21,7 @@ defineProps<{
     | 'search'
     | 'settings'
     | 'skill'
+    | 'trash'
     | 'upload'
     | 'user';
 }>();
@@ -89,8 +91,16 @@ defineProps<{
       <path d="M6 3h8l4 4v14H6V3Z" />
       <path d="M14 3v5h5M9 12h6M9 16h6" />
     </template>
+    <template v-else-if="name === 'edit'">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z" />
+    </template>
     <template v-else-if="name === 'skill'">
       <path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2Z" />
+    </template>
+    <template v-else-if="name === 'trash'">
+      <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
+      <path d="M10 11v6M14 11v6" />
     </template>
     <template v-else-if="name === 'upload'">
       <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />

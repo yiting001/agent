@@ -11,6 +11,7 @@ import type {
   KnowledgeModule,
   KnowledgeResourceStatus,
 } from '../../domain/knowledge';
+import { IngestionJobEntity } from './ingestion-job.entity';
 import { KnowledgeBaseEntity } from './knowledge-base.entity';
 import { KnowledgeDocumentEntity } from './knowledge-document.entity';
 import { KnowledgeModuleEntity } from './knowledge-module.entity';
@@ -42,8 +43,35 @@ export class TypeOrmKnowledgeCatalogRepository extends KnowledgeCatalogRepositor
     private readonly modules: Repository<KnowledgeModuleEntity>,
     @InjectRepository(KnowledgeDocumentEntity)
     private readonly documents: Repository<KnowledgeDocumentEntity>,
+    @InjectRepository(IngestionJobEntity)
+    private readonly jobs: Repository<IngestionJobEntity>,
   ) {
     super();
+  }
+
+  async deleteBase(id: string): Promise<void> {
+    const modules = await this.modules.findBy({ knowledgeBaseId: id });
+
+    for (const module of modules) {
+      await this.deleteModule(module.id);
+    }
+
+    await this.bases.delete({ id });
+  }
+
+  async deleteDocument(id: string): Promise<void> {
+    await this.jobs.delete({ documentId: id });
+    await this.documents.delete({ id });
+  }
+
+  async deleteModule(id: string): Promise<void> {
+    const documents = await this.documents.findBy({ moduleId: id });
+
+    for (const document of documents) {
+      await this.deleteDocument(document.id);
+    }
+
+    await this.modules.delete({ id });
   }
 
   async findBase(id: string): Promise<KnowledgeBase | undefined> {
@@ -54,6 +82,12 @@ export class TypeOrmKnowledgeCatalogRepository extends KnowledgeCatalogRepositor
 
   async findModule(id: string): Promise<KnowledgeModule | undefined> {
     const entity = await this.modules.findOneBy({ id });
+
+    return entity ? { ...entity } : undefined;
+  }
+
+  async findDocument(id: string): Promise<KnowledgeDocument | undefined> {
+    const entity = await this.documents.findOneBy({ id });
 
     return entity ? { ...entity } : undefined;
   }
@@ -127,6 +161,24 @@ export class TypeOrmKnowledgeCatalogRepository extends KnowledgeCatalogRepositor
         updatedAt: knowledgeBase.updatedAt.toISOString(),
       };
     });
+  }
+
+  async listDocuments(moduleId: string): Promise<KnowledgeDocument[]> {
+    const entities = await this.documents.find({
+      order: { updatedAt: 'DESC' },
+      where: { moduleId },
+    });
+
+    return entities.map((entity) => ({ ...entity }));
+  }
+
+  async listModules(knowledgeBaseId: string): Promise<KnowledgeModule[]> {
+    const entities = await this.modules.find({
+      order: { createdAt: 'ASC' },
+      where: { knowledgeBaseId },
+    });
+
+    return entities.map((entity) => ({ ...entity }));
   }
 
   async saveBase(knowledgeBase: KnowledgeBase): Promise<void> {
