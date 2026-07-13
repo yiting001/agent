@@ -8,6 +8,7 @@ import {
 } from './config/application.config';
 import { InitialKnowledgePlatform1752150000000 } from './database/migrations/1752150000000-initial-knowledge-platform';
 import { AddBrandSettings1752151000000 } from './database/migrations/1752151000000-add-brand-settings';
+import { AddAgentSkills1752152000000 } from './database/migrations/1752152000000-add-agent-skills';
 import { BrandingModule } from './modules/branding/branding.module';
 import { HealthModule } from './modules/health/health.module';
 import { AgentsModule } from './modules/agents/agents.module';
@@ -15,6 +16,7 @@ import { ApiAccessModule } from './modules/api-access/api-access.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { ModelProvidersModule } from './modules/model-providers/model-providers.module';
+import { SkillsModule } from './modules/skills/skills.module';
 
 @Module({
   imports: [
@@ -35,6 +37,7 @@ import { ModelProvidersModule } from './modules/model-providers/model-providers.
           migrations: [
             InitialKnowledgePlatform1752150000000,
             AddBrandSettings1752151000000,
+            AddAgentSkills1752152000000,
           ],
           migrationsRun: config.databaseMigrationsRun,
           synchronize: config.databaseSynchronize,
@@ -45,6 +48,7 @@ import { ModelProvidersModule } from './modules/model-providers/model-providers.
     ModelProvidersModule,
     BrandingModule,
     KnowledgeModule,
+    SkillsModule,
     AgentsModule,
     ApiAccessModule,
     ChatModule,

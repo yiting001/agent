@@ -10,6 +10,7 @@ function summary(overrides: Partial<AgentSummary>): AgentSummary {
     moduleIds: [],
     name: '智能体',
     providerId: 'provider-id',
+    skillIds: [],
     status: 'published',
     systemPrompt: '内部提示词',
     temperature: 0.7,

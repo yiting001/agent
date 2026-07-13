@@ -20,6 +20,8 @@ const DEFAULT_INGESTION_POLL_INTERVAL_MS = 2_000;
 const DEFAULT_KNOWLEDGE_CHUNK_CHARACTERS = 1_200;
 const DEFAULT_KNOWLEDGE_CHUNK_OVERLAP = 180;
 const DEFAULT_EMBEDDING_BATCH_SIZE = 24;
+const DEFAULT_MCP_CLIENT_NAME = 'agent-api';
+const DEFAULT_SKILL_TOOL_MAX_ROUNDS = 5;
 
 /** Runtime values owned by the API process. */
 export type ZvecIndexType = 'diskann' | 'hnsw';
@@ -41,7 +43,9 @@ export interface ApplicationConfig {
   knowledgeMaxDocumentBytes: number;
   knowledgeStoragePath: string;
   knowledgeUploadChunkBytes: number;
+  mcpClientName: string;
   modelRequestTimeoutMs: number;
+  skillToolMaxRounds: number;
   port: number;
   serviceName: string;
   defaultSoftwareName: string;
@@ -188,12 +192,18 @@ export const applicationConfig = registerAs(
         process.env.KNOWLEDGE_UPLOAD_CHUNK_BYTES,
         DEFAULT_UPLOAD_CHUNK_BYTES,
       ),
+      mcpClientName: process.env.MCP_CLIENT_NAME ?? DEFAULT_MCP_CLIENT_NAME,
       modelRequestTimeoutMs: parsePositiveInteger(
         'MODEL_REQUEST_TIMEOUT_MS',
         process.env.MODEL_REQUEST_TIMEOUT_MS,
         120_000,
       ),
       port: parsePort(process.env.API_PORT),
+      skillToolMaxRounds: parsePositiveInteger(
+        'SKILL_TOOL_MAX_ROUNDS',
+        process.env.SKILL_TOOL_MAX_ROUNDS,
+        DEFAULT_SKILL_TOOL_MAX_ROUNDS,
+      ),
       serviceName: process.env.API_SERVICE_NAME ?? DEFAULT_SERVICE_NAME,
       zvecCollectionPrefix: parseZvecCollectionPrefix(
         process.env.ZVEC_COLLECTION_PREFIX,

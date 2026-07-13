@@ -19,6 +19,7 @@ defineProps<{
     | 'plus'
     | 'search'
     | 'settings'
+    | 'skill'
     | 'upload'
     | 'user';
 }>();
@@ -87,6 +88,9 @@ defineProps<{
     <template v-else-if="name === 'document'">
       <path d="M6 3h8l4 4v14H6V3Z" />
       <path d="M14 3v5h5M9 12h6M9 16h6" />
+    </template>
+    <template v-else-if="name === 'skill'">
+      <path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2Z" />
     </template>
     <template v-else-if="name === 'upload'">
       <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />

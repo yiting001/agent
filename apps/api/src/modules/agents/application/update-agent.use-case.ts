@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { ApplicationError } from '../../../shared/application/application-error';
 import { KnowledgeCatalogService } from '../../knowledge/application/knowledge-catalog.service';
 import { ModelProviderRuntimeService } from '../../model-providers/application/model-provider-runtime.service';
+import { SkillCatalogService } from '../../skills/application/skill-catalog.service';
 import type { AgentSummary } from '../domain/agent';
 import { AgentCatalogService } from './agent-catalog.service';
 import { AgentRepository } from './agent.repository';
@@ -16,6 +17,7 @@ export class UpdateAgentUseCase {
     private readonly repository: AgentRepository,
     private readonly knowledgeCatalog: KnowledgeCatalogService,
     private readonly modelProviders: ModelProviderRuntimeService,
+    private readonly skillCatalog: SkillCatalogService,
   ) {}
 
   async execute(
@@ -33,6 +35,7 @@ export class UpdateAgentUseCase {
     }
 
     await this.knowledgeCatalog.getModules(command.moduleIds);
+    await this.skillCatalog.getSkills(command.skillIds);
 
     const now = new Date();
     const agent = {
@@ -48,7 +51,7 @@ export class UpdateAgentUseCase {
       updatedAt: now,
     };
 
-    await this.repository.save(agent, command.moduleIds);
+    await this.repository.save(agent, command.moduleIds, command.skillIds);
 
     return {
       conversationCount: agent.conversationCount,
@@ -57,6 +60,7 @@ export class UpdateAgentUseCase {
       moduleIds: [...new Set(command.moduleIds)],
       name: agent.name,
       providerId: agent.providerId,
+      skillIds: [...new Set(command.skillIds)],
       status: agent.status,
       systemPrompt: agent.systemPrompt,
       temperature: agent.temperature,

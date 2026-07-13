@@ -10,8 +10,11 @@ import {
   ModelGateway,
 } from '../../model-providers/application/model-gateway';
 import { ModelProviderRuntimeService } from '../../model-providers/application/model-provider-runtime.service';
+import { SkillRuntimeService } from '../../skills/application/skill-runtime.service';
+import type { Skill } from '../../skills/domain/skill';
 import type { AgentChatResponse, ConversationMessage } from '../domain/chat';
 import { ChatAttachmentStorage } from './chat-attachment.storage';
+import { SkillToolLoopService } from './skill-tool-loop.service';
 
 export interface ChatWithAgentCommand {
   /** 调用方来源：admin 无限制；public 排除已停用；api 仅限已发布。 */
@@ -41,6 +44,18 @@ function buildKnowledgeContext(
     .join('\n\n');
 }
 
+function buildSkillInstructions(instructions: Skill[]): string {
+  if (instructions.length === 0) {
+    return '';
+  }
+
+  const sections = instructions
+    .map((skill) => `### ${skill.name}\n${skill.content}`)
+    .join('\n\n');
+
+  return `\n\n你已安装下列技能指令，回答时须遵循：\n\n${sections}`;
+}
+
 function buildTextOnlyMessages(
   messages: ConversationMessage[],
 ): ChatMessageInput[] {
@@ -67,6 +82,8 @@ export class ChatWithAgentUseCase {
     private readonly modelProviders: ModelProviderRuntimeService,
     private readonly modelGateway: ModelGateway,
     private readonly attachmentStorage: ChatAttachmentStorage,
+    private readonly skillRuntime: SkillRuntimeService,
+    private readonly toolLoop: SkillToolLoopService,
   ) {}
 
   async execute(command: ChatWithAgentCommand): Promise<AgentChatResponse> {
@@ -114,12 +131,13 @@ export class ChatWithAgentUseCase {
       );
     }
 
-    const [provider, knowledge] = await Promise.all([
+    const [provider, knowledge, skillSet] = await Promise.all([
       this.modelProviders.get(agent.providerId),
       this.knowledgeRetriever.retrieve(
         agent.moduleIds,
         latestUserMessage.content.trim() || '请分析用户上传的图片或音频附件。',
       ),
+      this.skillRuntime.load(agent.skillIds),
     ]);
 
     if (!provider.chatModel) {
@@ -137,7 +155,7 @@ export class ChatWithAgentUseCase {
 
 请优先依据下列企业知识回答；无法从资料确认时应明确说明，不得编造。
 
-${buildKnowledgeContext(knowledge)}`,
+${buildKnowledgeContext(knowledge)}${buildSkillInstructions(skillSet.instructions)}`,
       role: 'system',
     };
     const request = {
@@ -150,12 +168,15 @@ ${buildKnowledgeContext(knowledge)}`,
     const hasMultimodalContent = conversationMessages.some(
       (message) => typeof message.content !== 'string',
     );
-    const content = hasMultimodalContent
-      ? this.streamWithTextOnlyFallback(request, [
-          systemMessage,
-          ...buildTextOnlyMessages(command.messages),
-        ])
-      : this.modelGateway.streamChat(request);
+    const content =
+      skillSet.toolProviders.length > 0
+        ? this.streamToolLoop(request, skillSet.toolProviders)
+        : hasMultimodalContent
+          ? this.streamWithTextOnlyFallback(request, [
+              systemMessage,
+              ...buildTextOnlyMessages(command.messages),
+            ])
+          : this.modelGateway.streamChat(request);
 
     return {
       agentId: agent.id,
@@ -221,6 +242,27 @@ ${buildKnowledgeContext(knowledge)}`,
         return { content: parts, role: message.role };
       }),
     );
+  }
+
+  /** 带工具技能时走 function calling 执行环，最终回答以单块内容输出。 */
+  private async *streamToolLoop(
+    request: Parameters<ModelGateway['streamChat']>[0],
+    toolProviders: Skill[],
+  ): AsyncIterable<string> {
+    const answer = await this.toolLoop.run(
+      {
+        apiKey: request.apiKey,
+        baseUrl: request.baseUrl,
+        messages: request.messages,
+        model: request.model,
+        temperature: request.temperature,
+      },
+      toolProviders,
+    );
+
+    if (answer) {
+      yield answer;
+    }
   }
 
   /**
