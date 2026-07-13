@@ -7,6 +7,7 @@ import {
   type ApplicationConfig,
 } from './config/application.config';
 import { HealthModule } from './modules/health/health.module';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { HealthModule } from './modules/health/health.module';
       },
     }),
     HealthModule,
+    KnowledgeModule,
   ],
 })
 export class AppModule {}
