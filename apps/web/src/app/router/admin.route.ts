@@ -39,6 +39,16 @@ export const adminRoute: RouteRecordRaw = {
     },
     {
       component: () =>
+        import('@/modules/admin/presentation/views/SkillsManagementView.vue'),
+      meta: {
+        description: '安装提示词技能与 MCP 工具，扩展智能体能力。',
+        title: '技能管理',
+      },
+      name: 'skills-management',
+      path: 'skills',
+    },
+    {
+      component: () =>
         import(
           '@/modules/admin/presentation/views/ModelProvidersManagementView.vue'
         ),

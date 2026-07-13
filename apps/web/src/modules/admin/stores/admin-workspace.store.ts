@@ -13,11 +13,14 @@ import type {
   CreateApiApplicationInput,
   CreateKnowledgeBaseInput,
   CreateKnowledgeModuleInput,
+  InstallSkillInput,
   KnowledgeBaseSummary,
   KnowledgeDocumentContent,
   KnowledgeDocumentSummary,
   ModelProviderSummary,
+  SkillSummary,
   UpdateKnowledgeResourceInput,
+  UpdateSkillInput,
 } from '../domain/admin-workspace';
 
 const gateway = applicationDependencies.adminWorkspaceGateway;
@@ -40,6 +43,7 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
   const knowledgeBases = ref<KnowledgeBaseSummary[]>([]);
   const modelProviders = ref<ModelProviderSummary[]>([]);
   const apiApplications = ref<ApiApplicationSummary[]>([]);
+  const skills = ref<SkillSummary[]>([]);
   const errorMessage = ref('');
   const isLoading = ref(false);
   const isSaving = ref(false);
@@ -97,11 +101,13 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
         knowledgeBases.value,
         modelProviders.value,
         apiApplications.value,
+        skills.value,
       ] = await Promise.all([
         gateway.listAgents(),
         gateway.listKnowledgeBases(),
         gateway.listModelProviders(),
         gateway.listApiApplications(),
+        gateway.listSkills(),
       ]);
     } catch (error) {
       errorMessage.value =
@@ -141,6 +147,33 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     );
 
     agents.value = replaceById(agents.value, updated);
+  }
+
+  async function installSkill(input: InstallSkillInput): Promise<void> {
+    const installed = await execute(() => gateway.installSkill(input));
+
+    skills.value.unshift(installed);
+  }
+
+  async function updateSkill(
+    skillId: string,
+    input: UpdateSkillInput,
+  ): Promise<void> {
+    const updated = await execute(() => gateway.updateSkill(skillId, input));
+
+    skills.value = replaceById(skills.value, updated);
+  }
+
+  async function deleteSkill(skillId: string): Promise<void> {
+    await execute(() => gateway.deleteSkill(skillId));
+
+    skills.value = skills.value.filter((skill) => skill.id !== skillId);
+  }
+
+  function skillName(skillId: string): string {
+    return (
+      skills.value.find((skill) => skill.id === skillId)?.name ?? '未知技能'
+    );
   }
 
   async function createKnowledgeBase(
@@ -317,11 +350,13 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     deleteKnowledgeBase,
     deleteKnowledgeDocument,
     deleteKnowledgeModule,
+    deleteSkill,
     getKnowledgeDocumentContent,
     documentCount,
     enabledProviderCount,
     errorMessage,
     initialize,
+    installSkill,
     isLoading,
     isSaving,
     knowledgeBases,
@@ -332,10 +367,13 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     publishedAgentCount,
     refreshKnowledgeBases,
     requestCount,
+    skillName,
+    skills,
     updateAgent,
     updateAgentStatus,
     updateKnowledgeBase,
     updateKnowledgeModule,
+    updateSkill,
     uploadChatAttachment,
     uploadKnowledgeFile,
     uploadProgress,

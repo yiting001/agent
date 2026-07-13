@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { ModelProvidersModule } from '../model-providers/model-providers.module';
+import { SkillsModule } from '../skills/skills.module';
 import { AgentCatalogService } from './application/agent-catalog.service';
 import { AgentRepository } from './application/agent.repository';
 import { CreateAgentUseCase } from './application/create-agent.use-case';
@@ -13,6 +14,7 @@ import { UpdateAgentStatusUseCase } from './application/update-agent-status.use-
 import { UpdateAgentUseCase } from './application/update-agent.use-case';
 import { AgentEntity } from './infrastructure/agent.entity';
 import { AgentKnowledgeModuleEntity } from './infrastructure/agent-knowledge-module.entity';
+import { AgentSkillEntity } from './infrastructure/agent-skill.entity';
 import { TypeOrmAgentRepository } from './infrastructure/typeorm-agent.repository';
 import { CreateAgentController } from './presentation/http/create-agent.controller';
 import { DeleteAgentController } from './presentation/http/delete-agent.controller';
@@ -32,9 +34,14 @@ import { UpdateAgentController } from './presentation/http/update-agent.controll
   ],
   exports: [AgentCatalogService, AgentRepository],
   imports: [
-    TypeOrmModule.forFeature([AgentEntity, AgentKnowledgeModuleEntity]),
+    TypeOrmModule.forFeature([
+      AgentEntity,
+      AgentKnowledgeModuleEntity,
+      AgentSkillEntity,
+    ]),
     KnowledgeModule,
     ModelProvidersModule,
+    SkillsModule,
   ],
   providers: [
     AgentCatalogService,

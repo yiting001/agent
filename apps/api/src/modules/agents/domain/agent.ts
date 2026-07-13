@@ -15,6 +15,7 @@ export interface Agent {
 
 export interface AgentDetail extends Agent {
   moduleIds: string[];
+  skillIds: string[];
 }
 
 /** 面向公开对话页的智能体信息，只暴露展示必需字段。 */
@@ -31,6 +32,7 @@ export interface AgentSummary {
   moduleIds: string[];
   name: string;
   providerId: string;
+  skillIds: string[];
   status: AgentStatus;
   systemPrompt: string;
   temperature: number;

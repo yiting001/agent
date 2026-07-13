@@ -20,6 +20,7 @@ defineProps<{
     | 'plus'
     | 'search'
     | 'settings'
+    | 'skill'
     | 'trash'
     | 'upload'
     | 'user';
@@ -93,6 +94,9 @@ defineProps<{
     <template v-else-if="name === 'edit'">
       <path d="M12 20h9" />
       <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z" />
+    </template>
+    <template v-else-if="name === 'skill'">
+      <path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2Z" />
     </template>
     <template v-else-if="name === 'trash'">
       <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />

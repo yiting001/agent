@@ -12,6 +12,7 @@ import type {
 } from '../domain/agent';
 import { AgentEntity } from './agent.entity';
 import { AgentKnowledgeModuleEntity } from './agent-knowledge-module.entity';
+import { AgentSkillEntity } from './agent-skill.entity';
 
 @Injectable()
 export class TypeOrmAgentRepository extends AgentRepository {
@@ -20,6 +21,8 @@ export class TypeOrmAgentRepository extends AgentRepository {
     private readonly agents: Repository<AgentEntity>,
     @InjectRepository(AgentKnowledgeModuleEntity)
     private readonly bindings: Repository<AgentKnowledgeModuleEntity>,
+    @InjectRepository(AgentSkillEntity)
+    private readonly skillBindings: Repository<AgentSkillEntity>,
     private readonly dataSource: DataSource,
   ) {
     super();
@@ -30,20 +33,23 @@ export class TypeOrmAgentRepository extends AgentRepository {
       await manager
         .getRepository(AgentKnowledgeModuleEntity)
         .delete({ agentId: id });
+      await manager.getRepository(AgentSkillEntity).delete({ agentId: id });
       await manager.getRepository(AgentEntity).delete({ id });
     });
   }
 
   async findById(id: string): Promise<AgentDetail | undefined> {
-    const [agent, bindings] = await Promise.all([
+    const [agent, bindings, skillBindings] = await Promise.all([
       this.agents.findOneBy({ id }),
       this.bindings.findBy({ agentId: id }),
+      this.skillBindings.findBy({ agentId: id }),
     ]);
 
     return agent
       ? {
           ...agent,
           moduleIds: bindings.map((binding) => binding.moduleId),
+          skillIds: skillBindings.map((binding) => binding.skillId),
         }
       : undefined;
   }
@@ -53,9 +59,10 @@ export class TypeOrmAgentRepository extends AgentRepository {
   }
 
   async list(): Promise<AgentSummary[]> {
-    const [agents, bindings] = await Promise.all([
+    const [agents, bindings, skillBindings] = await Promise.all([
       this.agents.find({ order: { updatedAt: 'DESC' } }),
       this.bindings.find(),
+      this.skillBindings.find(),
     ]);
 
     return agents.map((agent) => ({
@@ -67,6 +74,9 @@ export class TypeOrmAgentRepository extends AgentRepository {
         .map((binding) => binding.moduleId),
       name: agent.name,
       providerId: agent.providerId,
+      skillIds: skillBindings
+        .filter((binding) => binding.agentId === agent.id)
+        .map((binding) => binding.skillId),
       status: agent.status,
       systemPrompt: agent.systemPrompt,
       temperature: agent.temperature,
@@ -74,7 +84,11 @@ export class TypeOrmAgentRepository extends AgentRepository {
     }));
   }
 
-  async save(agent: Agent, moduleIds: string[]): Promise<void> {
+  async save(
+    agent: Agent,
+    moduleIds: string[],
+    skillIds: string[],
+  ): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
       await manager.getRepository(AgentEntity).save(agent);
       await manager
@@ -85,6 +99,16 @@ export class TypeOrmAgentRepository extends AgentRepository {
           agentId: agent.id,
           id: randomUUID(),
           moduleId,
+        })),
+      );
+      await manager
+        .getRepository(AgentSkillEntity)
+        .delete({ agentId: agent.id });
+      await manager.getRepository(AgentSkillEntity).save(
+        [...new Set(skillIds)].map((skillId) => ({
+          agentId: agent.id,
+          id: randomUUID(),
+          skillId,
         })),
       );
     });
