@@ -1,4 +1,16 @@
-import type { AgentStatus, ResourceStatus } from '../domain/admin-workspace';
+import type {
+  AgentStatus,
+  KnowledgeDocumentStatus,
+  ResourceStatus,
+} from '../domain/admin-workspace';
+
+export const documentStatusLabels: Record<KnowledgeDocumentStatus, string> = {
+  failed: '处理失败',
+  processing: '处理中',
+  queued: '排队中',
+  ready: '可用',
+  uploading: '上传中',
+};
 
 export const agentStatusLabels: Record<AgentStatus, string> = {
   disabled: '已停用',

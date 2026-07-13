@@ -14,7 +14,10 @@ import type {
   CreateKnowledgeBaseInput,
   CreateKnowledgeModuleInput,
   KnowledgeBaseSummary,
+  KnowledgeDocumentContent,
+  KnowledgeDocumentSummary,
   ModelProviderSummary,
+  UpdateKnowledgeResourceInput,
 } from '../domain/admin-workspace';
 
 const gateway = applicationDependencies.adminWorkspaceGateway;
@@ -161,6 +164,57 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     }
   }
 
+  async function updateKnowledgeBase(
+    input: UpdateKnowledgeResourceInput,
+  ): Promise<void> {
+    const updated = await execute(() => gateway.updateKnowledgeBase(input));
+
+    knowledgeBases.value = replaceById(knowledgeBases.value, updated);
+  }
+
+  async function deleteKnowledgeBase(knowledgeBaseId: string): Promise<void> {
+    await execute(() => gateway.deleteKnowledgeBase(knowledgeBaseId));
+
+    knowledgeBases.value = knowledgeBases.value.filter(
+      (knowledgeBase) => knowledgeBase.id !== knowledgeBaseId,
+    );
+  }
+
+  async function updateKnowledgeModule(
+    input: UpdateKnowledgeResourceInput,
+  ): Promise<void> {
+    const updated = await execute(() => gateway.updateKnowledgeModule(input));
+    const knowledgeBase = knowledgeBases.value.find(
+      (item) => item.id === updated.knowledgeBaseId,
+    );
+
+    if (knowledgeBase) {
+      knowledgeBase.modules = replaceById(knowledgeBase.modules, updated);
+    }
+  }
+
+  async function deleteKnowledgeModule(moduleId: string): Promise<void> {
+    await execute(() => gateway.deleteKnowledgeModule(moduleId));
+    await refreshKnowledgeBases();
+  }
+
+  function getKnowledgeDocumentContent(
+    documentId: string,
+  ): Promise<KnowledgeDocumentContent> {
+    return execute(() => gateway.getKnowledgeDocumentContent(documentId));
+  }
+
+  function listModuleDocuments(
+    moduleId: string,
+  ): Promise<KnowledgeDocumentSummary[]> {
+    return execute(() => gateway.listModuleDocuments(moduleId));
+  }
+
+  async function deleteKnowledgeDocument(documentId: string): Promise<void> {
+    await execute(() => gateway.deleteKnowledgeDocument(documentId));
+    await refreshKnowledgeBases();
+  }
+
   async function refreshKnowledgeBases(): Promise<void> {
     if (refreshingKnowledgeBases) {
       return;
@@ -260,6 +314,10 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     createKnowledgeBase,
     createKnowledgeModule,
     deleteAgent,
+    deleteKnowledgeBase,
+    deleteKnowledgeDocument,
+    deleteKnowledgeModule,
+    getKnowledgeDocumentContent,
     documentCount,
     enabledProviderCount,
     errorMessage,
@@ -268,6 +326,7 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     isSaving,
     knowledgeBases,
     latestSecretKey,
+    listModuleDocuments,
     modelProviders,
     providerName,
     publishedAgentCount,
@@ -275,6 +334,8 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     requestCount,
     updateAgent,
     updateAgentStatus,
+    updateKnowledgeBase,
+    updateKnowledgeModule,
     uploadChatAttachment,
     uploadKnowledgeFile,
     uploadProgress,

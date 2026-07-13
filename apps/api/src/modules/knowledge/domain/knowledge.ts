@@ -46,6 +46,27 @@ export interface KnowledgeDocument {
   updatedAt: Date;
 }
 
+export interface KnowledgeDocumentSummary {
+  chunkCount: number;
+  createdAt: string;
+  errorMessage?: string;
+  fileName: string;
+  id: string;
+  mimeType: string;
+  moduleId: string;
+  sizeBytes: number;
+  status: KnowledgeDocumentStatus;
+  updatedAt: string;
+}
+
+export interface KnowledgeDocumentContent {
+  content: string;
+  fileName: string;
+  id: string;
+  mimeType: string;
+  truncated: boolean;
+}
+
 export interface KnowledgeModuleSummary {
   description: string;
   documentCount: number;

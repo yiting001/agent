@@ -16,6 +16,7 @@ const DEFAULT_ZVEC_UPSERT_BATCH_SIZE = 256;
 const DEFAULT_ZVEC_INDEX_TYPE = 'hnsw';
 const DEFAULT_UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024;
 const DEFAULT_MAX_DOCUMENT_BYTES = 128 * 1024 * 1024;
+const DEFAULT_PREVIEW_MAX_CHARS = 20_000;
 const DEFAULT_INGESTION_POLL_INTERVAL_MS = 2_000;
 const DEFAULT_KNOWLEDGE_CHUNK_CHARACTERS = 1_200;
 const DEFAULT_KNOWLEDGE_CHUNK_OVERLAP = 180;
@@ -39,6 +40,7 @@ export interface ApplicationConfig {
   knowledgeChunkCharacters: number;
   knowledgeChunkOverlap: number;
   knowledgeMaxDocumentBytes: number;
+  knowledgePreviewMaxChars: number;
   knowledgeStoragePath: string;
   knowledgeUploadChunkBytes: number;
   modelRequestTimeoutMs: number;
@@ -180,6 +182,11 @@ export const applicationConfig = registerAs(
         'KNOWLEDGE_MAX_DOCUMENT_BYTES',
         process.env.KNOWLEDGE_MAX_DOCUMENT_BYTES,
         DEFAULT_MAX_DOCUMENT_BYTES,
+      ),
+      knowledgePreviewMaxChars: parsePositiveInteger(
+        'KNOWLEDGE_PREVIEW_MAX_CHARS',
+        process.env.KNOWLEDGE_PREVIEW_MAX_CHARS,
+        DEFAULT_PREVIEW_MAX_CHARS,
       ),
       knowledgeStoragePath:
         process.env.KNOWLEDGE_STORAGE_PATH ?? DEFAULT_STORAGE_PATH,

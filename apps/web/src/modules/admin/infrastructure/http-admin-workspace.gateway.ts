@@ -14,8 +14,11 @@ import type {
   CreateKnowledgeBaseInput,
   CreateKnowledgeModuleInput,
   KnowledgeBaseSummary,
+  KnowledgeDocumentContent,
+  KnowledgeDocumentSummary,
   KnowledgeModuleSummary,
   ModelProviderSummary,
+  UpdateKnowledgeResourceInput,
 } from '../domain/admin-workspace';
 
 interface UploadSessionSummary {
@@ -139,6 +142,26 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
     return this.httpClient.delete<void>(`/agents/${agentId}`);
   }
 
+  deleteKnowledgeBase(knowledgeBaseId: string): Promise<void> {
+    return this.httpClient.delete<void>(`/knowledge-bases/${knowledgeBaseId}`);
+  }
+
+  deleteKnowledgeDocument(documentId: string): Promise<void> {
+    return this.httpClient.delete<void>(`/knowledge-documents/${documentId}`);
+  }
+
+  deleteKnowledgeModule(moduleId: string): Promise<void> {
+    return this.httpClient.delete<void>(`/knowledge-modules/${moduleId}`);
+  }
+
+  getKnowledgeDocumentContent(
+    documentId: string,
+  ): Promise<KnowledgeDocumentContent> {
+    return this.httpClient.get<KnowledgeDocumentContent>(
+      `/knowledge-documents/${documentId}/content`,
+    );
+  }
+
   listAgents(): Promise<AgentSummary[]> {
     return this.httpClient.get<AgentSummary[]>('/agents');
   }
@@ -153,6 +176,12 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
 
   listModelProviders(): Promise<ModelProviderSummary[]> {
     return this.httpClient.get<ModelProviderSummary[]>('/model-providers');
+  }
+
+  listModuleDocuments(moduleId: string): Promise<KnowledgeDocumentSummary[]> {
+    return this.httpClient.get<KnowledgeDocumentSummary[]>(
+      `/knowledge-modules/${moduleId}/documents`,
+    );
   }
 
   updateAgent(agentId: string, input: CreateAgentInput): Promise<AgentSummary> {
@@ -170,6 +199,30 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
       `/agents/${agentId}/status`,
       { status },
     );
+  }
+
+  updateKnowledgeBase(
+    input: UpdateKnowledgeResourceInput,
+  ): Promise<KnowledgeBaseSummary> {
+    return this.httpClient.put<
+      KnowledgeBaseSummary,
+      Omit<UpdateKnowledgeResourceInput, 'id'>
+    >(`/knowledge-bases/${input.id}`, {
+      description: input.description,
+      name: input.name,
+    });
+  }
+
+  updateKnowledgeModule(
+    input: UpdateKnowledgeResourceInput,
+  ): Promise<KnowledgeModuleSummary> {
+    return this.httpClient.put<
+      KnowledgeModuleSummary,
+      Omit<UpdateKnowledgeResourceInput, 'id'>
+    >(`/knowledge-modules/${input.id}`, {
+      description: input.description,
+      name: input.name,
+    });
   }
 
   uploadChatAttachment(file: File): Promise<ChatAttachmentSummary> {

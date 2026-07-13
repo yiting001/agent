@@ -64,6 +64,44 @@ export class ZvecVectorIndex
     mkdirSync(this.dataPath, { recursive: true });
   }
 
+  async deleteDocuments(
+    knowledgeBase: KnowledgeBase,
+    documentIds: string[],
+  ): Promise<void> {
+    if (documentIds.length === 0) {
+      return;
+    }
+
+    try {
+      const collection = this.openCollection(knowledgeBase);
+
+      if (!collection) {
+        return;
+      }
+
+      this.assertStatuses([
+        await collection.deleteByFilter(this.documentFilter(documentIds)),
+      ]);
+    } catch (error) {
+      throw this.unavailable(error);
+    }
+  }
+
+  dropCollection(knowledgeBase: KnowledgeBase): Promise<void> {
+    try {
+      const collection = this.openCollection(knowledgeBase);
+
+      if (collection) {
+        collection.destroySync();
+        this.collections.delete(knowledgeBase.id);
+      }
+
+      return Promise.resolve();
+    } catch (error) {
+      throw this.unavailable(error);
+    }
+  }
+
   ensureCollection(knowledgeBase: KnowledgeBase): Promise<void> {
     try {
       this.getOrCreateCollection(knowledgeBase);
@@ -223,6 +261,14 @@ export class ZvecVectorIndex
     this.collections.set(knowledgeBase.id, collection);
 
     return collection;
+  }
+
+  private documentFilter(documentIds: string[]): string {
+    const values = documentIds
+      .map((documentId) => `'${documentId.replaceAll("'", "''")}'`)
+      .join(', ');
+
+    return `${DOCUMENT_ID_FIELD} IN (${values})`;
   }
 
   private moduleFilter(moduleIds: string[]): string {

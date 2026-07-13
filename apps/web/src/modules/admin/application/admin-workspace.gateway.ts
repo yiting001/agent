@@ -11,8 +11,11 @@ import type {
   CreateKnowledgeBaseInput,
   CreateKnowledgeModuleInput,
   KnowledgeBaseSummary,
+  KnowledgeDocumentContent,
+  KnowledgeDocumentSummary,
   KnowledgeModuleSummary,
   ModelProviderSummary,
+  UpdateKnowledgeResourceInput,
 } from '../domain/admin-workspace';
 
 export abstract class AdminWorkspaceGateway {
@@ -42,6 +45,16 @@ export abstract class AdminWorkspaceGateway {
 
   abstract deleteAgent(agentId: string): Promise<void>;
 
+  abstract deleteKnowledgeBase(knowledgeBaseId: string): Promise<void>;
+
+  abstract deleteKnowledgeDocument(documentId: string): Promise<void>;
+
+  abstract deleteKnowledgeModule(moduleId: string): Promise<void>;
+
+  abstract getKnowledgeDocumentContent(
+    documentId: string,
+  ): Promise<KnowledgeDocumentContent>;
+
   abstract listAgents(): Promise<AgentSummary[]>;
 
   abstract listApiApplications(): Promise<ApiApplicationSummary[]>;
@@ -49,6 +62,10 @@ export abstract class AdminWorkspaceGateway {
   abstract listKnowledgeBases(): Promise<KnowledgeBaseSummary[]>;
 
   abstract listModelProviders(): Promise<ModelProviderSummary[]>;
+
+  abstract listModuleDocuments(
+    moduleId: string,
+  ): Promise<KnowledgeDocumentSummary[]>;
 
   abstract updateAgent(
     agentId: string,
@@ -59,6 +76,14 @@ export abstract class AdminWorkspaceGateway {
     agentId: string,
     status: AgentStatus,
   ): Promise<AgentSummary>;
+
+  abstract updateKnowledgeBase(
+    input: UpdateKnowledgeResourceInput,
+  ): Promise<KnowledgeBaseSummary>;
+
+  abstract updateKnowledgeModule(
+    input: UpdateKnowledgeResourceInput,
+  ): Promise<KnowledgeModuleSummary>;
 
   abstract uploadChatAttachment(file: File): Promise<ChatAttachmentSummary>;
 
