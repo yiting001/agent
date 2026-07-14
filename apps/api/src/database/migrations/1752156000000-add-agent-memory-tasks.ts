@@ -8,7 +8,7 @@ export class AddAgentMemoryTasks1752156000000 implements MigrationInterface {
       'ALTER TABLE "agent_memories" ADD COLUMN "idempotencyKey" text',
     );
     await queryRunner.query(
-      'ALTER TABLE "agent_memories" ADD COLUMN "indexedAt" datetime',
+      'ALTER TABLE "agent_memories" ADD COLUMN "indexedAt" timestamp with time zone',
     );
     await queryRunner.query(`
       CREATE UNIQUE INDEX "UQ_agent_memories_episode_idempotency"
@@ -25,15 +25,15 @@ export class AddAgentMemoryTasks1752156000000 implements MigrationInterface {
         "status" text NOT NULL,
         "attempts" integer NOT NULL DEFAULT (0),
         "maxAttempts" integer NOT NULL,
-        "nextRunAt" datetime NOT NULL,
-        "lockedAt" datetime,
+        "nextRunAt" timestamp with time zone NOT NULL,
+        "lockedAt" timestamp with time zone,
         "lockOwner" text,
         "lastError" text,
-        "embeddingJson" text,
+        "embeddingJson" jsonb,
         "embeddingDimensions" integer,
-        "createdAt" datetime NOT NULL,
-        "updatedAt" datetime NOT NULL,
-        "completedAt" datetime,
+        "createdAt" timestamp with time zone NOT NULL,
+        "updatedAt" timestamp with time zone NOT NULL,
+        "completedAt" timestamp with time zone,
         CONSTRAINT "FK_agent_memory_tasks_memory"
           FOREIGN KEY ("memoryId") REFERENCES "agent_memories" ("id")
           ON DELETE CASCADE,

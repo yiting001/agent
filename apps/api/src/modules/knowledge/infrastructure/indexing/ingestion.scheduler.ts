@@ -15,7 +15,9 @@ export class IngestionScheduler
 {
   private readonly logger = new Logger(IngestionScheduler.name);
   private readonly pollIntervalMs: number;
+  private activeTick?: Promise<void>;
   private processing = false;
+  private shuttingDown = false;
   private timer?: NodeJS.Timeout;
 
   constructor(
@@ -29,15 +31,29 @@ export class IngestionScheduler
 
   onApplicationBootstrap(): void {
     this.timer = setInterval(() => {
-      void this.tick();
+      this.scheduleTick();
     }, this.pollIntervalMs);
-    void this.tick();
+    this.scheduleTick();
   }
 
-  onApplicationShutdown(): void {
+  async onApplicationShutdown(): Promise<void> {
+    this.shuttingDown = true;
+
     if (this.timer) {
       clearInterval(this.timer);
     }
+
+    await this.activeTick;
+  }
+
+  private scheduleTick(): void {
+    if (this.activeTick || this.shuttingDown) {
+      return;
+    }
+
+    this.activeTick = this.tick().finally(() => {
+      this.activeTick = undefined;
+    });
   }
 
   private async tick(): Promise<void> {

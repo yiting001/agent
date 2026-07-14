@@ -19,9 +19,9 @@ export class InitialKnowledgePlatform1752150000000
         "credentialCiphertext" text NOT NULL,
         "credentialInitializationVector" text NOT NULL,
         "credentialAuthTag" text NOT NULL,
-        "enabled" boolean NOT NULL DEFAULT (1),
-        "createdAt" datetime NOT NULL,
-        "updatedAt" datetime NOT NULL,
+        "enabled" boolean NOT NULL DEFAULT true,
+        "createdAt" timestamp with time zone NOT NULL,
+        "updatedAt" timestamp with time zone NOT NULL,
         CONSTRAINT "UQ_model_providers_key" UNIQUE ("key")
       )
     `);
@@ -33,8 +33,8 @@ export class InitialKnowledgePlatform1752150000000
         "embeddingProviderId" text NOT NULL,
         "embeddingModel" text NOT NULL,
         "embeddingDimensions" integer NOT NULL,
-        "createdAt" datetime NOT NULL,
-        "updatedAt" datetime NOT NULL
+        "createdAt" timestamp with time zone NOT NULL,
+        "updatedAt" timestamp with time zone NOT NULL
       )
     `);
     await queryRunner.query(`
@@ -43,8 +43,8 @@ export class InitialKnowledgePlatform1752150000000
         "knowledgeBaseId" text NOT NULL,
         "name" text NOT NULL,
         "description" text NOT NULL,
-        "createdAt" datetime NOT NULL,
-        "updatedAt" datetime NOT NULL
+        "createdAt" timestamp with time zone NOT NULL,
+        "updatedAt" timestamp with time zone NOT NULL
       )
     `);
     await queryRunner.query(`
@@ -63,8 +63,8 @@ export class InitialKnowledgePlatform1752150000000
         "status" text NOT NULL,
         "chunkCount" integer NOT NULL DEFAULT (0),
         "errorMessage" text,
-        "createdAt" datetime NOT NULL,
-        "updatedAt" datetime NOT NULL
+        "createdAt" timestamp with time zone NOT NULL,
+        "updatedAt" timestamp with time zone NOT NULL
       )
     `);
     await queryRunner.query(`
@@ -82,8 +82,8 @@ export class InitialKnowledgePlatform1752150000000
         "expectedParts" integer NOT NULL,
         "receivedBytes" integer NOT NULL,
         "status" text NOT NULL,
-        "expiresAt" datetime NOT NULL,
-        "createdAt" datetime NOT NULL
+        "expiresAt" timestamp with time zone NOT NULL,
+        "createdAt" timestamp with time zone NOT NULL
       )
     `);
     await queryRunner.query(`
@@ -108,9 +108,9 @@ export class InitialKnowledgePlatform1752150000000
         "progress" integer NOT NULL,
         "attempts" integer NOT NULL,
         "errorMessage" text,
-        "startedAt" datetime,
-        "completedAt" datetime,
-        "createdAt" datetime NOT NULL
+        "startedAt" timestamp with time zone,
+        "completedAt" timestamp with time zone,
+        "createdAt" timestamp with time zone NOT NULL
       )
     `);
     await queryRunner.query(`
@@ -127,8 +127,8 @@ export class InitialKnowledgePlatform1752150000000
         "temperature" real NOT NULL DEFAULT (0.2),
         "status" text NOT NULL,
         "conversationCount" integer NOT NULL DEFAULT (0),
-        "createdAt" datetime NOT NULL,
-        "updatedAt" datetime NOT NULL
+        "createdAt" timestamp with time zone NOT NULL,
+        "updatedAt" timestamp with time zone NOT NULL
       )
     `);
     await queryRunner.query(`
@@ -151,7 +151,7 @@ export class InitialKnowledgePlatform1752150000000
         "maskedKey" text NOT NULL,
         "status" text NOT NULL,
         "requestCount" integer NOT NULL DEFAULT (0),
-        "createdAt" datetime NOT NULL
+        "createdAt" timestamp with time zone NOT NULL
       )
     `);
     await queryRunner.query(`

@@ -13,7 +13,6 @@ describe('Database migrations', () => {
 
   beforeAll(async () => {
     process.env.DATABASE_MIGRATIONS_RUN = 'true';
-    process.env.DATABASE_PATH = ':memory:';
     process.env.DATABASE_SYNCHRONIZE = 'false';
 
     const testingModule = await Test.createTestingModule({
@@ -26,6 +25,7 @@ describe('Database migrations', () => {
       })
       .overrideProvider(AgentMemoryTaskScheduler)
       .useValue({
+        dispatch: () => undefined,
         onApplicationBootstrap: () => undefined,
         onApplicationShutdown: () => undefined,
       })
@@ -68,33 +68,46 @@ describe('Database migrations', () => {
       });
   });
 
-  it('migrates and rolls back the agent memory task schema', async () => {
+  it('migrates and rolls back pgvector and agent memory task schemas', async () => {
     const dataSource = app.get(DataSource);
     const queryRunner = dataSource.createQueryRunner();
 
     try {
       const taskTable = await queryRunner.getTable('agent_memory_tasks');
       const memoryTable = await queryRunner.getTable('agent_memories');
+      const vectorCollections =
+        await queryRunner.getTable('vector_collections');
 
       expect(taskTable).toBeDefined();
-      expect(taskTable?.findColumnByName('embeddingJson')).toBeDefined();
+      expect(taskTable?.findColumnByName('embeddingJson')?.type).toBe('jsonb');
       expect(memoryTable?.findColumnByName('idempotencyKey')).toBeDefined();
       expect(memoryTable?.findColumnByName('indexedAt')).toBeDefined();
+      expect(vectorCollections).toBeDefined();
     } finally {
       await queryRunner.release();
     }
 
     await dataSource.undoLastMigration();
-    const rolledBack = dataSource.createQueryRunner();
+    const vectorRolledBack = dataSource.createQueryRunner();
 
     try {
-      expect(await rolledBack.hasTable('agent_memory_tasks')).toBe(false);
-      const memoryTable = await rolledBack.getTable('agent_memories');
+      expect(await vectorRolledBack.hasTable('vector_collections')).toBe(false);
+      expect(await vectorRolledBack.hasTable('agent_memory_tasks')).toBe(true);
+    } finally {
+      await vectorRolledBack.release();
+    }
+
+    await dataSource.undoLastMigration();
+    const taskRolledBack = dataSource.createQueryRunner();
+
+    try {
+      expect(await taskRolledBack.hasTable('agent_memory_tasks')).toBe(false);
+      const memoryTable = await taskRolledBack.getTable('agent_memories');
 
       expect(memoryTable?.findColumnByName('idempotencyKey')).toBeUndefined();
       expect(memoryTable?.findColumnByName('indexedAt')).toBeUndefined();
     } finally {
-      await rolledBack.release();
+      await taskRolledBack.release();
     }
 
     await dataSource.runMigrations();

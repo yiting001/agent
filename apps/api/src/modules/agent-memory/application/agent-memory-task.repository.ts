@@ -16,6 +16,11 @@ export interface EnqueueEpisodeInput {
   sourceThreadId?: string;
 }
 
+export interface EnqueueEpisodeResult {
+  memory: AgentMemory;
+  taskEnqueued: boolean;
+}
+
 export interface AgentMemoryConsistencyRepair {
   danglingArtifacts: number;
   expiredProcessingTasks: number;
@@ -61,7 +66,9 @@ export abstract class AgentMemoryTaskRepository {
     task: AgentMemoryTask;
   }): Promise<void>;
 
-  abstract enqueueEpisode(input: EnqueueEpisodeInput): Promise<AgentMemory>;
+  abstract enqueueEpisode(
+    input: EnqueueEpisodeInput,
+  ): Promise<EnqueueEpisodeResult>;
 
   abstract failTask(input: {
     dead: boolean;

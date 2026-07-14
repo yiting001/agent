@@ -25,14 +25,37 @@ flowchart RL
 领域层与应用层不得导入 NestJS、TypeORM、Express 或前端代码。
 
 `observability` 是横切基础设施，但仍通过应用服务暴露记录能力。业务模块只提交
-操作名称、状态、耗时和用量，不依赖 SQLite 实体，也不记录提示词、回复正文、
+操作名称、状态、耗时和用量，不依赖 PostgreSQL 实体，也不记录提示词、回复正文、
 密钥或附件内容。
 
 `agent-memory` 是对话应用能力，提供短期线程、稳定事实/偏好和图片情景记忆。
 `AgentMemoryService` 管理短期与稳定事实，`AgentEpisodicMemoryService` 通过
-SQLite + 独立 Zvec + ModelGateway 管理图片事件、混合召回与低置信度澄清。
+PostgreSQL 任务/Outbox + 独立 pgvector 表 + ModelGateway 管理图片事件、混合召回与低置信度澄清。
 `ChatAttachmentModule` 导出 owner 安全的附件端口，聊天和记忆共同复用，避免
-把文件路径、TypeORM、Zvec 或多模态供应商细节泄漏到领域层。
+把文件路径、TypeORM、pgvector 或多模态供应商细节泄漏到领域层。
+
+## 商用基础设施边界
+
+```mermaid
+flowchart TB
+  Presentation --> Application
+  Application --> Ports[Repository / VectorIndex / RateLimiter Ports]
+  PostgreSQL[PostgreSQL Adapter] --> Ports
+  Pgvector[pgvector Adapter] --> Ports
+  Redis[Redis Rate Limit Adapter] --> Ports
+  Worker[进程内 Scheduler] --> Application
+  Worker --> Queue[(PostgreSQL Tasks)]
+```
+
+- PostgreSQL 是业务事实、任务、Outbox 和观测数据的权威存储。
+- pgvector 与知识库、情景记忆共享 PostgreSQL，但通过两个现有向量端口保持可替换。
+- Redis 只用于 API/public chat 限流和短 TTL 协调，不保存权威数据。
+- 当前单体继续使用 PostgreSQL 任务表；只有拆分独立 Worker 或出现多订阅者后才接入 RocketMQ。
+- `/api/health` 是不访问依赖的 liveness；`/api/health/readiness` 检查 PostgreSQL、pgvector 和 Redis。
+- workspace、成员、统一认证与 RLS 尚未实现，因此当前基础设施迁移不能视为完整 SaaS 租户安全。
+
+完整选型、维度限制和消息系统触发条件见
+[ADR-0003](decisions/0003-postgresql-pgvector-redis-and-message-boundary.md)。
 
 ## 前端模块规则
 

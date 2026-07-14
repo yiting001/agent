@@ -5,7 +5,7 @@ import { AgentCatalogService } from '../../agents/application/agent-catalog.serv
 import { AgentRepository } from '../../agents/application/agent.repository';
 import { AgentEpisodicMemoryService } from '../../agent-memory/application/agent-episodic-memory.service';
 import { AgentMemoryService } from '../../agent-memory/application/agent-memory.service';
-import { ProcessNextAgentMemoryTaskUseCase } from '../../agent-memory/application/process-next-agent-memory-task.use-case';
+import { AgentMemoryTaskDispatcher } from '../../agent-memory/application/agent-memory-task.dispatcher';
 import { KnowledgeRetrieverService } from '../../knowledge/application/knowledge-retriever.service';
 import {
   type ChatMessageInput,
@@ -89,7 +89,7 @@ export class ChatWithAgentUseCase {
     private readonly agentRepository: AgentRepository,
     private readonly agentMemory: AgentMemoryService,
     private readonly episodicMemory: AgentEpisodicMemoryService,
-    private readonly processNextMemoryTask: ProcessNextAgentMemoryTaskUseCase,
+    private readonly memoryTaskDispatcher: AgentMemoryTaskDispatcher,
     private readonly knowledgeRetriever: KnowledgeRetrieverService,
     private readonly modelProviders: ModelProviderRuntimeService,
     private readonly modelGateway: ModelGateway,
@@ -445,32 +445,36 @@ ${episodicContext.context || '未检索到足够可靠的历史图片情景；�
             ownerKey: command.memoryOwnerKey,
             source: command.source,
           });
-          void this.episodicMemory
-            .recordEpisode({
-              agentId: command.agentId,
-              answer,
-              conversationId: command.conversationId,
-              messages: command.messages,
-              ownerKey: command.memoryOwnerKey,
-            })
-            .then(() => this.processNextMemoryTask.execute())
-            .catch((error: unknown) => {
-              this.logger.warn(
-                JSON.stringify({
-                  error:
-                    error instanceof Error
-                      ? error.message
-                      : '图片情景记忆写入发生未知错误',
-                  operation: 'agent_memory.record_episode',
-                }),
-              );
-            });
         } catch (error) {
           this.logger.warn(
             JSON.stringify({
               error:
                 error instanceof Error ? error.message : '记忆写入发生未知错误',
               operation: 'agent_memory.record_turn',
+            }),
+          );
+        }
+
+        try {
+          const taskEnqueued = await this.episodicMemory.recordEpisode({
+            agentId: command.agentId,
+            answer,
+            conversationId: command.conversationId,
+            messages: command.messages,
+            ownerKey: command.memoryOwnerKey,
+          });
+
+          if (taskEnqueued) {
+            this.memoryTaskDispatcher.dispatch();
+          }
+        } catch (error) {
+          this.logger.warn(
+            JSON.stringify({
+              error:
+                error instanceof Error
+                  ? error.message
+                  : '图片情景记忆写入发生未知错误',
+              operation: 'agent_memory.record_episode',
             }),
           );
         }

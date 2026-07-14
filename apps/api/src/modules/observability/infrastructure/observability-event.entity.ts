@@ -32,7 +32,7 @@ export class ObservabilityEventEntity {
   status: ObservabilityStatus;
 
   @Index()
-  @Column('datetime')
+  @Column('timestamptz')
   startedAt: Date;
 
   @Column('real')
@@ -77,6 +77,6 @@ export class ObservabilityEventEntity {
   @Column('text', { nullable: true })
   alertMessage?: string;
 
-  @Column('text', { default: '{}' })
-  metadata: string;
+  @Column('jsonb', { default: {} })
+  metadata: Record<string, string | number | boolean>;
 }

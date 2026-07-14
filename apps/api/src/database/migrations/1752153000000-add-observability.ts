@@ -22,7 +22,7 @@ export class AddObservability1752153000000 implements MigrationInterface {
         "category" text NOT NULL,
         "operation" text NOT NULL,
         "status" text NOT NULL,
-        "startedAt" datetime NOT NULL,
+        "startedAt" timestamp with time zone NOT NULL,
         "durationMs" real NOT NULL,
         "method" text,
         "route" text,
@@ -37,7 +37,7 @@ export class AddObservability1752153000000 implements MigrationInterface {
         "errorMessage" text,
         "alertSeverity" text,
         "alertMessage" text,
-        "metadata" text NOT NULL DEFAULT ('{}')
+        "metadata" jsonb NOT NULL DEFAULT ('{}'::jsonb)
       )
     `);
     await queryRunner.query(`

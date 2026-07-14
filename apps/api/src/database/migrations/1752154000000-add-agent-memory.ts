@@ -11,8 +11,8 @@ export class AddAgentMemory1752154000000 implements MigrationInterface {
         "ownerKey" text NOT NULL,
         "source" text NOT NULL,
         "title" text NOT NULL,
-        "createdAt" datetime NOT NULL,
-        "updatedAt" datetime NOT NULL,
+        "createdAt" timestamp with time zone NOT NULL,
+        "updatedAt" timestamp with time zone NOT NULL,
         PRIMARY KEY ("id", "ownerKey"),
         CONSTRAINT "FK_agent_memory_threads_agent"
           FOREIGN KEY ("agentId") REFERENCES "agents" ("id")
@@ -39,7 +39,7 @@ export class AddAgentMemory1752154000000 implements MigrationInterface {
         "role" text NOT NULL,
         "content" text NOT NULL,
         "position" integer NOT NULL,
-        "createdAt" datetime NOT NULL,
+        "createdAt" timestamp with time zone NOT NULL,
         CONSTRAINT "FK_agent_memory_messages_thread"
           FOREIGN KEY ("threadId", "ownerKey")
           REFERENCES "agent_memory_threads" ("id", "ownerKey")
@@ -68,9 +68,9 @@ export class AddAgentMemory1752154000000 implements MigrationInterface {
         "sourceThreadId" text,
         "importance" integer NOT NULL,
         "accessCount" integer NOT NULL DEFAULT (0),
-        "lastAccessedAt" datetime,
-        "createdAt" datetime NOT NULL,
-        "updatedAt" datetime NOT NULL,
+        "lastAccessedAt" timestamp with time zone,
+        "createdAt" timestamp with time zone NOT NULL,
+        "updatedAt" timestamp with time zone NOT NULL,
         CONSTRAINT "FK_agent_memories_agent"
           FOREIGN KEY ("agentId") REFERENCES "agents" ("id")
           ON DELETE CASCADE

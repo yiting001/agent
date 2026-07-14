@@ -1,7 +1,16 @@
-import { Body, Controller, HttpCode, Param, Post, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  Param,
+  Post,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 
+import { EnforceApiRateLimitService } from '../../../api-access/application/enforce-api-rate-limit.service';
 import { ChatWithAgentUseCase } from '../../application/chat-with-agent.use-case';
 import { sendAgentChatStream } from './chat-stream.response';
 import { ChatWithAgentDto } from './chat-with-agent.dto';
@@ -9,7 +18,10 @@ import { ChatWithAgentDto } from './chat-with-agent.dto';
 @ApiTags('public-chat')
 @Controller('public/agents/:agentId/chat')
 export class PublicChatWithAgentController {
-  constructor(private readonly chatWithAgent: ChatWithAgentUseCase) {}
+  constructor(
+    private readonly chatWithAgent: ChatWithAgentUseCase,
+    private readonly rateLimit: EnforceApiRateLimitService,
+  ) {}
 
   @Post()
   @HttpCode(200)
@@ -17,8 +29,14 @@ export class PublicChatWithAgentController {
   async execute(
     @Param('agentId') agentId: string,
     @Body() body: ChatWithAgentDto,
+    @Req() request: Request,
     @Res() response: Response,
   ): Promise<void> {
+    await this.rateLimit.execute({
+      identifier: `${agentId}:${request.ip}`,
+      kind: 'public_chat',
+    });
+
     const command = {
       agentId,
       conversationId: body.conversationId,

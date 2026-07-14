@@ -1,12 +1,12 @@
 # Agent
 
-基于 NestJS、SQLite、Vue 3 与 Pinia 的全栈单仓库。项目以 DDD 边界组织后端，以业务功能组织前端，优先复用已有能力并保持依赖方向清晰。
+基于 NestJS、PostgreSQL、pgvector、Redis、Vue 3 与 Pinia 的全栈单仓库。项目以 DDD 边界组织后端，以业务功能组织前端，优先复用已有能力并保持依赖方向清晰。
 
 ## 技术栈
 
 - Node.js 20.18
 - pnpm 9
-- NestJS 11、TypeORM、SQLite
+- NestJS 11、TypeORM、PostgreSQL 16、pgvector、Redis 7
 - Vue 3、Vite、Pinia、Vue Router
 - TypeScript、ESLint、Prettier、Husky
 
@@ -42,6 +42,7 @@ templates/
 ```bash
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
+docker compose up -d postgres redis
 pnpm install
 pnpm dev
 ```
@@ -55,7 +56,7 @@ openssl rand -hex 32
 - API：`http://localhost:3000/api`
 - Swagger：`http://localhost:3000/docs`
 - Web：`http://localhost:5173`
-- Zvec 向量数据：`zvec-data/`
+- Readiness：`http://localhost:3000/api/health/readiness`
 
 ## 中文管理后台
 
@@ -89,8 +90,8 @@ pnpm build:server
 node apps/api/dist-single/server.js
 ```
 
-构建产物只有一个应用文件 `apps/api/dist-single/server.js`。由于 SQLite、Zvec
-包含平台原生二进制，PDF 解析器包含运行时资源，部署目录仍需执行生产依赖安装；
+构建产物只有一个应用文件 `apps/api/dist-single/server.js`。PostgreSQL、pgvector
+和 Redis 作为外部服务运行；PDF 解析器包含运行时资源，部署目录仍需执行生产依赖安装；
 其余 NestJS 业务代码和 JavaScript 依赖均已写入该文件。
 
 跨域来源通过 `CORS_ORIGIN` 配置，多个来源使用逗号分隔；设置为 `*` 时允许任意来源。

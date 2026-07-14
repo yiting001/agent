@@ -45,7 +45,6 @@ describe('Agent skills', () => {
   beforeAll(async () => {
     process.env.CREDENTIAL_ENCRYPTION_KEY = '33'.repeat(32);
     process.env.DATABASE_MIGRATIONS_RUN = 'false';
-    process.env.DATABASE_PATH = ':memory:';
     process.env.DATABASE_SYNCHRONIZE = 'true';
     process.env.INGESTION_POLL_INTERVAL_MS = '60000';
 

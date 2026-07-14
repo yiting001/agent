@@ -47,9 +47,9 @@ export class ModelProviderEntity {
   @Column('boolean', { default: true })
   enabled: boolean;
 
-  @Column('datetime')
+  @Column('timestamptz')
   createdAt: Date;
 
-  @Column('datetime')
+  @Column('timestamptz')
   updatedAt: Date;
 }

@@ -21,7 +21,7 @@ flowchart LR
   Eyou -->|公开 SSE 对话| Chat
   API[OpenAI 兼容 API] --> Chat
   Chat --> Memory[稳定记忆 + 图片情景记忆]
-  Memory --> SQLite[(SQLite 记忆库)]
+  Memory --> PostgreSQL[(PostgreSQL 记忆库)]
   Chat --> Storage
   Chat --> Model[ModelGateway]
   Model --> Provider[OpenAI 兼容模型]

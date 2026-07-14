@@ -28,7 +28,7 @@ import { UpdateKnowledgeModuleUseCase } from './application/update-knowledge-mod
 import { UploadDocumentPartUseCase } from './application/upload-document-part.use-case';
 import { VectorIndex } from './application/vector-index';
 import { IngestionScheduler } from './infrastructure/indexing/ingestion.scheduler';
-import { ZvecVectorIndex } from './infrastructure/indexing/zvec-vector.index';
+import { PgvectorVectorIndex } from './infrastructure/indexing/pgvector-vector.index';
 import { CompositeDocumentTextExtractor } from './infrastructure/parsing/composite-document-text.extractor';
 import { IngestionJobEntity } from './infrastructure/persistence/ingestion-job.entity';
 import { KnowledgeBaseEntity } from './infrastructure/persistence/knowledge-base.entity';
@@ -127,7 +127,7 @@ import { UploadDocumentPartController } from './presentation/http/upload-documen
     },
     {
       provide: VectorIndex,
-      useClass: ZvecVectorIndex,
+      useClass: PgvectorVectorIndex,
     },
   ],
 })

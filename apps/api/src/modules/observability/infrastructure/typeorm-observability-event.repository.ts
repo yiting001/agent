@@ -7,14 +7,6 @@ import type { ObservabilityEvent } from '../domain/observability-event';
 import { ObservabilityEventEntity } from './observability-event.entity';
 
 function toDomain(entity: ObservabilityEventEntity): ObservabilityEvent {
-  let metadata: unknown = {};
-
-  try {
-    metadata = JSON.parse(entity.metadata);
-  } catch {
-    metadata = {};
-  }
-
   return {
     agentId: entity.agentId,
     alertMessage: entity.alertMessage,
@@ -25,10 +17,7 @@ function toDomain(entity: ObservabilityEventEntity): ObservabilityEvent {
     errorMessage: entity.errorMessage,
     id: entity.id,
     inputTokens: entity.inputTokens,
-    metadata:
-      typeof metadata === 'object' && metadata !== null
-        ? (metadata as Record<string, string | number | boolean>)
-        : {},
+    metadata: entity.metadata,
     method: entity.method,
     model: entity.model,
     operation: entity.operation,
@@ -68,9 +57,6 @@ export class TypeOrmObservabilityEventRepository extends ObservabilityEventRepos
   }
 
   async save(event: ObservabilityEvent): Promise<void> {
-    await this.repository.save({
-      ...event,
-      metadata: JSON.stringify(event.metadata),
-    });
+    await this.repository.save(event);
   }
 }

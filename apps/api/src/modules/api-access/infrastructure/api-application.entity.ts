@@ -26,6 +26,6 @@ export class ApiApplicationEntity {
   @Column('integer', { default: 0 })
   requestCount: number;
 
-  @Column('datetime')
+  @Column('timestamptz')
   createdAt: Date;
 }

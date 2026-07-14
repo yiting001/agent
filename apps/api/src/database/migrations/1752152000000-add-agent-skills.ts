@@ -12,11 +12,11 @@ export class AddAgentSkills1752152000000 implements MigrationInterface {
         "type" text NOT NULL,
         "content" text NOT NULL DEFAULT (''),
         "endpoint" text NOT NULL DEFAULT (''),
-        "headers" text NOT NULL,
-        "tools" text NOT NULL,
-        "enabled" boolean NOT NULL DEFAULT (1),
-        "createdAt" datetime NOT NULL,
-        "updatedAt" datetime NOT NULL
+        "headers" jsonb NOT NULL,
+        "tools" jsonb NOT NULL,
+        "enabled" boolean NOT NULL DEFAULT true,
+        "createdAt" timestamp with time zone NOT NULL,
+        "updatedAt" timestamp with time zone NOT NULL
       )
     `);
     await queryRunner.query(`

@@ -54,6 +54,6 @@ export class AgentMemoryArtifactEntity {
   @Column('integer')
   sizeBytes: number;
 
-  @Column('datetime')
+  @Column('timestamptz')
   createdAt: Date;
 }

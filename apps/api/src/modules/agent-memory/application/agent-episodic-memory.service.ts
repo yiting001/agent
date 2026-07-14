@@ -95,7 +95,7 @@ export class AgentEpisodicMemoryService {
     }
   }
 
-  async recordEpisode(input: RecordEpisodeInput): Promise<void> {
+  async recordEpisode(input: RecordEpisodeInput): Promise<boolean> {
     const ownerKey = input.ownerKey;
     const userMessage = [...input.messages]
       .reverse()
@@ -106,7 +106,7 @@ export class AgentEpisodicMemoryService {
       ) ?? [];
 
     if (!ownerKey || !userMessage || images.length === 0) {
-      return;
+      return false;
     }
 
     const storedImages = await Promise.all(
@@ -125,10 +125,10 @@ export class AgentEpisodicMemoryService {
           image.owner?.ownerKey !== ownerKey,
       )
     ) {
-      return;
+      return false;
     }
 
-    await this.taskRepository.enqueueEpisode({
+    const result = await this.taskRepository.enqueueEpisode({
       agentId: input.agentId,
       artifacts: storedImages.map((image) => ({
         agentId: input.agentId,
@@ -154,6 +154,8 @@ export class AgentEpisodicMemoryService {
       ownerKey,
       sourceThreadId: input.conversationId,
     });
+
+    return result.taskEnqueued;
   }
 
   async processTask(task: AgentMemoryTask): Promise<void> {

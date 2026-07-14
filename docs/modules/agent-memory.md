@@ -7,7 +7,7 @@
 - **短期记忆**：按 `memoryOwnerKey + conversationId` 持久化最近对话轮次，下一次请求可以只提交最新问题，服务端会恢复该会话最近消息。
 - **长期记忆**：从用户显式要求“记住”的内容、姓名和偏好中提取稳定事实，跨会话召回并注入系统上下文。
 - **图片情景记忆**：成功对话中的 owner 绑定图片会异步提取客观摘要和实体，保存原图引用，并支持“上次那只狗”“前一张图片”等跨会话指代。
-- **独立混合检索**：情景记忆使用独立 Zvec 集合，并结合向量、实体词、时间顺序、新近性和重要度重排，不与企业知识库索引混用。
+- **独立混合检索**：情景记忆使用独立 pgvector 维度表和过滤字段，并结合向量、实体词、时间顺序、新近性和重要度重排，不与企业知识库索引混用。
 - **证据回读**：问题依赖颜色、数量、品种或 OCR 等视觉细节时，重新读取 owner 范围内原始图片交给多模态模型，而不是只依赖 caption。
 - **可观测边界**：不写入密钥、base64、模型完整提示词或未经确认的对象归属；视觉提取失败时保留 `pending` 情景，不生成虚假描述。
 - **兼容现有入口**：后台测试页、公开 EyouCMS 页面和 OpenAI 兼容 API 继续复用 `ChatWithAgentUseCase`。
@@ -16,7 +16,7 @@
 
 - 不替代知识库 RAG。知识库面向企业文档，记忆面向对话中形成的用户/智能体上下文。
 - 不把所有历史消息无限塞入模型上下文，只保留可配置最近轮次并按相关性召回长期记忆。
-- 第一阶段不引入图数据库或训练专用记忆模型；实体关系先通过 SQLite 情景文本、附件关系和检索实体表达。
+- 第一阶段不引入图数据库或训练专用记忆模型；实体关系先通过 PostgreSQL 情景文本、附件关系和检索实体表达。
 
 ## 大厂实践参考
 
@@ -58,7 +58,7 @@ apps/api/src/modules/agent-memory/
 │   ├── typeorm-agent-memory.repository.ts
 │   ├── typeorm-agent-memory-task-maintenance.store.ts
 │   ├── typeorm-agent-memory-task.repository.ts
-│   └── zvec-agent-memory.index.ts
+│   └── pgvector-agent-memory.index.ts
 └── presentation/http/
     ├── clear-agent-memory.controller.ts
     ├── delete-agent-memory.controller.ts
@@ -79,8 +79,8 @@ sequenceDiagram
   participant Chat as ChatWithAgentUseCase
   participant Stable as AgentMemoryService
   participant Episode as AgentEpisodicMemoryService
-  participant DB as SQLite
-  participant Index as Memory Zvec
+  participant DB as PostgreSQL
+  participant Index as Memory pgvector
   participant Media as ChatAttachmentStorage
   participant Model as ModelGateway
 
@@ -93,12 +93,13 @@ sequenceDiagram
   Chat->>Media: owner 范围回读原图证据
   Chat->>Model: system + memory + evidence + messages
   Model-->>Chat: 流式回答
-  Chat-->>UI: delta / metadata / done
+  Chat-->>UI: delta
   Chat->>Stable: 写入成功轮次与显式长期记忆
-  Chat-->>Episode: 异步投递图片情景
+  Chat->>Episode: 短事务投递图片情景
   Episode->>DB: 同事务写 pending 情景、artifact、extract Outbox 任务
-  DB-->>Chat: 投递完成，不阻断正常回答
-  loop SQLite scheduler
+  DB-->>Chat: 投递完成并唤醒应用层调度端口
+  Chat-->>UI: metadata / done
+  loop PostgreSQL scheduler
     Episode->>DB: 条件 UPDATE 领取单个任务
     Episode->>Media: owner 范围读取原图
     Episode->>Model: 客观摘要与实体 JSON
@@ -124,8 +125,8 @@ erDiagram
     text ownerKey
     text source
     text title
-    datetime createdAt
-    datetime updatedAt
+    timestamptz createdAt
+    timestamptz updatedAt
   }
 
   agent_memory_messages {
@@ -135,7 +136,7 @@ erDiagram
     text role
     text content
     integer position
-    datetime createdAt
+    timestamptz createdAt
   }
 
   agent_memories {
@@ -147,12 +148,12 @@ erDiagram
     text sourceThreadId
     text status
     text idempotencyKey
-    datetime indexedAt
+    timestamptz indexedAt
     integer importance
     integer accessCount
-    datetime lastAccessedAt
-    datetime createdAt
-    datetime updatedAt
+    timestamptz lastAccessedAt
+    timestamptz createdAt
+    timestamptz updatedAt
   }
 
   agent_memory_artifacts {
@@ -164,7 +165,7 @@ erDiagram
     text fileName
     text mimeType
     integer sizeBytes
-    datetime createdAt
+    timestamptz createdAt
   }
 
   agent_memory_tasks {
@@ -176,17 +177,17 @@ erDiagram
     text status
     integer attempts
     integer maxAttempts
-    datetime nextRunAt
-    datetime lockedAt
+    timestamptz nextRunAt
+    timestamptz lockedAt
     text lockOwner
     text lastError
     text embeddingJson
     integer embeddingDimensions
-    datetime completedAt
+    timestamptz completedAt
   }
 ```
 
-`agent_memories.type=episodic` 表示图片情景；`pending` 表示证据已保存但尚未完成提取，`ready` 表示客观摘要已提取，`failed` 表示 extract 达到最大尝试次数或证据损坏。`indexedAt` 非空表示当前摘要已写入 Zvec。`agent_memory_tasks` 同时承担 SQLite 队列和事务 Outbox，不保存 base64、完整提示词、密钥或内部媒体路径；embedding 仅保存在 index 任务中，用于 Zvec 故障重试时避免重复调用模型。
+`agent_memories.type=episodic` 表示图片情景；`pending` 表示证据已保存但尚未完成提取，`ready` 表示客观摘要已提取，`failed` 表示 extract 达到最大尝试次数或证据损坏。`indexedAt` 非空表示当前摘要已写入 pgvector。`agent_memory_tasks` 同时承担 PostgreSQL 队列和事务 Outbox，不保存 base64、完整提示词、密钥或内部媒体路径；embedding 仅保存在 index 任务中，用于 pgvector 故障重试时避免重复调用模型。
 
 ## 任务状态机与并发边界
 
@@ -204,12 +205,12 @@ stateDiagram-v2
 - 情景幂等键为 `sha256(agentId | ownerKey | conversationId | 排序后的 attachmentIds | sha256(userContent))`；唯一索引限制同一 owner/agent 的重复情景。
 - `(memoryId, kind)` 唯一索引保证 `extract`、`index` 各只有一个任务。
 - claim 使用单条条件 `UPDATE`；每次领取生成独立 `lockOwner`，同一任务不能被两个执行器同时成功领取。
-- SQLite 事务只执行短数据库操作。图片读取、模型请求、embedding 和 Zvec upsert 全部在事务外执行。
-- index 任务先持久化 embedding，再以 `memoryId` upsert Zvec；Zvec 失败后复用已保存向量。
-- 模型已返回 embedding、SQLite 尚未保存时若进程崩溃，下一次仍可能重复调用一次 embedding；这是当前无法用本地事务覆盖外部模型调用的窄窗口。
+- PostgreSQL 事务只执行短数据库操作。图片读取、模型请求、embedding 和 pgvector upsert 全部在事务外执行。
+- index 任务先持久化 embedding，再以 `memoryId` upsert pgvector；pgvector 失败后复用已保存向量。
+- 模型已返回 embedding、PostgreSQL 尚未保存时若进程崩溃，下一次仍可能重复调用一次 embedding；这是当前无法用本地事务覆盖外部模型调用的窄窗口。
 - 错误摘要会移除 data URI、base64 和 Bearer token，并截断到 500 字符。
-- 服务启动后立即回收超时 lease；定时扫描超时 `pending`、缺失任务、缺失 Zvec 点、悬空 artifact 和超时无引用图片。
-- Zvec 当前只能按 SQLite 中的 memoryId 正向检查，不能全量枚举 Zvec 孤儿点；完整反向清理仍属于后续路线。
+- 服务启动后立即回收超时 lease；定时扫描超时 `pending`、缺失任务、缺失 pgvector 点、悬空 artifact 和超时无引用图片。
+- 当前 `AgentMemoryIndex` 端口只暴露按 memoryId 正向检查，尚未暴露全量 ID 分页枚举；因此完整反向孤儿清理仍属于后续路线。
 
 ## 公共接口
 
@@ -257,7 +258,7 @@ DELETE /api/agents/:agentId/memories/:memoryId?ownerKey=<memoryOwnerKey>
 DELETE /api/agents/:agentId/memories?ownerKey=<memoryOwnerKey>
 ```
 
-第一条删除指定记忆及其 Zvec 点和无引用图片；第二条清空该 owner 在指定智能体下的短期线程、短期消息、长期记忆、图片关系、向量和无引用媒体。
+第一条删除指定记忆及其 pgvector 点和无引用图片；第二条清空该 owner 在指定智能体下的短期线程、短期消息、长期记忆、图片关系、向量和无引用媒体。
 
 ### 任务管理与健康检查
 
@@ -285,7 +286,7 @@ GET  /api/agents/:agentId/memory-health?ownerKey=<key>
 图片情景遵循不同规则：
 
 1. 只有成功完成的回答、有效 owner 和 owner 绑定图片才进入记录流程。
-2. 回答内容先返回客户端，流结束后只写 SQLite Outbox；队列、模型或索引失败不会改变聊天响应。
+2. 模型回答成功生成后，以短事务写 PostgreSQL Outbox，再通过应用层调度端口唤醒后台任务；投递失败会记录脱敏告警但不改变回答结果，模型提取和索引不会阻塞聊天。
 3. 多模态模型只输出客观摘要、可检索实体和重要度，不允许推断“图片里的狗属于用户”等归属。
 4. 创建时先保存“待处理图片情景”及原始证据；只有模型返回合法客观 JSON 后才写入 `ready` 摘要。失败时保留 `pending`，耗尽重试后进入 `failed`，不写入虚假视觉描述。
 5. 召回按向量、实体词、时间指代、新近性和重要度重排；低于阈值不注入，多个候选接近时要求模型先澄清。
@@ -294,19 +295,18 @@ GET  /api/agents/:agentId/memory-health?ownerKey=<key>
 
 ## 配置项
 
-| 环境变量                              | 默认值         | 说明                       |
-| ------------------------------------- | -------------- | -------------------------- |
-| `AGENT_MEMORY_RECENT_MESSAGE_LIMIT`   | `12`           | 每个会话恢复的最近消息条数 |
-| `AGENT_MEMORY_RECALL_LIMIT`           | `6`            | 每次注入模型的稳定记忆条数 |
-| `AGENT_MEMORY_EPISODE_RECALL_LIMIT`   | `3`            | 每次最多注入的图片情景数   |
-| `AGENT_MEMORY_EPISODE_MIN_SCORE`      | `0.25`         | 情景召回最低混合分数       |
-| `AGENT_MEMORY_ZVEC_COLLECTION_PREFIX` | `agent_memory` | 独立情景向量集合前缀       |
-| `AGENT_MEMORY_TASK_POLL_INTERVAL_MS`  | `2000`         | SQLite 队列轮询间隔        |
-| `AGENT_MEMORY_TASK_MAX_ATTEMPTS`      | `3`            | 单阶段最大尝试次数         |
-| `AGENT_MEMORY_TASK_BACKOFF_BASE_MS`   | `1000`         | 指数退避基础时长           |
-| `AGENT_MEMORY_TASK_LOCK_TIMEOUT_MS`   | `60000`        | processing lease 超时      |
-| `AGENT_MEMORY_PENDING_TIMEOUT_MS`     | `300000`       | pending/无引用媒体巡检阈值 |
-| `AGENT_MEMORY_RECONCILE_INTERVAL_MS`  | `60000`        | 一致性巡检间隔             |
+| 环境变量                             | 默认值   | 说明                       |
+| ------------------------------------ | -------- | -------------------------- |
+| `AGENT_MEMORY_RECENT_MESSAGE_LIMIT`  | `12`     | 每个会话恢复的最近消息条数 |
+| `AGENT_MEMORY_RECALL_LIMIT`          | `6`      | 每次注入模型的稳定记忆条数 |
+| `AGENT_MEMORY_EPISODE_RECALL_LIMIT`  | `3`      | 每次最多注入的图片情景数   |
+| `AGENT_MEMORY_EPISODE_MIN_SCORE`     | `0.25`   | 情景召回最低混合分数       |
+| `AGENT_MEMORY_TASK_POLL_INTERVAL_MS` | `2000`   | PostgreSQL 队列轮询间隔    |
+| `AGENT_MEMORY_TASK_MAX_ATTEMPTS`     | `3`      | 单阶段最大尝试次数         |
+| `AGENT_MEMORY_TASK_BACKOFF_BASE_MS`  | `1000`   | 指数退避基础时长           |
+| `AGENT_MEMORY_TASK_LOCK_TIMEOUT_MS`  | `60000`  | processing lease 超时      |
+| `AGENT_MEMORY_PENDING_TIMEOUT_MS`    | `300000` | pending/无引用媒体巡检阈值 |
+| `AGENT_MEMORY_RECONCILE_INTERVAL_MS` | `60000`  | 一致性巡检间隔             |
 
 ## 日志、指标、成本与告警
 
@@ -320,7 +320,8 @@ GET  /api/agents/:agentId/memory-health?ownerKey=<key>
 
 - 单元测试覆盖短期历史重叠、稳定记忆抽取、中文实体词、最近/前一情景排序和候选歧义判断。
 - 任务领域测试覆盖幂等键、指数退避上限和错误脱敏。
-- E2E 覆盖图片上传、自动提取、`pending` 降级、并发幂等、模型失败重试至 dead、owner/agent 隔离、单条 retry、lease 回收、embedding 复用、Zvec 失败恢复和缺失索引巡检。
+- E2E 覆盖图片上传、自动提取、`pending` 降级、并发幂等、模型失败重试至 dead、owner/agent 隔离、单条 retry、lease 回收、embedding 复用、pgvector 失败恢复和缺失索引巡检。
+- PostgreSQL/pgvector 集成测试覆盖真实 upsert、cosine search、删除及 owner/agent 过滤；任务并发领取使用 `FOR UPDATE SKIP LOCKED`。
 - migration E2E 验证任务表、幂等列和索引时间列的 up/down。
 - 对话入口保持向后兼容；不传 `conversationId` 时仍按原来的请求消息工作。
 - 未提供 `memoryOwnerKey` 的调用保持无状态，不自动记录图片情景。
@@ -328,6 +329,7 @@ GET  /api/agents/:agentId/memory-health?ownerKey=<key>
 ## 扩展方式
 
 - 若需要后台人工维护，可复用任务列表、retry、recover 和 health 接口增加 Vue/Pinia 管理页。
-- 后续优先补充保留期、反向 Zvec 孤儿枚举、专项仪表盘和预算告警，再评估实体图谱和跨模态专用 embedding。
+- 后续优先补充保留期、反向 pgvector 孤儿枚举、专项仪表盘和预算告警，再评估实体图谱和跨模态专用 embedding。
+- 当前 ownerKey 仍不是 workspace/tenant 身份；商用多租户上线前必须完成统一认证、资源 workspace 外键和 PostgreSQL RLS。
 - 完整的未实现项、优先级和推荐实施顺序见
   [图片情景记忆后续路线](agent-memory-roadmap.md)。

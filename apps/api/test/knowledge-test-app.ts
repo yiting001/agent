@@ -58,7 +58,6 @@ export async function createKnowledgeTestApp(
   process.env.CREDENTIAL_ENCRYPTION_KEY = '22'.repeat(32);
   process.env.CHAT_ATTACHMENT_STORAGE_PATH = `${storagePath}/chat`;
   process.env.DATABASE_MIGRATIONS_RUN = 'false';
-  process.env.DATABASE_PATH = ':memory:';
   process.env.DATABASE_SYNCHRONIZE = 'true';
   process.env.INGESTION_POLL_INTERVAL_MS = '60000';
   process.env.KNOWLEDGE_STORAGE_PATH = storagePath;

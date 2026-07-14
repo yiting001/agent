@@ -18,7 +18,6 @@ describe('Branding settings', () => {
     process.env.BRAND_ICON_MAX_BYTES = '1024';
     process.env.BRAND_STORAGE_PATH = storagePath;
     process.env.DATABASE_MIGRATIONS_RUN = 'false';
-    process.env.DATABASE_PATH = ':memory:';
     process.env.DATABASE_SYNCHRONIZE = 'true';
     process.env.DEFAULT_SOFTWARE_NAME = '初始智能体';
 

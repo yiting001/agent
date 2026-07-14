@@ -1,23 +1,39 @@
 import { registerAs } from '@nestjs/config';
 
+import {
+  optionalValue,
+  parseBoolean,
+  parseIntegerInRange,
+  parseKeyPrefix,
+  parseNonNegativeInteger,
+  parseNonNegativeNumber,
+  parsePositiveInteger,
+  parseUrl,
+} from './configuration-parsers';
+
 const DEFAULT_API_PORT = 3000;
 const DEFAULT_BRAND_ICON_MAX_BYTES = 1024 * 1024;
 const DEFAULT_BRAND_STORAGE_PATH = 'brand-storage';
 const DEFAULT_CHAT_ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024;
 const DEFAULT_CHAT_ATTACHMENT_STORAGE_PATH = 'chat-attachments';
 const DEFAULT_CORS_ORIGIN = 'http://localhost:5173';
-const DEFAULT_DATABASE_PATH = 'agent.sqlite';
+const DEFAULT_DATABASE_POOL_MAX = 20;
+const DEFAULT_DATABASE_STATEMENT_TIMEOUT_MS = 30_000;
+const DEFAULT_TEST_DATABASE_URL =
+  'postgresql://agent:agent@127.0.0.1:5432/agent_test';
+const DEFAULT_DATABASE_URL = 'postgresql://agent:agent@127.0.0.1:5432/agent';
 const DEFAULT_SOFTWARE_NAME = '灵枢智能体';
 const DEFAULT_SERVICE_NAME = 'agent-api';
 const DEFAULT_STORAGE_PATH = 'knowledge-storage';
-const DEFAULT_ZVEC_DATA_PATH = 'zvec-data';
-const DEFAULT_ZVEC_COLLECTION_PREFIX = 'agent_knowledge';
-const DEFAULT_ZVEC_UPSERT_BATCH_SIZE = 256;
-const DEFAULT_ZVEC_INDEX_TYPE = 'hnsw';
+const DEFAULT_VECTOR_HNSW_EF_CONSTRUCTION = 64;
+const DEFAULT_VECTOR_HNSW_EF_SEARCH = 40;
+const DEFAULT_VECTOR_HNSW_M = 16;
+const DEFAULT_VECTOR_UPSERT_BATCH_SIZE = 256;
 const DEFAULT_UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024;
 const DEFAULT_MAX_DOCUMENT_BYTES = 128 * 1024 * 1024;
 const DEFAULT_PREVIEW_MAX_CHARS = 20_000;
 const DEFAULT_INGESTION_POLL_INTERVAL_MS = 2_000;
+const DEFAULT_HTTP_TRUST_PROXY_HOPS = 0;
 const DEFAULT_KNOWLEDGE_CHUNK_CHARACTERS = 1_200;
 const DEFAULT_KNOWLEDGE_CHUNK_OVERLAP = 180;
 const DEFAULT_EMBEDDING_BATCH_SIZE = 24;
@@ -31,17 +47,18 @@ const DEFAULT_AGENT_MEMORY_RECENT_MESSAGE_LIMIT = 12;
 const DEFAULT_AGENT_MEMORY_RECALL_LIMIT = 6;
 const DEFAULT_AGENT_MEMORY_EPISODE_RECALL_LIMIT = 3;
 const DEFAULT_AGENT_MEMORY_EPISODE_MIN_SCORE = 0.25;
-const DEFAULT_AGENT_MEMORY_ZVEC_COLLECTION_PREFIX = 'agent_memory';
 const DEFAULT_AGENT_MEMORY_TASK_POLL_INTERVAL_MS = 2_000;
 const DEFAULT_AGENT_MEMORY_TASK_MAX_ATTEMPTS = 3;
 const DEFAULT_AGENT_MEMORY_TASK_BACKOFF_BASE_MS = 1_000;
 const DEFAULT_AGENT_MEMORY_TASK_LOCK_TIMEOUT_MS = 60_000;
 const DEFAULT_AGENT_MEMORY_PENDING_TIMEOUT_MS = 5 * 60_000;
 const DEFAULT_AGENT_MEMORY_RECONCILE_INTERVAL_MS = 60_000;
+const DEFAULT_API_RATE_LIMIT_MAX = 120;
+const DEFAULT_PUBLIC_CHAT_RATE_LIMIT_MAX = 30;
+const DEFAULT_RATE_LIMIT_WINDOW_MS = 60_000;
+const DEFAULT_REDIS_KEY_PREFIX = 'agent';
 
 /** Runtime values owned by the API process. */
-export type ZvecIndexType = 'diskann' | 'hnsw';
-
 export interface ApplicationConfig {
   agentMemoryEpisodeMinScore: number;
   agentMemoryEpisodeRecallLimit: number;
@@ -53,17 +70,21 @@ export interface ApplicationConfig {
   agentMemoryTaskLockTimeoutMs: number;
   agentMemoryTaskMaxAttempts: number;
   agentMemoryTaskPollIntervalMs: number;
-  agentMemoryZvecCollectionPrefix: string;
+  apiRateLimitMax: number;
   brandIconMaxBytes: number;
   brandStoragePath: string;
   chatAttachmentMaxBytes: number;
   chatAttachmentStoragePath: string;
   corsOrigin: string | string[];
   credentialEncryptionKey?: string;
-  databasePath: string;
+  databaseDropSchema: boolean;
   databaseMigrationsRun: boolean;
+  databasePoolMax: number;
+  databaseStatementTimeoutMs: number;
   databaseSynchronize: boolean;
+  databaseUrl: string;
   embeddingBatchSize: number;
+  httpTrustProxyHops: number;
   ingestionPollIntervalMs: number;
   knowledgeChunkCharacters: number;
   knowledgeChunkOverlap: number;
@@ -77,14 +98,18 @@ export interface ApplicationConfig {
   observabilityRetentionDays: number;
   observabilitySlowModelMs: number;
   observabilitySlowRequestMs: number;
+  publicChatRateLimitMax: number;
+  rateLimitWindowMs: number;
+  redisKeyPrefix: string;
+  redisUrl?: string;
   skillToolMaxRounds: number;
   port: number;
   serviceName: string;
   defaultSoftwareName: string;
-  zvecCollectionPrefix: string;
-  zvecDataPath: string;
-  zvecIndexType: ZvecIndexType;
-  zvecUpsertBatchSize: number;
+  vectorHnswEfConstruction: number;
+  vectorHnswEfSearch: number;
+  vectorHnswM: number;
+  vectorUpsertBatchSize: number;
 }
 
 function parsePort(value: string | undefined): number {
@@ -97,75 +122,11 @@ function parsePort(value: string | undefined): number {
   return port;
 }
 
-function parseBoolean(value: string | undefined): boolean {
-  return value === 'true';
-}
-
-function parsePositiveInteger(
-  name: string,
-  value: string | undefined,
-  fallback: number,
-): number {
-  const parsed = Number(value ?? fallback);
-
-  if (!Number.isSafeInteger(parsed) || parsed < 1) {
-    throw new Error(`${name} must be a positive integer.`);
-  }
-
-  return parsed;
-}
-
-function parseNonNegativeNumber(
-  name: string,
-  value: string | undefined,
-  fallback: number,
-): number {
-  const parsed = Number(value ?? fallback);
-
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    throw new Error(`${name} must be a non-negative number.`);
-  }
-
-  return parsed;
-}
-
-function optionalValue(value: string | undefined): string | undefined {
-  const normalized = value?.trim();
-
-  return normalized ? normalized : undefined;
-}
-
 function parseCorsOrigins(value: string | undefined): string[] {
   return (value ?? DEFAULT_CORS_ORIGIN)
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
-}
-
-function parseZvecIndexType(value: string | undefined): ZvecIndexType {
-  const indexType = value ?? DEFAULT_ZVEC_INDEX_TYPE;
-
-  if (indexType !== 'hnsw' && indexType !== 'diskann') {
-    throw new Error('ZVEC_INDEX_TYPE must be hnsw or diskann.');
-  }
-
-  return indexType;
-}
-
-function parseCollectionPrefix(
-  name: string,
-  value: string | undefined,
-  fallback: string,
-): string {
-  const prefix = value ?? fallback;
-
-  if (!/^[a-zA-Z0-9_-]+$/.test(prefix)) {
-    throw new Error(
-      `${name} may only contain letters, numbers, underscores, and hyphens.`,
-    );
-  }
-
-  return prefix;
 }
 
 /** Provides validated, typed configuration to Nest modules. */
@@ -189,7 +150,47 @@ export const applicationConfig = registerAs(
       );
     }
 
+    const databaseUrl =
+      process.env.NODE_ENV === 'test'
+        ? parseUrl(
+            'TEST_DATABASE_URL',
+            process.env.TEST_DATABASE_URL,
+            DEFAULT_TEST_DATABASE_URL,
+            ['postgres:', 'postgresql:'],
+          )
+        : parseUrl(
+            'DATABASE_URL',
+            process.env.DATABASE_URL,
+            process.env.NODE_ENV === 'production'
+              ? undefined
+              : DEFAULT_DATABASE_URL,
+            ['postgres:', 'postgresql:'],
+          );
+
+    if (!databaseUrl) {
+      throw new Error('DATABASE_URL is required.');
+    }
+
+    const databaseSynchronize = parseBoolean(process.env.DATABASE_SYNCHRONIZE);
+    const redisUrl = parseUrl('REDIS_URL', process.env.REDIS_URL, undefined, [
+      'redis:',
+      'rediss:',
+    ]);
+
+    if (process.env.NODE_ENV === 'production' && databaseSynchronize) {
+      throw new Error('DATABASE_SYNCHRONIZE must be false in production.');
+    }
+
+    if (process.env.NODE_ENV === 'production' && !redisUrl) {
+      throw new Error('REDIS_URL is required in production.');
+    }
+
     return {
+      apiRateLimitMax: parsePositiveInteger(
+        'API_RATE_LIMIT_MAX',
+        process.env.API_RATE_LIMIT_MAX,
+        DEFAULT_API_RATE_LIMIT_MAX,
+      ),
       agentMemoryEpisodeMinScore: parseNonNegativeNumber(
         'AGENT_MEMORY_EPISODE_MIN_SCORE',
         process.env.AGENT_MEMORY_EPISODE_MIN_SCORE,
@@ -240,11 +241,6 @@ export const applicationConfig = registerAs(
         process.env.AGENT_MEMORY_TASK_POLL_INTERVAL_MS,
         DEFAULT_AGENT_MEMORY_TASK_POLL_INTERVAL_MS,
       ),
-      agentMemoryZvecCollectionPrefix: parseCollectionPrefix(
-        'AGENT_MEMORY_ZVEC_COLLECTION_PREFIX',
-        process.env.AGENT_MEMORY_ZVEC_COLLECTION_PREFIX,
-        DEFAULT_AGENT_MEMORY_ZVEC_COLLECTION_PREFIX,
-      ),
       brandIconMaxBytes: parsePositiveInteger(
         'BRAND_ICON_MAX_BYTES',
         process.env.BRAND_ICON_MAX_BYTES,
@@ -267,9 +263,20 @@ export const applicationConfig = registerAs(
       credentialEncryptionKey: optionalValue(
         process.env.CREDENTIAL_ENCRYPTION_KEY,
       ),
-      databasePath: process.env.DATABASE_PATH ?? DEFAULT_DATABASE_PATH,
+      databaseDropSchema: process.env.NODE_ENV === 'test',
       databaseMigrationsRun: parseBoolean(process.env.DATABASE_MIGRATIONS_RUN),
-      databaseSynchronize: parseBoolean(process.env.DATABASE_SYNCHRONIZE),
+      databasePoolMax: parsePositiveInteger(
+        'DATABASE_POOL_MAX',
+        process.env.DATABASE_POOL_MAX,
+        DEFAULT_DATABASE_POOL_MAX,
+      ),
+      databaseStatementTimeoutMs: parsePositiveInteger(
+        'DATABASE_STATEMENT_TIMEOUT_MS',
+        process.env.DATABASE_STATEMENT_TIMEOUT_MS,
+        DEFAULT_DATABASE_STATEMENT_TIMEOUT_MS,
+      ),
+      databaseSynchronize,
+      databaseUrl,
       defaultSoftwareName:
         optionalValue(process.env.DEFAULT_SOFTWARE_NAME) ??
         DEFAULT_SOFTWARE_NAME,
@@ -277,6 +284,11 @@ export const applicationConfig = registerAs(
         'EMBEDDING_BATCH_SIZE',
         process.env.EMBEDDING_BATCH_SIZE,
         DEFAULT_EMBEDDING_BATCH_SIZE,
+      ),
+      httpTrustProxyHops: parseNonNegativeInteger(
+        'HTTP_TRUST_PROXY_HOPS',
+        process.env.HTTP_TRUST_PROXY_HOPS,
+        DEFAULT_HTTP_TRUST_PROXY_HOPS,
       ),
       ingestionPollIntervalMs: parsePositiveInteger(
         'INGESTION_POLL_INTERVAL_MS',
@@ -329,23 +341,55 @@ export const applicationConfig = registerAs(
         DEFAULT_OBSERVABILITY_SLOW_REQUEST_MS,
       ),
       port: parsePort(process.env.API_PORT),
+      publicChatRateLimitMax: parsePositiveInteger(
+        'PUBLIC_CHAT_RATE_LIMIT_MAX',
+        process.env.PUBLIC_CHAT_RATE_LIMIT_MAX,
+        DEFAULT_PUBLIC_CHAT_RATE_LIMIT_MAX,
+      ),
+      rateLimitWindowMs: parsePositiveInteger(
+        'RATE_LIMIT_WINDOW_MS',
+        process.env.RATE_LIMIT_WINDOW_MS,
+        DEFAULT_RATE_LIMIT_WINDOW_MS,
+      ),
+      redisKeyPrefix: parseKeyPrefix(
+        'REDIS_KEY_PREFIX',
+        process.env.REDIS_KEY_PREFIX,
+        DEFAULT_REDIS_KEY_PREFIX,
+      ),
+      redisUrl,
       skillToolMaxRounds: parsePositiveInteger(
         'SKILL_TOOL_MAX_ROUNDS',
         process.env.SKILL_TOOL_MAX_ROUNDS,
         DEFAULT_SKILL_TOOL_MAX_ROUNDS,
       ),
       serviceName: process.env.API_SERVICE_NAME ?? DEFAULT_SERVICE_NAME,
-      zvecCollectionPrefix: parseCollectionPrefix(
-        'ZVEC_COLLECTION_PREFIX',
-        process.env.ZVEC_COLLECTION_PREFIX,
-        DEFAULT_ZVEC_COLLECTION_PREFIX,
+      vectorHnswEfConstruction: parseIntegerInRange(
+        'VECTOR_HNSW_EF_CONSTRUCTION',
+        process.env.VECTOR_HNSW_EF_CONSTRUCTION,
+        DEFAULT_VECTOR_HNSW_EF_CONSTRUCTION,
+        4,
+        1_000,
       ),
-      zvecDataPath: process.env.ZVEC_DATA_PATH ?? DEFAULT_ZVEC_DATA_PATH,
-      zvecIndexType: parseZvecIndexType(process.env.ZVEC_INDEX_TYPE),
-      zvecUpsertBatchSize: parsePositiveInteger(
-        'ZVEC_UPSERT_BATCH_SIZE',
-        process.env.ZVEC_UPSERT_BATCH_SIZE,
-        DEFAULT_ZVEC_UPSERT_BATCH_SIZE,
+      vectorHnswEfSearch: parseIntegerInRange(
+        'VECTOR_HNSW_EF_SEARCH',
+        process.env.VECTOR_HNSW_EF_SEARCH,
+        DEFAULT_VECTOR_HNSW_EF_SEARCH,
+        1,
+        1_000,
+      ),
+      vectorHnswM: parseIntegerInRange(
+        'VECTOR_HNSW_M',
+        process.env.VECTOR_HNSW_M,
+        DEFAULT_VECTOR_HNSW_M,
+        2,
+        100,
+      ),
+      vectorUpsertBatchSize: parseIntegerInRange(
+        'VECTOR_UPSERT_BATCH_SIZE',
+        process.env.VECTOR_UPSERT_BATCH_SIZE,
+        DEFAULT_VECTOR_UPSERT_BATCH_SIZE,
+        1,
+        1_000,
       ),
     };
   },

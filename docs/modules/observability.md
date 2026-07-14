@@ -9,7 +9,7 @@
 - 展示 Google SRE 黄金信号：流量、延迟、错误和运行时饱和度。
 - 统计模型输入 / 输出 Token，并根据模型配置的单价估算美元成本。
 - 对失败、慢请求、慢模型和单次高成本自动生成告警。
-- 将事件保存在 SQLite，并按保留天数自动清理。
+- 将事件保存在 PostgreSQL，并按保留天数自动清理。
 
 非目标：
 
@@ -33,7 +33,7 @@
    将一次智能体执行表示为 Trace，将模型和工具步骤表示为 Span，同时观察延迟、
    错误、Token 与成本。
 
-本项目采用本地优先的 SQLite 实现，保留 OpenTelemetry 风格的 Trace / Span 边界，
+本项目采用 PostgreSQL 事件存储，保留 OpenTelemetry 风格的 Trace / Span 边界，
 后续可新增 OTLP 导出适配器，而无需修改业务用例。
 
 ## 目录结构
@@ -81,7 +81,7 @@ flowchart LR
   Observer --> Service
   Interceptor --> Service
   Service --> Repository[ObservabilityEventRepository]
-  Repository --> SQLite[(SQLite)]
+  Repository --> PostgreSQL[(PostgreSQL)]
   Dashboard[GET /observability/dashboard] --> Query[Dashboard Use Case]
   Query --> Repository
   Web[Vue Observability View] --> Dashboard
@@ -95,7 +95,7 @@ sequenceDiagram
   participant HTTP as HTTP Interceptor
   participant UseCase
   participant Model
-  participant Store as SQLite Event Store
+  participant Store as PostgreSQL Event Store
 
   Client->>HTTP: 请求（可携带 traceparent）
   HTTP->>HTTP: 创建或沿用 Trace ID
@@ -165,12 +165,12 @@ costUsdMicros =
 
 ## 配置项
 
-| 配置                            |  默认值 | 说明                |
-| ------------------------------- | ------: | ------------------- |
-| `OBSERVABILITY_RETENTION_DAYS`  |    `30` | SQLite 事件保留天数 |
-| `OBSERVABILITY_SLOW_REQUEST_MS` |  `2000` | HTTP 慢请求阈值     |
-| `OBSERVABILITY_SLOW_MODEL_MS`   | `30000` | 模型慢调用阈值      |
-| `OBSERVABILITY_HIGH_COST_USD`   |   `0.1` | 单次高成本阈值      |
+| 配置                            |  默认值 | 说明                    |
+| ------------------------------- | ------: | ----------------------- |
+| `OBSERVABILITY_RETENTION_DAYS`  |    `30` | PostgreSQL 事件保留天数 |
+| `OBSERVABILITY_SLOW_REQUEST_MS` |  `2000` | HTTP 慢请求阈值         |
+| `OBSERVABILITY_SLOW_MODEL_MS`   | `30000` | 模型慢调用阈值          |
+| `OBSERVABILITY_HIGH_COST_USD`   |   `0.1` | 单次高成本阈值          |
 
 ## 测试范围
 

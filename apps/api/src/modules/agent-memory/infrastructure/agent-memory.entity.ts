@@ -61,19 +61,19 @@ export class AgentMemoryEntity {
   @Column('integer')
   importance: number;
 
-  @Column('datetime', { nullable: true })
+  @Column('timestamptz', { nullable: true })
   indexedAt?: Date | null;
 
   @Column('integer', { default: 0 })
   accessCount: number;
 
-  @Column('datetime', { nullable: true })
+  @Column('timestamptz', { nullable: true })
   lastAccessedAt?: Date;
 
-  @Column('datetime')
+  @Column('timestamptz')
   createdAt: Date;
 
   @Index()
-  @Column('datetime')
+  @Column('timestamptz')
   updatedAt: Date;
 }

@@ -13,6 +13,7 @@ import { AddObservability1752153000000 } from './database/migrations/17521530000
 import { AddAgentMemory1752154000000 } from './database/migrations/1752154000000-add-agent-memory';
 import { AddEpisodicMemoryArtifacts1752155000000 } from './database/migrations/1752155000000-add-episodic-memory-artifacts';
 import { AddAgentMemoryTasks1752156000000 } from './database/migrations/1752156000000-add-agent-memory-tasks';
+import { EnablePgvector1752157000000 } from './database/migrations/1752157000000-enable-pgvector';
 import { BrandingModule } from './modules/branding/branding.module';
 import { HealthModule } from './modules/health/health.module';
 import { AgentMemoryModule } from './modules/agent-memory/agent-memory.module';
@@ -23,6 +24,7 @@ import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { ModelProvidersModule } from './modules/model-providers/model-providers.module';
 import { SkillsModule } from './modules/skills/skills.module';
 import { ObservabilityModule } from './modules/observability/observability.module';
+import { RedisModule } from './shared/infrastructure/redis/redis.module';
 
 @Module({
   imports: [
@@ -31,6 +33,7 @@ import { ObservabilityModule } from './modules/observability/observability.modul
       isGlobal: true,
       load: [applicationConfig],
     }),
+    RedisModule,
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
@@ -39,7 +42,7 @@ import { ObservabilityModule } from './modules/observability/observability.modul
 
         return {
           autoLoadEntities: true,
-          database: config.databasePath,
+          dropSchema: config.databaseDropSchema,
           migrations: [
             InitialKnowledgePlatform1752150000000,
             AddBrandSettings1752151000000,
@@ -48,10 +51,16 @@ import { ObservabilityModule } from './modules/observability/observability.modul
             AddAgentMemory1752154000000,
             AddEpisodicMemoryArtifacts1752155000000,
             AddAgentMemoryTasks1752156000000,
+            EnablePgvector1752157000000,
           ],
           migrationsRun: config.databaseMigrationsRun,
+          extra: {
+            max: config.databasePoolMax,
+            statement_timeout: config.databaseStatementTimeoutMs,
+          },
           synchronize: config.databaseSynchronize,
-          type: 'better-sqlite3' as const,
+          type: 'postgres' as const,
+          url: config.databaseUrl,
         };
       },
     }),

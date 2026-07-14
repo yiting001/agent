@@ -13,9 +13,11 @@ import {
   type AgentMemoryConsistencyRepair,
   type AgentMemoryHealth,
   type AgentMemoryOwnerScope,
+  type EnqueueEpisodeResult,
   type EnqueueEpisodeInput,
 } from '../application/agent-memory-task.repository';
 import { AgentMemoryArtifactEntity } from './agent-memory-artifact.entity';
+import { unwrapPostgresRows } from '../../../shared/infrastructure/postgres/postgres-query-result';
 import { toMemory, toTask } from './agent-memory-persistence.mapper';
 import { AgentMemoryEntity } from './agent-memory.entity';
 import { AgentMemoryTaskEntity } from './agent-memory-task.entity';
@@ -36,41 +38,32 @@ export class TypeOrmAgentMemoryTaskRepository extends AgentMemoryTaskRepository 
     lockOwner: string;
     now: Date;
   }): Promise<AgentMemoryTask | undefined> {
-    const result = await this.tasks
-      .createQueryBuilder()
-      .update(AgentMemoryTaskEntity)
-      .set({
-        attempts: () => '"attempts" + 1',
-        lastError: null,
-        lockedAt: input.now,
-        lockOwner: input.lockOwner,
-        status: 'processing',
-        updatedAt: input.now,
-      })
-      .where(
-        `"id" = (
-            SELECT "id" FROM "agent_memory_tasks"
-            WHERE "status" = :status AND "nextRunAt" <= :now
-            ORDER BY "nextRunAt" ASC, "createdAt" ASC
-            LIMIT 1
-          )`,
-        { now: input.now, status: 'queued' },
-      )
-      .andWhere('"status" = :status', { status: 'queued' })
-      .execute();
-
-    if ((result.affected ?? 0) < 1) {
-      return undefined;
-    }
-
-    const entity = await this.tasks.findOne({
-      order: { updatedAt: 'DESC' },
-      where: {
-        lockOwner: input.lockOwner,
-        status: 'processing',
-        updatedAt: input.now,
-      },
-    });
+    const result: unknown = await this.dataSource.query(
+      `
+        WITH next_task AS (
+          SELECT "id"
+          FROM "agent_memory_tasks"
+          WHERE "status" = 'queued' AND "nextRunAt" <= $1
+          ORDER BY "nextRunAt" ASC, "createdAt" ASC
+          FOR UPDATE SKIP LOCKED
+          LIMIT 1
+        )
+        UPDATE "agent_memory_tasks" AS task
+        SET
+          "attempts" = task."attempts" + 1,
+          "lastError" = NULL,
+          "lockedAt" = $1,
+          "lockOwner" = $2,
+          "status" = 'processing',
+          "updatedAt" = $1
+        FROM next_task
+        WHERE task."id" = next_task."id"
+        RETURNING task.*
+      `,
+      [input.now, input.lockOwner],
+    );
+    const rows = unwrapPostgresRows<AgentMemoryTaskEntity>(result);
+    const entity = rows[0];
 
     return entity ? toTask(entity) : undefined;
   }
@@ -134,7 +127,9 @@ export class TypeOrmAgentMemoryTaskRepository extends AgentMemoryTaskRepository 
     });
   }
 
-  async enqueueEpisode(input: EnqueueEpisodeInput): Promise<AgentMemory> {
+  async enqueueEpisode(
+    input: EnqueueEpisodeInput,
+  ): Promise<EnqueueEpisodeResult> {
     return this.dataSource.transaction(async (manager) => {
       const memories = manager.getRepository(AgentMemoryEntity);
       const existing = await memories.findOne({
@@ -147,16 +142,19 @@ export class TypeOrmAgentMemoryTaskRepository extends AgentMemoryTaskRepository 
       });
 
       if (existing) {
-        await this.ensureTask(manager.getRepository(AgentMemoryTaskEntity), {
-          agentId: existing.agentId,
-          kind: existing.status === 'ready' ? 'index' : 'extract',
-          maxAttempts: input.maxAttempts,
-          memoryId: existing.id,
-          now: input.now,
-          ownerKey: existing.ownerKey,
-        });
+        const taskEnqueued = await this.ensureTask(
+          manager.getRepository(AgentMemoryTaskEntity),
+          {
+            agentId: existing.agentId,
+            kind: existing.status === 'ready' ? 'index' : 'extract',
+            maxAttempts: input.maxAttempts,
+            memoryId: existing.id,
+            now: input.now,
+            ownerKey: existing.ownerKey,
+          },
+        );
 
-        return toMemory(existing);
+        return { memory: toMemory(existing), taskEnqueued };
       }
 
       const memoryId = randomUUID();
@@ -196,16 +194,19 @@ export class TypeOrmAgentMemoryTaskRepository extends AgentMemoryTaskRepository 
       }
 
       if (persisted.id !== memoryId) {
-        await this.ensureTask(manager.getRepository(AgentMemoryTaskEntity), {
-          agentId: persisted.agentId,
-          kind: persisted.status === 'ready' ? 'index' : 'extract',
-          maxAttempts: input.maxAttempts,
-          memoryId: persisted.id,
-          now: input.now,
-          ownerKey: persisted.ownerKey,
-        });
+        const taskEnqueued = await this.ensureTask(
+          manager.getRepository(AgentMemoryTaskEntity),
+          {
+            agentId: persisted.agentId,
+            kind: persisted.status === 'ready' ? 'index' : 'extract',
+            maxAttempts: input.maxAttempts,
+            memoryId: persisted.id,
+            now: input.now,
+            ownerKey: persisted.ownerKey,
+          },
+        );
 
-        return toMemory(persisted);
+        return { memory: toMemory(persisted), taskEnqueued };
       }
 
       await manager.getRepository(AgentMemoryArtifactEntity).save(
@@ -227,7 +228,7 @@ export class TypeOrmAgentMemoryTaskRepository extends AgentMemoryTaskRepository 
         ownerKey: input.ownerKey,
       });
 
-      return toMemory(persisted);
+      return { memory: toMemory(persisted), taskEnqueued: true };
     });
   }
 
@@ -372,7 +373,7 @@ export class TypeOrmAgentMemoryTaskRepository extends AgentMemoryTaskRepository 
       },
       {
         embeddingDimensions: input.dimensions,
-        embeddingJson: JSON.stringify(input.vector),
+        embeddingJson: input.vector,
         updatedAt: new Date(),
       },
     );

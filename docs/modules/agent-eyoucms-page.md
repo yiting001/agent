@@ -125,7 +125,7 @@ flowchart TD
 
 ## 如何进入测试页面
 
-先启动 API，并在后台创建至少一个智能体。Zvec 随 NestJS 进程加载，不需要单独启动服务。
+先启动 API，并在后台创建至少一个智能体。启动 API 前必须准备 PostgreSQL + pgvector 与 Redis；本地可运行 `docker compose up -d postgres redis`。
 然后在仓库根目录启动静态服务：
 
 在仓库根目录运行：
