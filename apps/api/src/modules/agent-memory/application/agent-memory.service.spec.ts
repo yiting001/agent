@@ -3,12 +3,15 @@ import { ConfigService } from '@nestjs/config';
 import type { ApplicationConfig } from '../../../config/application.config';
 import type {
   AgentMemory,
+  AgentMemoryArtifact,
   AgentMemoryMessage,
   AgentMemoryThread,
 } from '../domain/agent-memory';
 import {
   AgentMemoryRepository,
+  type SaveMemoryArtifactInput,
   type SaveMemoryInput,
+  type UpdateMemoryInput,
 } from './agent-memory.repository';
 import { AgentMemoryService } from './agent-memory.service';
 
@@ -23,6 +26,7 @@ function config(): ConfigService {
 }
 
 class InMemoryAgentMemoryRepository extends AgentMemoryRepository {
+  artifacts: AgentMemoryArtifact[] = [];
   memories: AgentMemory[] = [];
   messages: AgentMemoryMessage[] = [];
   threads = new Map<string, AgentMemoryThread>();
@@ -101,6 +105,36 @@ class InMemoryAgentMemoryRepository extends AgentMemoryRepository {
     return Promise.resolve(thread?.ownerKey === ownerKey ? thread : undefined);
   }
 
+  findMemory(
+    agentId: string,
+    ownerKey: string,
+    memoryId: string,
+  ): Promise<AgentMemory | undefined> {
+    return Promise.resolve(
+      this.memories.find(
+        (memory) =>
+          memory.agentId === agentId &&
+          memory.id === memoryId &&
+          memory.ownerKey === ownerKey,
+      ),
+    );
+  }
+
+  listArtifacts(
+    agentId: string,
+    ownerKey: string,
+    memoryIds?: string[],
+  ): Promise<AgentMemoryArtifact[]> {
+    return Promise.resolve(
+      this.artifacts.filter(
+        (artifact) =>
+          artifact.agentId === agentId &&
+          artifact.ownerKey === ownerKey &&
+          (!memoryIds || memoryIds.includes(artifact.memoryId)),
+      ),
+    );
+  }
+
   listMemories(
     agentId: string,
     ownerKey: string,
@@ -155,6 +189,7 @@ class InMemoryAgentMemoryRepository extends AgentMemoryRepository {
       importance: input.importance,
       ownerKey: input.ownerKey,
       sourceThreadId: input.sourceThreadId,
+      status: input.status ?? 'ready',
       type: input.type,
       updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
@@ -162,6 +197,18 @@ class InMemoryAgentMemoryRepository extends AgentMemoryRepository {
     this.memories.push(memory);
 
     return Promise.resolve(memory);
+  }
+
+  saveArtifacts(inputs: SaveMemoryArtifactInput[]): Promise<void> {
+    this.artifacts.push(
+      ...inputs.map((input, index) => ({
+        ...input,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        id: `artifact-${this.artifacts.length + index + 1}`,
+      })),
+    );
+
+    return Promise.resolve();
   }
 
   saveThread(thread: AgentMemoryThread): Promise<void> {
@@ -179,6 +226,23 @@ class InMemoryAgentMemoryRepository extends AgentMemoryRepository {
     }
 
     return Promise.resolve();
+  }
+
+  updateMemory(input: UpdateMemoryInput): Promise<AgentMemory | undefined> {
+    const memory = this.memories.find(
+      (candidate) =>
+        candidate.agentId === input.agentId &&
+        candidate.id === input.memoryId &&
+        candidate.ownerKey === input.ownerKey,
+    );
+
+    if (memory) {
+      memory.content = input.content;
+      memory.importance = input.importance;
+      memory.status = input.status;
+    }
+
+    return Promise.resolve(memory);
   }
 }
 
@@ -213,6 +277,7 @@ describe('AgentMemoryService', () => {
       id: 'memory-1',
       importance: 4,
       ownerKey: 'owner-1',
+      status: 'ready',
       type: 'preference',
       updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     });
@@ -346,6 +411,7 @@ describe('AgentMemoryService', () => {
       id: 'memory-1',
       importance: 5,
       ownerKey: 'owner-a',
+      status: 'ready',
       type: 'preference',
       updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     });

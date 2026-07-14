@@ -101,7 +101,11 @@ export abstract class AdminWorkspaceGateway {
     input: UpdateSkillInput,
   ): Promise<SkillSummary>;
 
-  abstract uploadChatAttachment(file: File): Promise<ChatAttachmentSummary>;
+  abstract uploadChatAttachment(
+    agentId: string,
+    ownerKey: string,
+    file: File,
+  ): Promise<ChatAttachmentSummary>;
 
   abstract uploadKnowledgeFile(
     moduleId: string,

@@ -260,10 +260,18 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
     );
   }
 
-  uploadChatAttachment(file: File): Promise<ChatAttachmentSummary> {
+  uploadChatAttachment(
+    agentId: string,
+    ownerKey: string,
+    file: File,
+  ): Promise<ChatAttachmentSummary> {
     return this.httpClient.postFile<ChatAttachmentSummary>(
       '/chat-attachments',
       file,
+      {
+        'X-Agent-Id': agentId,
+        'X-Memory-Owner-Key': ownerKey,
+      },
     );
   }
 

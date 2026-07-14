@@ -4,7 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import type { ApplicationConfig } from '../../../config/application.config';
 import type { ConversationMessage } from '../../chat/domain/chat';
 import type {
-  AgentMemory,
   AgentMemoryMessage,
   MemorySource,
   MemoryType,
@@ -291,22 +290,6 @@ export class AgentMemoryService {
     }
   }
 
-  listAgentMemories(agentId: string, ownerKey: string): Promise<AgentMemory[]> {
-    return this.repository.listMemories(agentId, ownerKey, 100);
-  }
-
-  clearAgentMemory(agentId: string, ownerKey: string): Promise<void> {
-    return this.repository.clearAgentMemory(agentId, ownerKey);
-  }
-
-  deleteMemory(
-    agentId: string,
-    ownerKey: string,
-    memoryId: string,
-  ): Promise<void> {
-    return this.repository.deleteMemory(agentId, ownerKey, memoryId);
-  }
-
   private async loadRecentMessages(
     agentId: string,
     conversationId: string,
@@ -421,6 +404,7 @@ export class AgentMemoryService {
     const memories = await this.repository.listMemories(agentId, ownerKey, 100);
     const keywords = extractKeywords(query);
     const scored = memories
+      .filter((memory) => memory.type !== 'episodic')
       .map((memory) => ({
         content: memory.content,
         id: memory.id,

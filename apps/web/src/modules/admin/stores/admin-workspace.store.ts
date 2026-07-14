@@ -338,9 +338,11 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
   }
 
   function uploadChatAttachment(
+    agentId: string,
+    ownerKey: string,
     file: File,
   ): ReturnType<typeof gateway.uploadChatAttachment> {
-    return gateway.uploadChatAttachment(file);
+    return gateway.uploadChatAttachment(agentId, ownerKey, file);
   }
 
   return {

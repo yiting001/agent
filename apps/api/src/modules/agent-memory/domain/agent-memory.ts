@@ -1,4 +1,5 @@
 export type MemorySource = 'admin' | 'api' | 'public';
+export type MemoryStatus = 'pending' | 'ready';
 export type MemoryType = 'episodic' | 'preference' | 'semantic';
 
 export interface AgentMemoryThread {
@@ -31,36 +32,70 @@ export interface AgentMemory {
   lastAccessedAt?: Date;
   ownerKey: string;
   sourceThreadId?: string;
+  status: MemoryStatus;
   type: MemoryType;
   updatedAt: Date;
 }
 
+export interface AgentMemoryArtifact {
+  agentId: string;
+  attachmentId: string;
+  createdAt: Date;
+  fileName: string;
+  id: string;
+  memoryId: string;
+  mimeType: string;
+  ownerKey: string;
+  sizeBytes: number;
+}
+
+export interface AgentMemoryArtifactSummary {
+  fileName: string;
+  id: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+
 export interface AgentMemorySummary {
   accessCount: number;
+  artifacts: AgentMemoryArtifactSummary[];
   content: string;
   id: string;
   importance: number;
   lastAccessedAt?: string;
   sourceThreadId?: string;
+  status: MemoryStatus;
   type: MemoryType;
   updatedAt: string;
 }
 
 export interface RecalledMemory {
+  artifacts?: AgentMemoryArtifactSummary[];
   content: string;
+  createdAt?: Date;
   id: string;
   score: number;
   type: MemoryType;
 }
 
-export function toAgentMemorySummary(memory: AgentMemory): AgentMemorySummary {
+export function toAgentMemorySummary(
+  memory: AgentMemory,
+  artifacts: AgentMemoryArtifact[] = [],
+): AgentMemorySummary {
   return {
     accessCount: memory.accessCount,
+    artifacts: artifacts.map((artifact) => ({
+      fileName: artifact.fileName,
+      id: artifact.id,
+      mimeType: artifact.mimeType,
+      sizeBytes: artifact.sizeBytes,
+    })),
     content: memory.content,
     id: memory.id,
     importance: memory.importance,
     lastAccessedAt: memory.lastAccessedAt?.toISOString(),
     sourceThreadId: memory.sourceThreadId,
+    status: memory.status,
     type: memory.type,
     updatedAt: memory.updatedAt.toISOString(),
   };

@@ -4,7 +4,11 @@ export interface HttpClient {
   get<Response>(path: string): Promise<Response>;
   patch<Response, Body>(path: string, body: Body): Promise<Response>;
   post<Response, Body>(path: string, body: Body): Promise<Response>;
-  postFile<Response>(path: string, body: File): Promise<Response>;
+  postFile<Response>(
+    path: string,
+    body: File,
+    headers?: Record<string, string>,
+  ): Promise<Response>;
   postEventStream<Body>(
     path: string,
     body: Body,
@@ -35,13 +39,18 @@ export class FetchHttpClient implements HttpClient {
     return this.request<Response>(path, this.jsonRequest('POST', body));
   }
 
-  postFile<Response>(path: string, body: File): Promise<Response> {
+  postFile<Response>(
+    path: string,
+    body: File,
+    headers?: Record<string, string>,
+  ): Promise<Response> {
     return this.request<Response>(path, {
       body,
       headers: {
         Accept: 'application/json',
         'Content-Type': body.type,
         'X-File-Name': encodeURIComponent(body.name),
+        ...headers,
       },
       method: 'POST',
     });

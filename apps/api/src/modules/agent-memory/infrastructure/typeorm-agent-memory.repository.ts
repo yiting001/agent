@@ -5,13 +5,17 @@ import { In, Repository } from 'typeorm';
 
 import type {
   AgentMemory,
+  AgentMemoryArtifact,
   AgentMemoryMessage,
   AgentMemoryThread,
 } from '../domain/agent-memory';
 import {
   AgentMemoryRepository,
+  type SaveMemoryArtifactInput,
   type SaveMemoryInput,
+  type UpdateMemoryInput,
 } from '../application/agent-memory.repository';
+import { AgentMemoryArtifactEntity } from './agent-memory-artifact.entity';
 import { AgentMemoryEntity } from './agent-memory.entity';
 import { AgentMemoryMessageEntity } from './agent-memory-message.entity';
 import { AgentMemoryThreadEntity } from './agent-memory-thread.entity';
@@ -51,14 +55,31 @@ function toMemory(entity: AgentMemoryEntity): AgentMemory {
     lastAccessedAt: entity.lastAccessedAt,
     ownerKey: entity.ownerKey,
     sourceThreadId: entity.sourceThreadId,
+    status: entity.status,
     type: entity.type,
     updatedAt: entity.updatedAt,
+  };
+}
+
+function toArtifact(entity: AgentMemoryArtifactEntity): AgentMemoryArtifact {
+  return {
+    agentId: entity.agentId,
+    attachmentId: entity.attachmentId,
+    createdAt: entity.createdAt,
+    fileName: entity.fileName,
+    id: entity.id,
+    memoryId: entity.memoryId,
+    mimeType: entity.mimeType,
+    ownerKey: entity.ownerKey,
+    sizeBytes: entity.sizeBytes,
   };
 }
 
 @Injectable()
 export class TypeOrmAgentMemoryRepository extends AgentMemoryRepository {
   constructor(
+    @InjectRepository(AgentMemoryArtifactEntity)
+    private readonly artifacts: Repository<AgentMemoryArtifactEntity>,
     @InjectRepository(AgentMemoryEntity)
     private readonly memories: Repository<AgentMemoryEntity>,
     @InjectRepository(AgentMemoryMessageEntity)
@@ -147,6 +168,39 @@ export class TypeOrmAgentMemoryRepository extends AgentMemoryRepository {
     return entity ? toThread(entity) : undefined;
   }
 
+  async findMemory(
+    agentId: string,
+    ownerKey: string,
+    memoryId: string,
+  ): Promise<AgentMemory | undefined> {
+    const entity = await this.memories.findOne({
+      where: { agentId, id: memoryId, ownerKey },
+    });
+
+    return entity ? toMemory(entity) : undefined;
+  }
+
+  async listArtifacts(
+    agentId: string,
+    ownerKey: string,
+    memoryIds?: string[],
+  ): Promise<AgentMemoryArtifact[]> {
+    if (memoryIds?.length === 0) {
+      return [];
+    }
+
+    const entities = await this.artifacts.find({
+      order: { createdAt: 'ASC' },
+      where: {
+        agentId,
+        ...(memoryIds ? { memoryId: In(memoryIds) } : {}),
+        ownerKey,
+      },
+    });
+
+    return entities.map(toArtifact);
+  }
+
   async listMemories(
     agentId: string,
     ownerKey: string,
@@ -180,13 +234,16 @@ export class TypeOrmAgentMemoryRepository extends AgentMemoryRepository {
   }
 
   async saveMemory(input: SaveMemoryInput): Promise<AgentMemory> {
-    const existing = await this.memories.findOne({
-      where: {
-        agentId: input.agentId,
-        content: input.content,
-        ownerKey: input.ownerKey,
-      },
-    });
+    const existing =
+      input.type === 'episodic'
+        ? undefined
+        : await this.memories.findOne({
+            where: {
+              agentId: input.agentId,
+              content: input.content,
+              ownerKey: input.ownerKey,
+            },
+          });
     const now = new Date();
     const entity = this.memories.create({
       accessCount: existing?.accessCount ?? 0,
@@ -198,11 +255,30 @@ export class TypeOrmAgentMemoryRepository extends AgentMemoryRepository {
       lastAccessedAt: existing?.lastAccessedAt,
       ownerKey: input.ownerKey,
       sourceThreadId: existing?.sourceThreadId ?? input.sourceThreadId,
+      status: existing?.status ?? input.status ?? 'ready',
       type: input.type,
       updatedAt: now,
     });
 
     return toMemory(await this.memories.save(entity));
+  }
+
+  async saveArtifacts(inputs: SaveMemoryArtifactInput[]): Promise<void> {
+    if (inputs.length === 0) {
+      return;
+    }
+
+    const now = new Date();
+
+    await this.artifacts.save(
+      inputs.map((input) =>
+        this.artifacts.create({
+          ...input,
+          createdAt: now,
+          id: randomUUID(),
+        }),
+      ),
+    );
   }
 
   async saveThread(thread: AgentMemoryThread): Promise<void> {
@@ -226,6 +302,29 @@ export class TypeOrmAgentMemoryRepository extends AgentMemoryRepository {
         }),
       ),
     );
+  }
+
+  async updateMemory(
+    input: UpdateMemoryInput,
+  ): Promise<AgentMemory | undefined> {
+    const entity = await this.memories.findOne({
+      where: {
+        agentId: input.agentId,
+        id: input.memoryId,
+        ownerKey: input.ownerKey,
+      },
+    });
+
+    if (!entity) {
+      return undefined;
+    }
+
+    entity.content = input.content;
+    entity.importance = input.importance;
+    entity.status = input.status;
+    entity.updatedAt = new Date();
+
+    return toMemory(await this.memories.save(entity));
   }
 
   private messageKey(

@@ -9,6 +9,7 @@ import type { ApplicationConfig } from '../../../config/application.config';
 import { ApplicationError } from '../../../shared/application/application-error';
 import {
   ChatAttachmentStorage,
+  type ChatAttachmentOwner,
   type StoredChatAttachment,
 } from '../application/chat-attachment.storage';
 import type { ChatAttachmentSummary } from '../domain/chat';
@@ -64,7 +65,12 @@ function normalizeFileName(fileName: string): string {
   return value || '未命名附件';
 }
 
-function parseMetadata(value: string): ChatAttachmentSummary {
+interface ChatAttachmentMetadata extends ChatAttachmentSummary {
+  agentId?: string;
+  ownerKey?: string;
+}
+
+function parseMetadata(value: string): ChatAttachmentMetadata {
   const parsed: unknown = JSON.parse(value);
 
   if (
@@ -83,12 +89,40 @@ function parseMetadata(value: string): ChatAttachmentSummary {
     throw new ApplicationError('not_found', '聊天附件元数据无效。');
   }
 
-  return {
+  const metadata: ChatAttachmentMetadata = {
     fileName: parsed.fileName,
     id: parsed.id,
     mimeType: parsed.mimeType,
     sizeBytes: parsed.sizeBytes,
   };
+
+  if (
+    'agentId' in parsed &&
+    'ownerKey' in parsed &&
+    typeof parsed.agentId === 'string' &&
+    typeof parsed.ownerKey === 'string'
+  ) {
+    metadata.agentId = parsed.agentId;
+    metadata.ownerKey = parsed.ownerKey;
+  }
+
+  return metadata;
+}
+
+function assertOwner(
+  metadata: ChatAttachmentMetadata,
+  owner?: ChatAttachmentOwner,
+): void {
+  const owned = Boolean(metadata.agentId && metadata.ownerKey);
+
+  if (
+    owned &&
+    (!owner ||
+      metadata.agentId !== owner.agentId ||
+      metadata.ownerKey !== owner.ownerKey)
+  ) {
+    throw new ApplicationError('not_found', '聊天附件不存在或已失效。');
+  }
 }
 
 @Injectable()
@@ -109,7 +143,10 @@ export class LocalChatAttachmentStorage extends ChatAttachmentStorage {
     ]);
   }
 
-  async read(id: string): Promise<StoredChatAttachment> {
+  async read(
+    id: string,
+    owner?: ChatAttachmentOwner,
+  ): Promise<StoredChatAttachment> {
     this.validateId(id);
 
     try {
@@ -117,8 +154,21 @@ export class LocalChatAttachmentStorage extends ChatAttachmentStorage {
         fileSystem.readFile(this.resolveKey(`${id}.bin`)),
         fileSystem.readFile(this.resolveKey(`${id}.json`), 'utf8'),
       ]);
+      const parsed = parseMetadata(metadata);
 
-      return { ...parseMetadata(metadata), content };
+      assertOwner(parsed, owner);
+
+      return {
+        content,
+        fileName: parsed.fileName,
+        id: parsed.id,
+        mimeType: parsed.mimeType,
+        owner:
+          parsed.agentId && parsed.ownerKey
+            ? { agentId: parsed.agentId, ownerKey: parsed.ownerKey }
+            : undefined,
+        sizeBytes: parsed.sizeBytes,
+      };
     } catch (error) {
       if (error instanceof ApplicationError) {
         throw error;
@@ -133,6 +183,7 @@ export class LocalChatAttachmentStorage extends ChatAttachmentStorage {
     mimeType: string,
     source: AsyncIterable<Uint8Array>,
     maxBytes: number,
+    owner?: ChatAttachmentOwner,
   ): Promise<ChatAttachmentSummary> {
     const id = randomUUID();
     const filePath = this.resolveKey(`${id}.bin`);
@@ -175,10 +226,12 @@ export class LocalChatAttachmentStorage extends ChatAttachmentStorage {
         );
       }
 
-      const metadata: ChatAttachmentSummary = {
+      const metadata: ChatAttachmentMetadata = {
+        agentId: owner?.agentId,
         fileName: normalizeFileName(fileName),
         id,
         mimeType: mimeType === 'audio/x-wav' ? 'audio/wav' : mimeType,
+        ownerKey: owner?.ownerKey,
         sizeBytes,
       };
 
@@ -188,7 +241,12 @@ export class LocalChatAttachmentStorage extends ChatAttachmentStorage {
         { flag: 'wx' },
       );
 
-      return metadata;
+      return {
+        fileName: metadata.fileName,
+        id: metadata.id,
+        mimeType: metadata.mimeType,
+        sizeBytes: metadata.sizeBytes,
+      };
     } catch (error) {
       output.destroy();
       await this.delete(id);
