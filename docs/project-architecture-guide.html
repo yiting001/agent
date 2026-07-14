@@ -2192,7 +2192,8 @@
             </li>
             <li>FetchHttpClient 统一处理 SSE 块，并按 event/data 交给上层。</li>
             <li>
-              Markdown 原始 HTML 被禁用，富内容经过 DOMPurify 等安全处理。
+              Markdown 允许内联 HTML 参与渲染，最终统一经过 DOMPurify
+              消毒；EyouCMS 在消毒库加载失败时降级为禁用 HTML。
             </li>
             <li>
               前端支持 Markdown、表格、代码块、KaTeX、ECharts、D3 和 Mermaid。
