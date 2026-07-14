@@ -21,7 +21,7 @@ flowchart LR
 当前已具备：
 
 - `agentId + ownerKey` 隔离的图片上传、读取、召回和删除。
-- `pending / ready` 情景状态及视觉提取失败降级。
+- `pending / ready / failed` 情景状态及视觉提取失败降级。
 - 图片摘要、可检索实体、重要度和原始附件关系。
 - 独立于企业知识库的 Zvec 情景索引。
 - “上次”“最近”“那只狗”“前一张”等中文指代召回。
@@ -30,45 +30,43 @@ flowchart LR
 - SQLite、索引、附件关系和无引用媒体的联动删除。
 - 列表、单条删除、清空和原始图片查看接口。
 
-## 尚未实现
+## 当前 P0 已实现
 
-### P0：生产稳定性
+### P0：生产稳定性（本阶段完成）
 
 #### 1. 持久化异步任务与自动重试
 
-当前情景提取在回答结束后通过进程内异步调用执行。服务重启、进程崩溃或模型暂时不可用时，`pending` 记录会保留，但不会自动重试。
+已完成：
 
-后续需要：
-
-- 增加持久化任务表或队列。
-- 使用 Outbox 保证“情景已创建”和“任务已投递”的一致性。
-- 为视觉提取、embedding 和索引写入分别设置重试次数、退避和死信状态。
-- 提供 `pending` 扫描、手动重试和批量恢复入口。
-- 使用幂等键避免重复情景和重复索引点。
+- SQLite `agent_memory_tasks` 持久化队列，任务状态为 `queued / processing / succeeded / dead`。
+- pending 情景、artifact 和 extract 任务在同一事务写入，任务表兼作 Outbox。
+- 情景 SHA-256 幂等键、`(memoryId, kind)` 唯一任务和 `memoryId` Zvec upsert。
+- 自动重试、指数退避、最大次数、dead、单条 retry 和批量 recover。
+- 条件 UPDATE 领取、独立 lease owner 和超时 processing 回收。
+- index 任务持久化 embedding；Zvec 故障重试不重复调用 embedding 模型。
+- 服务启动立即恢复，之后按配置周期扫描历史 pending 和 ready 未索引情景。
 
 #### 2. 数据一致性巡检
 
-当前删除路径会同步清理相关资源，但没有后台巡检器处理异常退出或人工改库产生的不一致。
+已完成 owner/agent 范围内的定期检查和安全修复：
 
-后续需要定期检查：
+- SQLite ready 情景缺少 Zvec 点时清空 `indexedAt` 并重排 index 任务。
+- artifact 指向不存在的附件时将情景和活动任务标为 failed/dead。
+- 超过阈值且无 artifact 引用的 owner 绑定图片自动删除。
+- pending 缺任务、ready 未索引缺任务时自动补建。
 
-- SQLite 有情景但 Zvec 无向量。
-- Zvec 有向量但 SQLite 已删除。
-- artifact 指向不存在的附件。
-- 本地媒体无任何 artifact 引用。
-- `pending` 超过最大处理时间。
+当前 Zvec 适配器只能按 SQLite memoryId 查询是否存在，无法全量枚举 Zvec ID，因此“Zvec 有点但 SQLite 已删除”的反向孤儿巡检仍未实现。
 
 #### 3. 记忆专项监控与告警
 
-当前失败会写结构化日志，尚未提供记忆专项仪表盘和告警规则。
+已复用 Observability：
 
-建议增加：
+- `memory.episode_extract / embed / recall` 模型事件携带 `domain=agent-memory` 和阶段 metadata，复用现有 Token、成本、耗时和高成本告警。
+- `agent_memory.task_succeeded / task_failure / consistency_repair` 提供任务成功、失败、dead 和修复事件。
+- 错误事件触发现有 critical 告警；模型慢调用和单次高成本使用现有 warning 阈值。
+- health 接口返回 queued、processing、dead、pending、未索引、悬空 artifact、缺失索引和孤立媒体计数。
 
-- 情景创建量、成功率、失败率和 `pending` 积压量。
-- 视觉提取、embedding、召回和原图读取延迟。
-- 每个 provider、agent 和 owner 维度的 Token 与成本聚合。
-- 索引不可用、媒体缺失、越权拒绝和一致性异常告警。
-- 每日成本预算和异常增长告警。
+尚未实现独立的记忆可视化仪表盘、owner 级成本展示、每日预算和异常增长告警；当前 ownerKey 不进入日志或观测 metadata，避免隐私泄漏。
 
 #### 4. 保留期与自动遗忘
 
@@ -208,12 +206,12 @@ flowchart LR
 
 可参考 LoCoMo、LongMemEval 等长程记忆评测方法，但需要补充图片事件和视觉证据测试集。
 
-## 推荐实施顺序
+## 尚未实现与推荐实施顺序
 
 ```mermaid
 flowchart TD
-  P0A[持久化队列与重试] --> P0B[一致性巡检]
-  P0B --> P0C[监控告警与成本预算]
+  P0A[已完成：持久化队列与重试] --> P0B[已完成：正向一致性巡检]
+  P0B --> P0C[专项仪表盘与成本预算]
   P0C --> P0D[保留期与自动遗忘]
   P0D --> P1A[管理页与用户纠错]
   P1A --> P1B[隐私控件与对象存储]
@@ -223,4 +221,4 @@ flowchart TD
   P2B --> P2C[跨模态 embedding]
 ```
 
-下一阶段建议先实现“持久化任务队列 + `pending` 自动重试 + 记忆专项监控”。这三项直接决定图片情景记忆在生产环境中的可恢复性和可运维性，优先级高于图谱或专用多模态 embedding。
+下一阶段建议先实现“专项仪表盘与每日成本预算 + 保留期与回收站 + Zvec 全量 ID 枚举”。管理 UI、用户纠错和隐私开关随后推进，仍优先于图谱或专用多模态 embedding。

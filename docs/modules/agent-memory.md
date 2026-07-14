@@ -35,27 +35,39 @@
 apps/api/src/modules/agent-memory/
 ├── agent-memory.module.ts
 ├── domain/
+│   ├── agent-memory-task.ts
 │   └── agent-memory.ts
 ├── application/
 │   ├── agent-episodic-memory.service.ts
 │   ├── agent-memory-management.service.ts
+│   ├── agent-memory-maintenance.service.ts
 │   ├── agent-memory.index.ts
 │   ├── agent-memory.repository.ts
 │   ├── agent-memory.service.ts
+│   ├── agent-memory-task.repository.ts
 │   ├── episode-extraction.ts
-│   └── episodic-memory-query.ts
+│   ├── episodic-memory-query.ts
+│   └── process-next-agent-memory-task.use-case.ts
 ├── infrastructure/
 │   ├── agent-memory-artifact.entity.ts
 │   ├── agent-memory.entity.ts
 │   ├── agent-memory-message.entity.ts
+│   ├── agent-memory-task.entity.ts
+│   ├── agent-memory-task.scheduler.ts
 │   ├── agent-memory-thread.entity.ts
 │   ├── typeorm-agent-memory.repository.ts
+│   ├── typeorm-agent-memory-task-maintenance.store.ts
+│   ├── typeorm-agent-memory-task.repository.ts
 │   └── zvec-agent-memory.index.ts
 └── presentation/http/
     ├── clear-agent-memory.controller.ts
     ├── delete-agent-memory.controller.ts
     ├── get-agent-memory-artifact.controller.ts
+    ├── get-agent-memory-health.controller.ts
     ├── list-agent-memories.controller.ts
+    ├── list-agent-memory-tasks.controller.ts
+    ├── recover-agent-memory-tasks.controller.ts
+    ├── retry-agent-memory.controller.ts
     └── memory-owner-key.ts
 ```
 
@@ -83,11 +95,19 @@ sequenceDiagram
   Model-->>Chat: 流式回答
   Chat-->>UI: delta / metadata / done
   Chat->>Stable: 写入成功轮次与显式长期记忆
-  Chat-->>Episode: 异步记录图片情景
-  Episode->>Media: 校验 owner 绑定并读取图片
-  Episode->>Model: 客观摘要与实体 JSON
-  Episode->>DB: 情景 + 附件关系
-  Episode->>Index: 摘要 embedding
+  Chat-->>Episode: 异步投递图片情景
+  Episode->>DB: 同事务写 pending 情景、artifact、extract Outbox 任务
+  DB-->>Chat: 投递完成，不阻断正常回答
+  loop SQLite scheduler
+    Episode->>DB: 条件 UPDATE 领取单个任务
+    Episode->>Media: owner 范围读取原图
+    Episode->>Model: 客观摘要与实体 JSON
+    Episode->>DB: ready + index 任务
+    Episode->>Model: 摘要 embedding
+    Episode->>DB: 持久化 embedding 结果
+    Episode->>Index: 以 memoryId 幂等 upsert
+    Episode->>DB: succeeded + indexedAt
+  end
 ```
 
 ## 存储模型
@@ -96,6 +116,7 @@ sequenceDiagram
 erDiagram
   agent_memory_threads ||--o{ agent_memory_messages : contains
   agent_memories ||--o{ agent_memory_artifacts : evidence
+  agent_memories ||--o{ agent_memory_tasks : outbox
 
   agent_memory_threads {
     text id
@@ -125,6 +146,8 @@ erDiagram
     text content
     text sourceThreadId
     text status
+    text idempotencyKey
+    datetime indexedAt
     integer importance
     integer accessCount
     datetime lastAccessedAt
@@ -143,9 +166,50 @@ erDiagram
     integer sizeBytes
     datetime createdAt
   }
+
+  agent_memory_tasks {
+    text id
+    text memoryId
+    text agentId
+    text ownerKey
+    text kind
+    text status
+    integer attempts
+    integer maxAttempts
+    datetime nextRunAt
+    datetime lockedAt
+    text lockOwner
+    text lastError
+    text embeddingJson
+    integer embeddingDimensions
+    datetime completedAt
+  }
 ```
 
-`agent_memories.type=episodic` 表示图片情景，`status=ready` 表示提取和索引成功，`status=pending` 表示原始证据已保存但视觉提取失败。`agent_memory_artifacts` 只保存安全附件引用和元数据，不保存 base64。删除情景后会清理 SQLite 关系、Zvec 点和无引用原始文件。
+`agent_memories.type=episodic` 表示图片情景；`pending` 表示证据已保存但尚未完成提取，`ready` 表示客观摘要已提取，`failed` 表示 extract 达到最大尝试次数或证据损坏。`indexedAt` 非空表示当前摘要已写入 Zvec。`agent_memory_tasks` 同时承担 SQLite 队列和事务 Outbox，不保存 base64、完整提示词、密钥或内部媒体路径；embedding 仅保存在 index 任务中，用于 Zvec 故障重试时避免重复调用模型。
+
+## 任务状态机与并发边界
+
+```mermaid
+stateDiagram-v2
+  [*] --> queued
+  queued --> processing: 条件 UPDATE claim / attempts + 1
+  processing --> succeeded: 阶段完成
+  processing --> queued: 可重试失败 + 指数退避
+  processing --> dead: attempts >= maxAttempts
+  dead --> queued: owner 范围手动 retry / recover
+  processing --> queued: lease 超时回收
+```
+
+- 情景幂等键为 `sha256(agentId | ownerKey | conversationId | 排序后的 attachmentIds | sha256(userContent))`；唯一索引限制同一 owner/agent 的重复情景。
+- `(memoryId, kind)` 唯一索引保证 `extract`、`index` 各只有一个任务。
+- claim 使用单条条件 `UPDATE`；每次领取生成独立 `lockOwner`，同一任务不能被两个执行器同时成功领取。
+- SQLite 事务只执行短数据库操作。图片读取、模型请求、embedding 和 Zvec upsert 全部在事务外执行。
+- index 任务先持久化 embedding，再以 `memoryId` upsert Zvec；Zvec 失败后复用已保存向量。
+- 模型已返回 embedding、SQLite 尚未保存时若进程崩溃，下一次仍可能重复调用一次 embedding；这是当前无法用本地事务覆盖外部模型调用的窄窗口。
+- 错误摘要会移除 data URI、base64 和 Bearer token，并截断到 500 字符。
+- 服务启动后立即回收超时 lease；定时扫描超时 `pending`、缺失任务、缺失 Zvec 点、悬空 artifact 和超时无引用图片。
+- Zvec 当前只能按 SQLite 中的 memoryId 正向检查，不能全量枚举 Zvec 孤儿点；完整反向清理仍属于后续路线。
 
 ## 公共接口
 
@@ -195,6 +259,17 @@ DELETE /api/agents/:agentId/memories?ownerKey=<memoryOwnerKey>
 
 第一条删除指定记忆及其 Zvec 点和无引用图片；第二条清空该 owner 在指定智能体下的短期线程、短期消息、长期记忆、图片关系、向量和无引用媒体。
 
+### 任务管理与健康检查
+
+```text
+GET  /api/agents/:agentId/memory-tasks?ownerKey=<key>&status=queued|processing|succeeded|dead
+POST /api/agents/:agentId/memories/:memoryId/retry?ownerKey=<key>
+POST /api/agents/:agentId/memory-tasks/recover?ownerKey=<key>
+GET  /api/agents/:agentId/memory-health?ownerKey=<key>
+```
+
+所有接口同时按 `agentId + ownerKey` 过滤。单条 retry 和批量 recover 只重置该范围内的 dead 任务；health 会执行安全巡检并补建缺失任务、重建缺失索引、将缺失原始媒体的情景标为 failed，并删除超过 pending 超时且无 artifact 引用的 owner 绑定图片。当前阶段只提供服务端运维接口，不新增 Vue 管理页。
+
 ## 记忆写入规则
 
 长期记忆只在高置信场景写入：
@@ -210,9 +285,9 @@ DELETE /api/agents/:agentId/memories?ownerKey=<memoryOwnerKey>
 图片情景遵循不同规则：
 
 1. 只有成功完成的回答、有效 owner 和 owner 绑定图片才进入记录流程。
-2. 回答内容先返回客户端，图片提取在流结束后异步执行，不增加首屏延迟。
+2. 回答内容先返回客户端，流结束后只写 SQLite Outbox；队列、模型或索引失败不会改变聊天响应。
 3. 多模态模型只输出客观摘要、可检索实体和重要度，不允许推断“图片里的狗属于用户”等归属。
-4. 提取成功后保存 `ready` 情景并写入独立 Zvec；失败时保存 `pending` 情景和原始证据，不写入虚假视觉描述。
+4. 创建时先保存“待处理图片情景”及原始证据；只有模型返回合法客观 JSON 后才写入 `ready` 摘要。失败时保留 `pending`，耗尽重试后进入 `failed`，不写入虚假视觉描述。
 5. 召回按向量、实体词、时间指代、新近性和重要度重排；低于阈值不注入，多个候选接近时要求模型先澄清。
 6. “前一只/前一张”跳过最近候选；“最近/上次”优先最近事件。
 7. 视觉细节问题回读原图；只询问事件大意时使用摘要，减少多模态成本。
@@ -226,17 +301,33 @@ DELETE /api/agents/:agentId/memories?ownerKey=<memoryOwnerKey>
 | `AGENT_MEMORY_EPISODE_RECALL_LIMIT`   | `3`            | 每次最多注入的图片情景数   |
 | `AGENT_MEMORY_EPISODE_MIN_SCORE`      | `0.25`         | 情景召回最低混合分数       |
 | `AGENT_MEMORY_ZVEC_COLLECTION_PREFIX` | `agent_memory` | 独立情景向量集合前缀       |
+| `AGENT_MEMORY_TASK_POLL_INTERVAL_MS`  | `2000`         | SQLite 队列轮询间隔        |
+| `AGENT_MEMORY_TASK_MAX_ATTEMPTS`      | `3`            | 单阶段最大尝试次数         |
+| `AGENT_MEMORY_TASK_BACKOFF_BASE_MS`   | `1000`         | 指数退避基础时长           |
+| `AGENT_MEMORY_TASK_LOCK_TIMEOUT_MS`   | `60000`        | processing lease 超时      |
+| `AGENT_MEMORY_PENDING_TIMEOUT_MS`     | `300000`       | pending/无引用媒体巡检阈值 |
+| `AGENT_MEMORY_RECONCILE_INTERVAL_MS`  | `60000`        | 一致性巡检间隔             |
+
+## 日志、指标、成本与告警
+
+- 视觉提取、embedding 和召回继续使用 `ModelCallObserver`，操作名为 `memory.episode_extract`、`memory.episode_embed`、`memory.episode_recall`，并附带 `domain=agent-memory` 与阶段 metadata。
+- 任务成功、任务失败和一致性修复分别记录 `agent_memory.task_succeeded`、`agent_memory.task_failure`、`agent_memory.consistency_repair`；失败事件复用 Observability critical 告警。
+- Token、模型成本、模型耗时、慢调用和单次高成本告警复用现有 Observability 仪表盘与阈值。
+- `memory-health` 暴露队列积压、dead、pending、ready 未索引、悬空 artifact、缺失索引和孤立媒体计数。
+- 日志和 metadata 不记录 ownerKey、base64、完整用户内容、完整提示词、密钥或本地文件路径。
 
 ## 测试范围
 
 - 单元测试覆盖短期历史重叠、稳定记忆抽取、中文实体词、最近/前一情景排序和候选歧义判断。
-- E2E 测试覆盖图片上传、自动情景提取、跨会话“上次那只狗”、原图证据回读、owner 越权拒绝、删除清理和视觉模型失败后的 `pending` 降级。
+- 任务领域测试覆盖幂等键、指数退避上限和错误脱敏。
+- E2E 覆盖图片上传、自动提取、`pending` 降级、并发幂等、模型失败重试至 dead、owner/agent 隔离、单条 retry、lease 回收、embedding 复用、Zvec 失败恢复和缺失索引巡检。
+- migration E2E 验证任务表、幂等列和索引时间列的 up/down。
 - 对话入口保持向后兼容；不传 `conversationId` 时仍按原来的请求消息工作。
 - 未提供 `memoryOwnerKey` 的调用保持无状态，不自动记录图片情景。
 
 ## 扩展方式
 
-- 若需要后台人工维护，可在现有列表、删除和清空接口上增加记忆编辑页。
-- 第二阶段可增加任务队列、失败重试、人工纠正和保留期清理；第三阶段再评估实体图谱和跨模态专用 embedding。
+- 若需要后台人工维护，可复用任务列表、retry、recover 和 health 接口增加 Vue/Pinia 管理页。
+- 后续优先补充保留期、反向 Zvec 孤儿枚举、专项仪表盘和预算告警，再评估实体图谱和跨模态专用 embedding。
 - 完整的未实现项、优先级和推荐实施顺序见
   [图片情景记忆后续路线](agent-memory-roadmap.md)。

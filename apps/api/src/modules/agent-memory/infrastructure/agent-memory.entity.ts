@@ -18,6 +18,14 @@ import type { MemoryStatus, MemoryType } from '../domain/agent-memory';
     where: `"type" <> 'episodic'`,
   },
 )
+@Index(
+  'UQ_agent_memories_episode_idempotency',
+  ['agentId', 'ownerKey', 'idempotencyKey'],
+  {
+    unique: true,
+    where: `"type" = 'episodic' AND "idempotencyKey" IS NOT NULL`,
+  },
+)
 @Entity('agent_memories')
 export class AgentMemoryEntity {
   @PrimaryColumn('text')
@@ -42,6 +50,9 @@ export class AgentMemoryEntity {
   content: string;
 
   @Column('text', { nullable: true })
+  idempotencyKey?: string;
+
+  @Column('text', { nullable: true })
   sourceThreadId?: string;
 
   @Column('text', { default: 'ready' })
@@ -49,6 +60,9 @@ export class AgentMemoryEntity {
 
   @Column('integer')
   importance: number;
+
+  @Column('datetime', { nullable: true })
+  indexedAt?: Date | null;
 
   @Column('integer', { default: 0 })
   accessCount: number;

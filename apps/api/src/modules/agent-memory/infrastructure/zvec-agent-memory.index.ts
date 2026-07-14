@@ -83,6 +83,27 @@ export class ZvecAgentMemoryIndex
     await this.deleteByFilter(`${MEMORY_ID_FIELD} IN (${values})`);
   }
 
+  exists(memoryId: string): Promise<boolean> {
+    try {
+      for (const dimensions of this.listDimensions()) {
+        const collection = this.openCollection(dimensions);
+        const found = collection?.fetchSync({
+          ids: memoryId,
+          includeVector: false,
+          outputFields: [],
+        });
+
+        if (found && memoryId in found) {
+          return Promise.resolve(true);
+        }
+      }
+
+      return Promise.resolve(false);
+    } catch (error) {
+      return Promise.reject(this.unavailable(error));
+    }
+  }
+
   onApplicationShutdown(): void {
     for (const collection of this.collections.values()) {
       collection.closeSync();

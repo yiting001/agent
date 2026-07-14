@@ -10,8 +10,17 @@ export interface StoredChatAttachment extends ChatAttachmentSummary {
   owner?: ChatAttachmentOwner;
 }
 
+export interface StoredChatAttachmentMetadata extends ChatAttachmentSummary {
+  createdAt: Date;
+  owner?: ChatAttachmentOwner;
+}
+
 export abstract class ChatAttachmentStorage {
-  abstract delete(id: string): Promise<void>;
+  abstract delete(id: string, owner?: ChatAttachmentOwner): Promise<void>;
+  abstract list(
+    owner: ChatAttachmentOwner,
+  ): Promise<StoredChatAttachmentMetadata[]>;
+  abstract listOwnerScopes(): Promise<ChatAttachmentOwner[]>;
   abstract read(
     id: string,
     owner?: ChatAttachmentOwner,

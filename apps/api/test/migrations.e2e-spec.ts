@@ -2,8 +2,10 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { Server } from 'node:http';
 import request from 'supertest';
+import { DataSource } from 'typeorm';
 
 import { AppModule } from '../src/app.module';
+import { AgentMemoryTaskScheduler } from '../src/modules/agent-memory/infrastructure/agent-memory-task.scheduler';
 import { IngestionScheduler } from '../src/modules/knowledge/infrastructure/indexing/ingestion.scheduler';
 
 describe('Database migrations', () => {
@@ -18,6 +20,11 @@ describe('Database migrations', () => {
       imports: [AppModule],
     })
       .overrideProvider(IngestionScheduler)
+      .useValue({
+        onApplicationBootstrap: () => undefined,
+        onApplicationShutdown: () => undefined,
+      })
+      .overrideProvider(AgentMemoryTaskScheduler)
       .useValue({
         onApplicationBootstrap: () => undefined,
         onApplicationShutdown: () => undefined,
@@ -59,5 +66,37 @@ describe('Database migrations', () => {
         expect(response.text).toContain('"recentTraces"');
         expect(response.text).toContain('"usage"');
       });
+  });
+
+  it('migrates and rolls back the agent memory task schema', async () => {
+    const dataSource = app.get(DataSource);
+    const queryRunner = dataSource.createQueryRunner();
+
+    try {
+      const taskTable = await queryRunner.getTable('agent_memory_tasks');
+      const memoryTable = await queryRunner.getTable('agent_memories');
+
+      expect(taskTable).toBeDefined();
+      expect(taskTable?.findColumnByName('embeddingJson')).toBeDefined();
+      expect(memoryTable?.findColumnByName('idempotencyKey')).toBeDefined();
+      expect(memoryTable?.findColumnByName('indexedAt')).toBeDefined();
+    } finally {
+      await queryRunner.release();
+    }
+
+    await dataSource.undoLastMigration();
+    const rolledBack = dataSource.createQueryRunner();
+
+    try {
+      expect(await rolledBack.hasTable('agent_memory_tasks')).toBe(false);
+      const memoryTable = await rolledBack.getTable('agent_memories');
+
+      expect(memoryTable?.findColumnByName('idempotencyKey')).toBeUndefined();
+      expect(memoryTable?.findColumnByName('indexedAt')).toBeUndefined();
+    } finally {
+      await rolledBack.release();
+    }
+
+    await dataSource.runMigrations();
   });
 });

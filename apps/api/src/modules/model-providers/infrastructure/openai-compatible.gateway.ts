@@ -197,6 +197,7 @@ export class OpenAiCompatibleGateway extends ModelGateway {
       estimatedInputTokens: estimateChatInputTokens(input.messages),
       inputCostPerMillionTokens: input.inputCostPerMillionTokens,
       model: input.model,
+      metadata: input.metadata,
       operation: input.operation ?? 'chat.stream',
       outputCostPerMillionTokens: input.outputCostPerMillionTokens,
       providerId: input.providerId,
@@ -293,6 +294,7 @@ export class OpenAiCompatibleGateway extends ModelGateway {
       ),
       inputCostPerMillionTokens: input.inputCostPerMillionTokens,
       model: input.model,
+      metadata: input.metadata,
       operation: input.operation ?? 'chat.tools',
       outputCostPerMillionTokens: input.outputCostPerMillionTokens,
       providerId: input.providerId,
@@ -331,6 +333,7 @@ export class OpenAiCompatibleGateway extends ModelGateway {
       estimatedInputTokens: estimateEmbeddingInputTokens(input.input),
       inputCostPerMillionTokens: input.inputCostPerMillionTokens,
       model: input.model,
+      metadata: input.metadata,
       operation: input.operation ?? 'embedding.generate',
       providerId: input.providerId,
     });

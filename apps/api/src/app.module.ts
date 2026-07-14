@@ -12,6 +12,7 @@ import { AddAgentSkills1752152000000 } from './database/migrations/1752152000000
 import { AddObservability1752153000000 } from './database/migrations/1752153000000-add-observability';
 import { AddAgentMemory1752154000000 } from './database/migrations/1752154000000-add-agent-memory';
 import { AddEpisodicMemoryArtifacts1752155000000 } from './database/migrations/1752155000000-add-episodic-memory-artifacts';
+import { AddAgentMemoryTasks1752156000000 } from './database/migrations/1752156000000-add-agent-memory-tasks';
 import { BrandingModule } from './modules/branding/branding.module';
 import { HealthModule } from './modules/health/health.module';
 import { AgentMemoryModule } from './modules/agent-memory/agent-memory.module';
@@ -46,6 +47,7 @@ import { ObservabilityModule } from './modules/observability/observability.modul
             AddObservability1752153000000,
             AddAgentMemory1752154000000,
             AddEpisodicMemoryArtifacts1752155000000,
+            AddAgentMemoryTasks1752156000000,
           ],
           migrationsRun: config.databaseMigrationsRun,
           synchronize: config.databaseSynchronize,

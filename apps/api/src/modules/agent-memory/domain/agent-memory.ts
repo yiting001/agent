@@ -1,5 +1,5 @@
 export type MemorySource = 'admin' | 'api' | 'public';
-export type MemoryStatus = 'pending' | 'ready';
+export type MemoryStatus = 'failed' | 'pending' | 'ready';
 export type MemoryType = 'episodic' | 'preference' | 'semantic';
 
 export interface AgentMemoryThread {
@@ -29,6 +29,8 @@ export interface AgentMemory {
   createdAt: Date;
   id: string;
   importance: number;
+  idempotencyKey?: string;
+  indexedAt?: Date;
   lastAccessedAt?: Date;
   ownerKey: string;
   sourceThreadId?: string;
@@ -62,6 +64,7 @@ export interface AgentMemorySummary {
   content: string;
   id: string;
   importance: number;
+  indexedAt?: string;
   lastAccessedAt?: string;
   sourceThreadId?: string;
   status: MemoryStatus;
@@ -93,6 +96,7 @@ export function toAgentMemorySummary(
     content: memory.content,
     id: memory.id,
     importance: memory.importance,
+    indexedAt: memory.indexedAt?.toISOString(),
     lastAccessedAt: memory.lastAccessedAt?.toISOString(),
     sourceThreadId: memory.sourceThreadId,
     status: memory.status,

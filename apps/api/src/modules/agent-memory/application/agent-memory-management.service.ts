@@ -119,7 +119,9 @@ export class AgentMemoryManagementService {
       deleted
         .map((artifact) => artifact.attachmentId)
         .filter((attachmentId) => !referencedIds.has(attachmentId))
-        .map((attachmentId) => this.attachmentStorage.delete(attachmentId)),
+        .map((attachmentId) =>
+          this.attachmentStorage.delete(attachmentId, { agentId, ownerKey }),
+        ),
     );
   }
 

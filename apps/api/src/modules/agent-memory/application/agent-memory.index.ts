@@ -15,6 +15,7 @@ export interface AgentMemoryIndexSearchResult {
 export abstract class AgentMemoryIndex {
   abstract clear(agentId: string, ownerKey: string): Promise<void>;
   abstract delete(memoryIds: string[]): Promise<void>;
+  abstract exists(memoryId: string): Promise<boolean>;
   abstract search(input: {
     agentId: string;
     dimensions: number;

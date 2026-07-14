@@ -11,6 +11,7 @@ import {
   ChatAttachmentStorage,
   type ChatAttachmentOwner,
   type StoredChatAttachment,
+  type StoredChatAttachmentMetadata,
 } from '../application/chat-attachment.storage';
 import type { ChatAttachmentSummary } from '../domain/chat';
 
@@ -67,6 +68,7 @@ function normalizeFileName(fileName: string): string {
 
 interface ChatAttachmentMetadata extends ChatAttachmentSummary {
   agentId?: string;
+  createdAt?: string;
   ownerKey?: string;
 }
 
@@ -90,6 +92,10 @@ function parseMetadata(value: string): ChatAttachmentMetadata {
   }
 
   const metadata: ChatAttachmentMetadata = {
+    createdAt:
+      'createdAt' in parsed && typeof parsed.createdAt === 'string'
+        ? parsed.createdAt
+        : undefined,
     fileName: parsed.fileName,
     id: parsed.id,
     mimeType: parsed.mimeType,
@@ -136,11 +142,106 @@ export class LocalChatAttachmentStorage extends ChatAttachmentStorage {
     this.rootPath = resolve(config.chatAttachmentStoragePath);
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, owner?: ChatAttachmentOwner): Promise<void> {
+    if (owner) {
+      let metadata: ChatAttachmentMetadata;
+
+      try {
+        metadata = parseMetadata(
+          await fileSystem.readFile(this.resolveKey(`${id}.json`), 'utf8'),
+        );
+      } catch {
+        throw new ApplicationError('not_found', '聊天附件不存在或已失效。');
+      }
+
+      if (
+        metadata.agentId !== owner.agentId ||
+        metadata.ownerKey !== owner.ownerKey
+      ) {
+        throw new ApplicationError('not_found', '聊天附件不存在或已失效。');
+      }
+    }
+
     await Promise.all([
       fileSystem.rm(this.resolveKey(`${id}.bin`), { force: true }),
       fileSystem.rm(this.resolveKey(`${id}.json`), { force: true }),
     ]);
+  }
+
+  async list(
+    owner: ChatAttachmentOwner,
+  ): Promise<StoredChatAttachmentMetadata[]> {
+    let names: string[];
+
+    try {
+      names = await fileSystem.readdir(this.rootPath);
+    } catch {
+      return [];
+    }
+
+    const results: StoredChatAttachmentMetadata[] = [];
+
+    for (const name of names.filter((value) => value.endsWith('.json'))) {
+      try {
+        const path = this.resolveKey(name);
+        const [content, statistics] = await Promise.all([
+          fileSystem.readFile(path, 'utf8'),
+          fileSystem.stat(path),
+        ]);
+        const metadata = parseMetadata(content);
+
+        if (
+          metadata.agentId === owner.agentId &&
+          metadata.ownerKey === owner.ownerKey
+        ) {
+          results.push({
+            createdAt: metadata.createdAt
+              ? new Date(metadata.createdAt)
+              : statistics.mtime,
+            fileName: metadata.fileName,
+            id: metadata.id,
+            mimeType: metadata.mimeType,
+            owner,
+            sizeBytes: metadata.sizeBytes,
+          });
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return results;
+  }
+
+  async listOwnerScopes(): Promise<ChatAttachmentOwner[]> {
+    let names: string[];
+
+    try {
+      names = await fileSystem.readdir(this.rootPath);
+    } catch {
+      return [];
+    }
+
+    const scopes = new Map<string, ChatAttachmentOwner>();
+
+    for (const name of names.filter((value) => value.endsWith('.json'))) {
+      try {
+        const metadata = parseMetadata(
+          await fileSystem.readFile(this.resolveKey(name), 'utf8'),
+        );
+
+        if (metadata.agentId && metadata.ownerKey) {
+          scopes.set(`${metadata.agentId}\u0000${metadata.ownerKey}`, {
+            agentId: metadata.agentId,
+            ownerKey: metadata.ownerKey,
+          });
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return [...scopes.values()];
   }
 
   async read(
@@ -228,6 +329,7 @@ export class LocalChatAttachmentStorage extends ChatAttachmentStorage {
 
       const metadata: ChatAttachmentMetadata = {
         agentId: owner?.agentId,
+        createdAt: new Date().toISOString(),
         fileName: normalizeFileName(fileName),
         id,
         mimeType: mimeType === 'audio/x-wav' ? 'audio/wav' : mimeType,
