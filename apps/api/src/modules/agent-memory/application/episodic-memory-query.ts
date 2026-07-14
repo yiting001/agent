@@ -1,5 +1,6 @@
 import type { AgentMemory } from '../domain/agent-memory';
 
+/** 一条情景记忆及其综合召回分。 */
 export interface RankedEpisode {
   memory: AgentMemory;
   score: number;
@@ -12,10 +13,12 @@ const VISUAL_DETAIL_PATTERN =
 const QUERY_NOISE_PATTERN =
   /上次|最近|之前|前一(?:个|只|张)|那(?:个|只|张)|图片|照片|图里|画面|请|帮我|一下|什么|怎样|如何|是否|吗|呢|的|了|是|有|在/g;
 
+/** 将分数约束到可比较的 0-1 区间。 */
 function clampScore(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
+/** 去除中文指代噪声并提取去重后的情景检索词。 */
 export function extractEpisodeSearchTerms(query: string): string[] {
   const normalized = query
     .toLowerCase()
@@ -42,20 +45,27 @@ export function extractEpisodeSearchTerms(query: string): string[] {
   return [...new Set(terms)];
 }
 
+/** 判断问题是否包含历史指代或可检索实体。 */
 export function needsEpisodicRecall(query: string): boolean {
   return (
     REFERENCE_PATTERN.test(query) || extractEpisodeSearchTerms(query).length > 0
   );
 }
 
+/** 判断回答是否依赖图片中的颜色、数量、文字等视觉证据。 */
 export function needsVisualEvidence(query: string): boolean {
   return VISUAL_DETAIL_PATTERN.test(query);
 }
 
+/** 将“前一个”等表达转换为结果集偏移量。 */
 export function episodeOrdinalOffset(query: string): number {
   return /前一(?:个|只|张)/.test(query) ? 1 : 0;
 }
 
+/**
+ * 按语义 45%、词法 25%、时间 25%、重要度 5% 组合排序，
+ * pending 记忆乘以惩罚系数，避免未完成索引的结果占据首位。
+ */
 export function rankEpisodes(input: {
   memories: AgentMemory[];
   query: string;
@@ -91,6 +101,7 @@ export function rankEpisodes(input: {
     );
 }
 
+/** 判断前两名分差是否不足以支持确定性选择。 */
 export function isAmbiguous(ranked: RankedEpisode[], margin = 0.08): boolean {
   const first = ranked[0];
   const second = ranked[1];

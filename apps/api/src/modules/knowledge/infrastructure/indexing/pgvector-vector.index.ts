@@ -28,6 +28,7 @@ interface KnowledgeVectorRow {
   score: number;
 }
 
+/** 按知识库、模块和向量维度隔离的 PostgreSQL pgvector 索引。 */
 @Injectable()
 export class PgvectorVectorIndex extends VectorIndex {
   private readonly efConstruction: number;
@@ -48,6 +49,7 @@ export class PgvectorVectorIndex extends VectorIndex {
     this.upsertBatchSize = config.vectorUpsertBatchSize;
   }
 
+  /** 仅删除指定知识库范围内的文档向量。 */
   async deleteDocuments(
     knowledgeBase: KnowledgeBase,
     documentIds: string[],
@@ -74,6 +76,7 @@ export class PgvectorVectorIndex extends VectorIndex {
     }
   }
 
+  /** 清空知识库数据但保留共享维度物理表。 */
   async dropCollection(knowledgeBase: KnowledgeBase): Promise<void> {
     if (!(await this.exists(knowledgeBase))) {
       return;
@@ -94,6 +97,7 @@ export class PgvectorVectorIndex extends VectorIndex {
     }
   }
 
+  /** 并发安全地确保对应维度表及 HNSW 索引存在。 */
   async ensureCollection(knowledgeBase: KnowledgeBase): Promise<void> {
     const definition = vectorCollectionDefinition(
       'knowledge',
@@ -111,6 +115,7 @@ export class PgvectorVectorIndex extends VectorIndex {
     }
   }
 
+  /** 在 knowledgeBaseId + moduleIds 范围内执行余弦近邻检索。 */
   async search(
     knowledgeBase: KnowledgeBase,
     moduleIds: string[],
@@ -155,6 +160,7 @@ export class PgvectorVectorIndex extends VectorIndex {
     }
   }
 
+  /** 校验全部向量后按配置批量幂等写入。 */
   async upsert(
     knowledgeBase: KnowledgeBase,
     points: KnowledgeVectorPoint[],
@@ -190,6 +196,7 @@ export class PgvectorVectorIndex extends VectorIndex {
     }
   }
 
+  /** 创建按维度分表的知识向量结构及范围、文档和 HNSW 索引。 */
   private async createSchema(
     manager: EntityManager,
     definition: VectorCollectionDefinition,
@@ -236,6 +243,7 @@ export class PgvectorVectorIndex extends VectorIndex {
     return rows.length > 0;
   }
 
+  /** 将基础设施异常转换为不泄露 SQL 和内部路径的应用错误。 */
   private unavailable(error: unknown): ApplicationError {
     void error;
 
@@ -245,6 +253,7 @@ export class PgvectorVectorIndex extends VectorIndex {
     );
   }
 
+  /** 使用参数化占位符批量 upsert，避免拼接业务值进入 SQL。 */
   private async upsertBatch(
     definition: VectorCollectionDefinition,
     knowledgeBaseId: string,

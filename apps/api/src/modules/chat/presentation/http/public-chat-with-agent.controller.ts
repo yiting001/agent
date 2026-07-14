@@ -15,6 +15,7 @@ import { ChatWithAgentUseCase } from '../../application/chat-with-agent.use-case
 import { sendAgentChatStream } from './chat-stream.response';
 import { ChatWithAgentDto } from './chat-with-agent.dto';
 
+/** 无 API 密钥的公开聊天入口，仅拒绝 disabled 智能体。 */
 @ApiTags('public-chat')
 @Controller('public/agents/:agentId/chat')
 export class PublicChatWithAgentController {
@@ -26,6 +27,7 @@ export class PublicChatWithAgentController {
   @Post()
   @HttpCode(200)
   @ApiOperation({ summary: '调用已发布智能体进行公开网页对话' })
+  /** 使用 agentId + 代理解析后的客户端 IP 作为公开限流身份。 */
   async execute(
     @Param('agentId') agentId: string,
     @Body() body: ChatWithAgentDto,

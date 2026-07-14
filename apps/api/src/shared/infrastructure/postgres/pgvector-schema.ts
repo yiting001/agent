@@ -1,12 +1,15 @@
 import pgvector from 'pgvector';
 import type { DataSource, EntityManager } from 'typeorm';
 
+/** 共享 pgvector 元数据表中登记的业务集合类型。 */
 export type VectorCollectionKind = 'agent_memory' | 'knowledge';
+/** 根据维度选择的 pgvector 存储类型。 */
 export type VectorStorageType = 'halfvec' | 'vector';
 
 const MAX_HNSW_DIMENSIONS = 4_000;
 const MAX_VECTOR_DIMENSIONS = 2_000;
 
+/** 一个按业务类型和维度隔离的物理向量集合。 */
 export interface VectorCollectionDefinition {
   dimensions: number;
   kind: VectorCollectionKind;
@@ -14,6 +17,7 @@ export interface VectorCollectionDefinition {
   tableName: string;
 }
 
+/** 校验向量维度和数值有限性，防止无效数据进入 pgvector。 */
 export function assertVector(vector: number[], dimensions: number): void {
   if (
     vector.length !== dimensions ||
@@ -23,6 +27,7 @@ export function assertVector(vector: number[], dimensions: number): void {
   }
 }
 
+/** 使用 pgvector 官方编码器生成参数化 SQL 可接受的向量文本。 */
 export function serializeVector(vector: number[]): string {
   const serialized: unknown = pgvector.toSql(vector);
 
@@ -33,6 +38,7 @@ export function serializeVector(vector: number[]): string {
   return serialized;
 }
 
+/** 根据 HNSW 维度限制选择 vector 或 halfvec 物理表。 */
 export function vectorCollectionDefinition(
   kind: VectorCollectionKind,
   dimensions: number,
@@ -53,10 +59,15 @@ export function vectorCollectionDefinition(
   };
 }
 
+/** 返回与存储类型匹配的余弦距离操作符类。 */
 export function vectorOperatorClass(storageType: VectorStorageType): string {
   return `${storageType}_cosine_ops`;
 }
 
+/**
+ * 并发安全地初始化向量集合。
+ * 事务级 advisory lock 保证多个实例不会同时建同一张维度表。
+ */
 export async function ensureVectorCollection(
   dataSource: DataSource,
   definition: VectorCollectionDefinition,
@@ -112,6 +123,7 @@ export async function ensureVectorCollection(
   });
 }
 
+/** 列出指定业务集合已初始化的全部向量维度。 */
 export async function listVectorDimensions(
   dataSource: DataSource,
   kind: VectorCollectionKind,

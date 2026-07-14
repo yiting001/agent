@@ -83,6 +83,7 @@ const AGENT_RICH_LIBRARIES = {
     return promise;
   }
 
+  /** 将图表源码 URI 编码后放入占位符，等待流结束再解析。 */
   function visualizationPlaceholder(type, source) {
     const placeholder = [
       `<div class="chat-visualization" data-visualization="${type}"`,
@@ -174,6 +175,7 @@ const AGENT_RICH_LIBRARIES = {
     return chart;
   }
 
+  /** 使用 strict 安全级别渲染 Mermaid，禁止图表脚本和危险链接。 */
   async function renderMermaid(element) {
     await loadAsset('mermaid', 'script');
 
@@ -229,6 +231,7 @@ const AGENT_RICH_LIBRARIES = {
     element.classList.add('chat-visualization--error');
   }
 
+  /** 为单个消息视图创建串行渲染队列和 ECharts 生命周期容器。 */
   function createController() {
     const charts = [];
     let queue = Promise.resolve();

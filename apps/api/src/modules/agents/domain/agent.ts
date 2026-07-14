@@ -1,18 +1,25 @@
+/** 智能体生命周期：草稿可编辑，已发布可供正式 API 调用，停用后禁止公开对话。 */
 export type AgentStatus = 'disabled' | 'draft' | 'published';
 
+/** 智能体聚合的持久化领域状态。 */
 export interface Agent {
+  /** 成功完成的对话次数，用于运营统计。 */
   conversationCount: number;
   createdAt: Date;
   description: string;
   id: string;
   name: string;
+  /** 当前绑定的模型供应商标识。 */
   providerId: string;
   status: AgentStatus;
+  /** 每轮对话注入模型的系统级指令。 */
   systemPrompt: string;
+  /** 模型采样温度，由具体模型适配器解释。 */
   temperature: number;
   updatedAt: Date;
 }
 
+/** 管理端读取的智能体详情，包含知识模块和技能绑定。 */
 export interface AgentDetail extends Agent {
   moduleIds: string[];
   skillIds: string[];
@@ -25,6 +32,7 @@ export interface PublicAgentSummary {
   name: string;
 }
 
+/** 管理端列表使用的序列化智能体视图。 */
 export interface AgentSummary {
   conversationCount: number;
   description: string;

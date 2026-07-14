@@ -1,3 +1,4 @@
+/** 兼容 TypeORM 不同查询路径返回的 rows 或 [rows, metadata] 结构。 */
 export function unwrapPostgresRows<T>(result: unknown): T[] {
   if (!Array.isArray(result)) {
     return [];

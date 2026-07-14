@@ -23,6 +23,7 @@ import { AgentMemoryEntity } from './agent-memory.entity';
 import { AgentMemoryTaskEntity } from './agent-memory-task.entity';
 import { TypeOrmAgentMemoryTaskMaintenanceStore } from './typeorm-agent-memory-task-maintenance.store';
 
+/** 以 PostgreSQL 行锁、事务和租约实现情景记忆任务仓储。 */
 @Injectable()
 export class TypeOrmAgentMemoryTaskRepository extends AgentMemoryTaskRepository {
   constructor(
@@ -34,6 +35,10 @@ export class TypeOrmAgentMemoryTaskRepository extends AgentMemoryTaskRepository 
     super();
   }
 
+  /**
+   * 单条 SQL 使用 FOR UPDATE SKIP LOCKED 领取最早任务，
+   * 并原子递增 attempts、写入 lockOwner 和 processing 状态。
+   */
   async claimNextTask(input: {
     lockOwner: string;
     now: Date;
@@ -68,6 +73,7 @@ export class TypeOrmAgentMemoryTaskRepository extends AgentMemoryTaskRepository 
     return entity ? toTask(entity) : undefined;
   }
 
+  /** 在同一事务内完成 extract、更新记忆并幂等创建 index 任务。 */
   async completeExtraction(input: {
     content: string;
     importance: number;
@@ -104,6 +110,7 @@ export class TypeOrmAgentMemoryTaskRepository extends AgentMemoryTaskRepository 
     });
   }
 
+  /** 在同一事务内校验租约、完成 index 任务并写 indexedAt。 */
   async completeIndex(input: {
     indexedAt: Date;
     task: AgentMemoryTask;
@@ -127,6 +134,10 @@ export class TypeOrmAgentMemoryTaskRepository extends AgentMemoryTaskRepository 
     });
   }
 
+  /**
+   * 依赖唯一幂等键和 orIgnore 处理并发入队；
+   * 新建记忆、附件和首个任务共享同一事务。
+   */
   async enqueueEpisode(
     input: EnqueueEpisodeInput,
   ): Promise<EnqueueEpisodeResult> {
@@ -232,6 +243,7 @@ export class TypeOrmAgentMemoryTaskRepository extends AgentMemoryTaskRepository 
     });
   }
 
+  /** 仅当前 lockOwner 可结束 processing；extract 死信同时标记记忆失败。 */
   async failTask(input: {
     dead: boolean;
     errorMessage: string;
@@ -379,6 +391,7 @@ export class TypeOrmAgentMemoryTaskRepository extends AgentMemoryTaskRepository 
     );
   }
 
+  /** 仅当前 lockOwner 能完成任务，affected 不为 1 表示租约已经失效。 */
   private async completeTask(
     tasks: Repository<AgentMemoryTaskEntity>,
     input: { now: Date; task: AgentMemoryTask },
@@ -403,6 +416,7 @@ export class TypeOrmAgentMemoryTaskRepository extends AgentMemoryTaskRepository 
     }
   }
 
+  /** 按 memoryId + kind 唯一约束幂等创建任务。 */
   private async ensureTask(
     tasks: Repository<AgentMemoryTaskEntity>,
     input: {

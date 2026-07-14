@@ -16,6 +16,7 @@ import {
   type StoredObjectResult,
 } from '../../application/knowledge-object-storage';
 
+/** 使用受根目录约束的内部 key 保存知识文档和上传分片。 */
 @Injectable()
 export class LocalKnowledgeObjectStorage extends KnowledgeObjectStorage {
   private readonly rootPath: string;
@@ -27,6 +28,7 @@ export class LocalKnowledgeObjectStorage extends KnowledgeObjectStorage {
     this.rootPath = resolve(config.knowledgeStoragePath);
   }
 
+  /** 按分片顺序流式合并，并同步计算最终 SHA-256。 */
   async combine(
     targetKey: string,
     sourceKeys: string[],
@@ -89,6 +91,7 @@ export class LocalKnowledgeObjectStorage extends KnowledgeObjectStorage {
     return fileSystem.readFile(path);
   }
 
+  /** 流式写入并计算摘要，失败时删除不完整对象。 */
   async write(
     key: string,
     source: AsyncIterable<Uint8Array>,
@@ -127,6 +130,7 @@ export class LocalKnowledgeObjectStorage extends KnowledgeObjectStorage {
     };
   }
 
+  /** 解析后确认最终路径仍位于配置根目录内，阻止目录穿越。 */
   private resolveKey(key: string): string {
     const path = resolve(this.rootPath, key);
     const rootPrefix = `${this.rootPath}${sep}`;

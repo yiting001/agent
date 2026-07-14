@@ -11,24 +11,29 @@ import type {
 } from '../domain/agent-memory';
 import { AgentMemoryRepository } from './agent-memory.repository';
 
+/** 合并会话历史和长期记忆所需的隔离输入。 */
 export interface ComposeMemoryContextInput {
   agentId: string;
   conversationId?: string;
   incomingMessages: ConversationMessage[];
+  /** 客户端隔离键；缺省时不读取任何持久化记忆。 */
   ownerKey?: string;
   query: string;
 }
 
+/** 交给聊天编排器的去重消息与长期记忆文本。 */
 export interface ComposeMemoryContextResult {
   longTermContext: string;
   messages: ConversationMessage[];
 }
 
+/** 一轮成功聊天的记忆写入输入。 */
 export interface RecordTurnInput {
   agentId: string;
   answer: string;
   conversationId?: string;
   messages: ConversationMessage[];
+  /** 客户端隔离键；缺省时整轮不持久化。 */
   ownerKey?: string;
   source: MemorySource;
 }
@@ -96,6 +101,7 @@ function messageKey(
   return `${message.role}:${normalizeText(message.content)}`;
 }
 
+/** 合并持久化尾部和请求头部的最大重叠，避免重复注入同一消息。 */
 function mergeMessages(
   storedMessages: AgentMemoryMessage[],
   incomingMessages: ConversationMessage[],
@@ -132,6 +138,7 @@ function mergeMessages(
   return [...stored, ...incoming.slice(overlap)].slice(-limit);
 }
 
+/** 提取最多 12 个长度不小于 2 的去重检索词。 */
 function extractKeywords(value: string): string[] {
   return [
     ...new Set(
@@ -144,6 +151,7 @@ function extractKeywords(value: string): string[] {
   ].slice(0, 12);
 }
 
+/** 完整问题命中权重 6，单个关键词命中权重 2。 */
 function scoreMemory(
   content: string,
   query: string,
@@ -166,6 +174,7 @@ function scoreMemory(
   return score;
 }
 
+/** 从受控事实规则中提取名称或偏好候选。 */
 function extractFactCandidate(content: string): MemoryCandidate | undefined {
   for (const rule of FACT_PATTERNS) {
     const value = rule.pattern.exec(content)?.[1]?.trim();
@@ -182,6 +191,10 @@ function extractFactCandidate(content: string): MemoryCandidate | undefined {
   return undefined;
 }
 
+/**
+ * 仅从用户陈述中提取显式“记住”内容或受控事实，
+ * 问句不会被误存为事实，同内容候选会去重。
+ */
 function extractMemoryCandidates(
   messages: ConversationMessage[],
 ): MemoryCandidate[] {
@@ -233,6 +246,7 @@ function extractMemoryCandidates(
   );
 }
 
+/** 提供 owner 隔离的会话连续性和轻量长期事实记忆。 */
 @Injectable()
 export class AgentMemoryService {
   private readonly logger = new Logger(AgentMemoryService.name);
@@ -249,6 +263,7 @@ export class AgentMemoryService {
     this.recentMessageLimit = config.agentMemoryRecentMessageLimit;
   }
 
+  /** 记忆读取失败时降级为当前请求消息，不阻断核心聊天。 */
   async composeContext(
     input: ComposeMemoryContextInput,
   ): Promise<ComposeMemoryContextResult> {
@@ -290,6 +305,7 @@ export class AgentMemoryService {
     }
   }
 
+  /** 校验线程同时属于当前 owner 和 agent 后加载最近消息。 */
   private async loadRecentMessages(
     agentId: string,
     conversationId: string,
@@ -308,6 +324,7 @@ export class AgentMemoryService {
     );
   }
 
+  /** 仅在 ownerKey 存在时保存会话消息和可确认事实。 */
   async recordTurn(input: RecordTurnInput): Promise<void> {
     const ownerKey = input.ownerKey;
 
@@ -356,6 +373,7 @@ export class AgentMemoryService {
     );
   }
 
+  /** 防止同一 conversationId 在一个 owner 下跨智能体复用。 */
   private async ensureThread(
     id: string,
     agentId: string,
@@ -396,6 +414,7 @@ export class AgentMemoryService {
       .join('\n');
   }
 
+  /** 词法召回并叠加重要度和有限访问频次权重。 */
   private async recall(
     agentId: string,
     ownerKey: string,

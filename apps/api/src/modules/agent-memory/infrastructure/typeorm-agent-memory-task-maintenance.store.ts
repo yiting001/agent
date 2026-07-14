@@ -21,6 +21,7 @@ import {
 import { AgentMemoryTaskEntity } from './agent-memory-task.entity';
 import { AgentMemoryEntity } from './agent-memory.entity';
 
+/** 情景记忆任务的巡检、租约回收和人工恢复数据存储。 */
 @Injectable()
 export class TypeOrmAgentMemoryTaskMaintenanceStore {
   constructor(private readonly dataSource: DataSource) {}
@@ -163,6 +164,7 @@ export class TypeOrmAgentMemoryTaskMaintenanceStore {
     });
   }
 
+  /** 将缺失 extract/index 任务的超时记忆在单事务中补齐。 */
   async reconcileOwner(input: {
     agentId: string;
     maxAttempts: number;
@@ -236,6 +238,7 @@ export class TypeOrmAgentMemoryTaskMaintenanceStore {
     });
   }
 
+  /** 清除超时 processing 租约并立即重新排队，供其他实例领取。 */
   async reclaimExpired(input: {
     lockTimeoutMs: number;
     now: Date;
@@ -261,6 +264,7 @@ export class TypeOrmAgentMemoryTaskMaintenanceStore {
     return result.affected ?? 0;
   }
 
+  /** 将 dead 任务尝试次数清零，并把 failed 记忆恢复为 pending。 */
   async recoverTasks(input: {
     agentId: string;
     maxAttempts: number;
@@ -319,6 +323,7 @@ export class TypeOrmAgentMemoryTaskMaintenanceStore {
     return recoveredDead + repair.queuedExtractTasks + repair.queuedIndexTasks;
   }
 
+  /** 清除错误 indexedAt 并恢复或创建 index 任务。 */
   async repairMissingIndex(input: {
     agentId: string;
     maxAttempts: number;
@@ -371,6 +376,7 @@ export class TypeOrmAgentMemoryTaskMaintenanceStore {
     });
   }
 
+  /** 按 memoryId + kind 唯一约束幂等创建修复任务。 */
   private async ensureTask(
     tasks: Repository<AgentMemoryTaskEntity>,
     input: {

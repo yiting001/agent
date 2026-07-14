@@ -26,6 +26,7 @@ interface AgentMemoryVectorRow {
   score: number;
 }
 
+/** 按 agentId、ownerKey 和维度隔离的情景记忆 pgvector 索引。 */
 @Injectable()
 export class PgvectorAgentMemoryIndex extends AgentMemoryIndex {
   private readonly efConstruction: number;
@@ -46,6 +47,7 @@ export class PgvectorAgentMemoryIndex extends AgentMemoryIndex {
     this.upsertBatchSize = config.vectorUpsertBatchSize;
   }
 
+  /** 跨全部维度表清除指定 owner 范围的向量。 */
   async clear(agentId: string, ownerKey: string): Promise<void> {
     try {
       for (const dimensions of await listVectorDimensions(
@@ -70,6 +72,7 @@ export class PgvectorAgentMemoryIndex extends AgentMemoryIndex {
     }
   }
 
+  /** 跨全部维度表删除指定记忆向量。 */
   async delete(memoryIds: string[]): Promise<void> {
     if (memoryIds.length === 0) {
       return;
@@ -95,6 +98,7 @@ export class PgvectorAgentMemoryIndex extends AgentMemoryIndex {
     }
   }
 
+  /** 跨全部已登记维度检查记忆是否已建立索引。 */
   async exists(memoryId: string): Promise<boolean> {
     try {
       for (const dimensions of await listVectorDimensions(
@@ -121,6 +125,7 @@ export class PgvectorAgentMemoryIndex extends AgentMemoryIndex {
     }
   }
 
+  /** 仅在 agentId + ownerKey 范围内执行余弦近邻检索。 */
   async search(input: {
     agentId: string;
     dimensions: number;
@@ -168,6 +173,7 @@ export class PgvectorAgentMemoryIndex extends AgentMemoryIndex {
     }
   }
 
+  /** 并发安全建表后按配置批量写入记忆向量。 */
   async upsert(
     dimensions: number,
     memories: IndexedAgentMemory[],
@@ -217,6 +223,7 @@ export class PgvectorAgentMemoryIndex extends AgentMemoryIndex {
     return rows.length > 0;
   }
 
+  /** 创建 owner 复合范围索引和 HNSW 向量索引。 */
   private async createSchema(
     manager: EntityManager,
     definition: VectorCollectionDefinition,
@@ -243,6 +250,7 @@ export class PgvectorAgentMemoryIndex extends AgentMemoryIndex {
     `);
   }
 
+  /** 将数据库异常转换为不暴露实现细节的应用错误。 */
   private unavailable(error: unknown): ApplicationError {
     void error;
 
@@ -252,6 +260,7 @@ export class PgvectorAgentMemoryIndex extends AgentMemoryIndex {
     );
   }
 
+  /** 使用参数化占位符批量 upsert，禁止业务值直接拼接 SQL。 */
   private async upsertBatch(
     definition: VectorCollectionDefinition,
     memories: IndexedAgentMemory[],

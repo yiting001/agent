@@ -58,60 +58,87 @@ const DEFAULT_PUBLIC_CHAT_RATE_LIMIT_MAX = 30;
 const DEFAULT_RATE_LIMIT_WINDOW_MS = 60_000;
 const DEFAULT_REDIS_KEY_PREFIX = 'agent';
 
-/** Runtime values owned by the API process. */
+/** API 进程唯一使用的已校验运行时配置。 */
 export interface ApplicationConfig {
+  /** 情景记忆召回的最低综合分。 */
   agentMemoryEpisodeMinScore: number;
   agentMemoryEpisodeRecallLimit: number;
+  /** pending 记忆超过该时长后进入一致性修复范围。 */
   agentMemoryPendingTimeoutMs: number;
   agentMemoryRecallLimit: number;
+  /** 后台一致性巡检间隔。 */
   agentMemoryReconcileIntervalMs: number;
   agentMemoryRecentMessageLimit: number;
+  /** 任务失败后的指数退避基准时长。 */
   agentMemoryTaskBackoffBaseMs: number;
+  /** processing 租约超过该时长后允许回收。 */
   agentMemoryTaskLockTimeoutMs: number;
+  /** 超过最大尝试次数后任务进入 dead。 */
   agentMemoryTaskMaxAttempts: number;
   agentMemoryTaskPollIntervalMs: number;
+  /** 正式 API 应用在单个窗口内的请求上限。 */
   apiRateLimitMax: number;
   brandIconMaxBytes: number;
   brandStoragePath: string;
   chatAttachmentMaxBytes: number;
   chatAttachmentStoragePath: string;
+  /** CORS 允许来源；生产环境不应使用通配符。 */
   corsOrigin: string | string[];
+  /** AES-256-GCM 根密钥；生产环境必须由密钥系统注入。 */
   credentialEncryptionKey?: string;
+  /** 仅测试环境允许删除 schema。 */
   databaseDropSchema: boolean;
+  /** 启动时是否执行显式 migration。 */
   databaseMigrationsRun: boolean;
   databasePoolMax: number;
   databaseStatementTimeoutMs: number;
+  /** 生产环境必须为 false，禁止用 synchronize 替代 migration。 */
   databaseSynchronize: boolean;
+  /** PostgreSQL 连接地址，禁止写入日志或响应。 */
   databaseUrl: string;
   embeddingBatchSize: number;
+  /** Express 信任的反向代理跳数，影响 request.ip 和限流身份。 */
   httpTrustProxyHops: number;
   ingestionPollIntervalMs: number;
   knowledgeChunkCharacters: number;
+  /** 相邻切片重叠字符数，启动时强制小于切片长度。 */
   knowledgeChunkOverlap: number;
+  /** 单个知识文档允许的最大字节数。 */
   knowledgeMaxDocumentBytes: number;
   knowledgePreviewMaxChars: number;
   knowledgeStoragePath: string;
   knowledgeUploadChunkBytes: number;
   mcpClientName: string;
+  /** 模型 HTTP 请求超时时间。 */
   modelRequestTimeoutMs: number;
   observabilityHighCostUsd: number;
   observabilityRetentionDays: number;
   observabilitySlowModelMs: number;
   observabilitySlowRequestMs: number;
+  /** 公开聊天按 agentId + IP 的窗口请求上限。 */
   publicChatRateLimitMax: number;
+  /** API 应用与公开聊天共用的限流窗口。 */
   rateLimitWindowMs: number;
+  /** Redis 键命名空间，防止多服务部署时互相覆盖。 */
   redisKeyPrefix: string;
+  /** Redis 未配置时仅开发环境允许使用进程内降级。 */
   redisUrl?: string;
+  /** 单轮聊天允许执行的最大 MCP 工具轮数。 */
   skillToolMaxRounds: number;
   port: number;
   serviceName: string;
   defaultSoftwareName: string;
+  /** HNSW 建索引质量参数，越高构建越慢但召回通常更好。 */
   vectorHnswEfConstruction: number;
+  /** HNSW 查询候选数，越高查询越慢但召回通常更好。 */
   vectorHnswEfSearch: number;
+  /** HNSW 每个节点的最大连接数。 */
   vectorHnswM: number;
+  /** 单次向量 upsert 的最大记录数。 */
   vectorUpsertBatchSize: number;
 }
 
+/** 校验 API 监听端口。 */
 function parsePort(value: string | undefined): number {
   const port = Number(value ?? DEFAULT_API_PORT);
 
@@ -122,6 +149,7 @@ function parsePort(value: string | undefined): number {
   return port;
 }
 
+/** 将逗号分隔的来源列表规范化为非空字符串数组。 */
 function parseCorsOrigins(value: string | undefined): string[] {
   return (value ?? DEFAULT_CORS_ORIGIN)
     .split(',')
@@ -129,7 +157,7 @@ function parseCorsOrigins(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
-/** Provides validated, typed configuration to Nest modules. */
+/** 从环境变量构造经过范围和生产安全约束校验的 Nest 配置。 */
 export const applicationConfig = registerAs(
   'application',
   (): ApplicationConfig => {

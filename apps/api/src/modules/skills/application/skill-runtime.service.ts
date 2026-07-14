@@ -4,6 +4,7 @@ import type { Skill } from '../domain/skill';
 import { McpClient } from './mcp-client';
 import { SkillRepository } from './skill.repository';
 
+/** 对话链路中已启用技能的分类结果。 */
 export interface AgentSkillSet {
   /** prompt 技能，注入 system prompt。 */
   instructions: Skill[];
@@ -19,6 +20,7 @@ export class SkillRuntimeService {
     private readonly mcpClient: McpClient,
   ) {}
 
+  /** 使用技能内部鉴权头调用 MCP 工具，调用方不得记录 skill.headers。 */
   callTool(
     skill: Skill,
     name: string,

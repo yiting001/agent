@@ -18,6 +18,7 @@ import type { ChatAttachmentSummary } from '../domain/chat';
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/** 校验受支持图片和音频的魔数，不能只信任客户端 MIME。 */
 function matchesSignature(mimeType: string, header: Buffer): boolean {
   if (mimeType === 'image/png') {
     return header
@@ -55,6 +56,7 @@ function matchesSignature(mimeType: string, header: Buffer): boolean {
   );
 }
 
+/** 去除控制符和路径分隔符，文件名仅用于展示。 */
 function normalizeFileName(fileName: string): string {
   const value = [...fileName.trim()]
     .filter((character) => character.charCodeAt(0) >= 32)
@@ -72,6 +74,7 @@ interface ChatAttachmentMetadata extends ChatAttachmentSummary {
   ownerKey?: string;
 }
 
+/** 非法或缺失关键字段的 sidecar 元数据一律视为附件不存在。 */
 function parseMetadata(value: string): ChatAttachmentMetadata {
   const parsed: unknown = JSON.parse(value);
 
@@ -115,6 +118,7 @@ function parseMetadata(value: string): ChatAttachmentMetadata {
   return metadata;
 }
 
+/** 已绑定 owner 的附件必须同时匹配 agentId 和 ownerKey。 */
 function assertOwner(
   metadata: ChatAttachmentMetadata,
   owner?: ChatAttachmentOwner,
@@ -131,6 +135,7 @@ function assertOwner(
   }
 }
 
+/** 使用 UUID 文件名和 JSON sidecar 保存 owner 隔离的聊天附件。 */
 @Injectable()
 export class LocalChatAttachmentStorage extends ChatAttachmentStorage {
   private readonly rootPath: string;
@@ -279,6 +284,7 @@ export class LocalChatAttachmentStorage extends ChatAttachmentStorage {
     }
   }
 
+  /** 流式写入时限制大小、校验魔数，失败后删除部分文件。 */
   async write(
     fileName: string,
     mimeType: string,
@@ -356,6 +362,7 @@ export class LocalChatAttachmentStorage extends ChatAttachmentStorage {
     }
   }
 
+  /** 解析后确认最终路径仍位于配置根目录内，阻止目录穿越。 */
   private resolveKey(key: string): string {
     const path = resolve(this.rootPath, key);
 

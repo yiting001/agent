@@ -15,6 +15,7 @@ import { KnowledgeDocumentEntity } from './knowledge-document.entity';
 import { UploadPartEntity } from './upload-part.entity';
 import { UploadSessionEntity } from './upload-session.entity';
 
+/** 使用 PostgreSQL 事务实现分片上传和知识摄取任务持久化。 */
 @Injectable()
 export class TypeOrmKnowledgeUploadRepository extends KnowledgeUploadRepository {
   constructor(
@@ -31,6 +32,10 @@ export class TypeOrmKnowledgeUploadRepository extends KnowledgeUploadRepository 
     super();
   }
 
+  /**
+   * 使用 FOR UPDATE SKIP LOCKED 并发领取最早 queued 任务；
+   * 当前摄取任务不使用租约，进程中断后的恢复需由运维处理。
+   */
   async claimNextJob(): Promise<IngestionJob | undefined> {
     const startedAt = new Date();
     const result: unknown = await this.dataSource.query(
@@ -61,6 +66,7 @@ export class TypeOrmKnowledgeUploadRepository extends KnowledgeUploadRepository 
     return job ? { ...job } : undefined;
   }
 
+  /** 上传会话完成、文档入库和 ingestion 入队共享同一事务。 */
   async completeUpload(
     session: UploadSession,
     document: KnowledgeDocument,
@@ -106,6 +112,7 @@ export class TypeOrmKnowledgeUploadRepository extends KnowledgeUploadRepository 
     return parts.map((part) => ({ ...part }));
   }
 
+  /** 分片元数据和会话 receivedBytes 在同一事务中更新。 */
   async savePart(part: UploadPart, receivedBytes: number): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
       await manager.getRepository(UploadPartEntity).save(part);

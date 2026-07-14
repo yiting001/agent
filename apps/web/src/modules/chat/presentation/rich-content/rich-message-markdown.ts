@@ -4,6 +4,7 @@ import markdownItKatex from 'markdown-it-katex';
 
 const VISUALIZATION_TYPES = new Set(['d3', 'echarts', 'mermaid']);
 
+/** 将受支持的图表代码块转换为延迟渲染占位符。 */
 function visualizationPlaceholder(type: string, source: string): string {
   return [
     `<div class="rich-visualization" data-visualization="${type}"`,
@@ -13,6 +14,7 @@ function visualizationPlaceholder(type: string, source: string): string {
   ].join('');
 }
 
+/** 配置 Markdown、KaTeX 和图表 fence 的单例渲染器。 */
 function createMarkdownRenderer(): MarkdownIt {
   const markdown = new MarkdownIt({
     breaks: true,

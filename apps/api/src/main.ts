@@ -8,6 +8,7 @@ import { AppModule } from './app.module';
 import type { ApplicationConfig } from './config/application.config';
 import { ApplicationErrorFilter } from './shared/presentation/application-error.filter';
 
+/** 装配代理信任、CORS、输入白名单、错误映射和 OpenAPI 后启动 HTTP 服务。 */
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);

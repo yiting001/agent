@@ -1,7 +1,9 @@
+/** 仅把字面值 "true" 解析为 true。 */
 export function parseBoolean(value: string | undefined): boolean {
   return value === 'true';
 }
 
+/** 解析大于零的安全整数，否则在启动阶段失败。 */
 export function parsePositiveInteger(
   name: string,
   value: string | undefined,
@@ -16,6 +18,7 @@ export function parsePositiveInteger(
   return parsed;
 }
 
+/** 解析大于等于零的安全整数，否则在启动阶段失败。 */
 export function parseNonNegativeInteger(
   name: string,
   value: string | undefined,
@@ -30,6 +33,7 @@ export function parseNonNegativeInteger(
   return parsed;
 }
 
+/** 解析闭区间内的安全整数。 */
 export function parseIntegerInRange(
   name: string,
   value: string | undefined,
@@ -48,6 +52,7 @@ export function parseIntegerInRange(
   return parsed;
 }
 
+/** 解析有限的非负数。 */
 export function parseNonNegativeNumber(
   name: string,
   value: string | undefined,
@@ -62,6 +67,7 @@ export function parseNonNegativeNumber(
   return parsed;
 }
 
+/** 校验可安全拼接到 Redis 键中的命名空间前缀。 */
 export function parseKeyPrefix(
   name: string,
   value: string | undefined,
@@ -78,6 +84,7 @@ export function parseKeyPrefix(
   return prefix;
 }
 
+/** 规范化 URL，并按需限制允许的协议。 */
 export function parseUrl(
   name: string,
   value: string | undefined,
@@ -103,6 +110,7 @@ export function parseUrl(
   }
 }
 
+/** 去除首尾空白，并把空字符串归一化为 undefined。 */
 export function optionalValue(value: string | undefined): string | undefined {
   const normalized = value?.trim();
 

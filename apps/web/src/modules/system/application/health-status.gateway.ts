@@ -1,6 +1,6 @@
 import type { SystemStatus } from '../domain/system-status';
 
-/** External health source required by the system application logic. */
+/** 系统状态应用逻辑依赖的外部健康数据端口。 */
 export interface HealthStatusGateway {
   getHealthStatus(): Promise<SystemStatus>;
 }

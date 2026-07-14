@@ -13,6 +13,7 @@ import { KnowledgeUploadRepository } from './knowledge-upload.repository';
 import { TextChunker } from './text-chunker';
 import { VectorIndex } from './vector-index';
 
+/** 领取并完成一个知识文档摄取任务的应用用例。 */
 @Injectable()
 export class ProcessNextIngestionJobUseCase {
   private readonly batchSize: number;
@@ -35,6 +36,7 @@ export class ProcessNextIngestionJobUseCase {
     this.maxDocumentBytes = config.knowledgeMaxDocumentBytes;
   }
 
+  /** 无任务时返回 false，便于调度器排空队列后停止当前 tick。 */
   async execute(): Promise<boolean> {
     const job = await this.repository.claimNextJob();
 
@@ -51,6 +53,7 @@ export class ProcessNextIngestionJobUseCase {
     return true;
   }
 
+  /** 按读取、抽取、切片、嵌入、索引顺序推进文档状态。 */
   private async process(job: IngestionJob): Promise<void> {
     const document = await this.repository.findDocument(job.documentId);
 
@@ -131,6 +134,7 @@ export class ProcessNextIngestionJobUseCase {
     await this.repository.updateJob(job);
   }
 
+  /** 将文档和任务同时标记失败，保留可诊断错误。 */
   private async fail(job: IngestionJob, error: unknown): Promise<void> {
     const errorMessage =
       error instanceof Error ? error.message : '文档处理发生未知错误。';
