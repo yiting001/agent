@@ -22,4 +22,5 @@ export interface AgentChatResponse {
   agentId: string;
   answer: string;
   citations: ChatCitation[];
+  conversationId?: string;
 }

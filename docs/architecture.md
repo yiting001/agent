@@ -14,6 +14,7 @@ flowchart RL
   Presentation -. 依赖注入 .-> Infrastructure
   Observability[Observability] -. 记录边界事件 .-> Presentation
   Observability -. 记录外部调用 .-> Infrastructure
+  AgentMemory[Agent Memory] --> Application
 ```
 
 - `domain`：业务概念、值对象和不变量，不依赖框架。
@@ -26,6 +27,10 @@ flowchart RL
 `observability` 是横切基础设施，但仍通过应用服务暴露记录能力。业务模块只提交
 操作名称、状态、耗时和用量，不依赖 SQLite 实体，也不记录提示词、回复正文、
 密钥或附件内容。
+
+`agent-memory` 是对话应用能力，提供短期会话线程和长期事实/偏好记忆。`chat`
+模块只依赖 `AgentMemoryService`，由该服务决定如何读取、合并、召回和写入记忆，
+避免把 SQLite、检索策略或记忆抽取规则泄漏到对话用例之外。
 
 ## 前端模块规则
 

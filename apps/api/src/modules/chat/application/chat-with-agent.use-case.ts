@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { ApplicationError } from '../../../shared/application/application-error';
 import { AgentCatalogService } from '../../agents/application/agent-catalog.service';
 import { AgentRepository } from '../../agents/application/agent.repository';
+import { AgentMemoryService } from '../../agent-memory/application/agent-memory.service';
 import { KnowledgeRetrieverService } from '../../knowledge/application/knowledge-retriever.service';
 import {
   type ChatMessageInput,
@@ -21,6 +22,8 @@ export interface ChatWithAgentCommand {
   /** 调用方来源：admin 无限制；public 排除已停用；api 仅限已发布。 */
   access: 'admin' | 'api' | 'public';
   agentId: string;
+  conversationId?: string;
+  memoryOwnerKey?: string;
   messages: ConversationMessage[];
 }
 
@@ -28,6 +31,7 @@ export interface StreamingAgentChatResponse {
   agentId: string;
   citations: AgentChatResponse['citations'];
   content: AsyncIterable<string>;
+  conversationId?: string;
 }
 
 function buildKnowledgeContext(
@@ -76,9 +80,12 @@ function buildTextOnlyMessages(
 
 @Injectable()
 export class ChatWithAgentUseCase {
+  private readonly logger = new Logger(ChatWithAgentUseCase.name);
+
   constructor(
     private readonly agents: AgentCatalogService,
     private readonly agentRepository: AgentRepository,
+    private readonly agentMemory: AgentMemoryService,
     private readonly knowledgeRetriever: KnowledgeRetrieverService,
     private readonly modelProviders: ModelProviderRuntimeService,
     private readonly modelGateway: ModelGateway,
@@ -100,6 +107,7 @@ export class ChatWithAgentUseCase {
       agentId: response.agentId,
       answer,
       citations: response.citations,
+      conversationId: response.conversationId,
     };
   }
 
@@ -108,6 +116,7 @@ export class ChatWithAgentUseCase {
   ): Promise<StreamingAgentChatResponse> {
     this.observabilityContext.enrich({
       agentId: command.agentId,
+      conversationId: command.conversationId,
       source: command.access,
     });
     const agent = await this.agents.get(command.agentId);
@@ -137,13 +146,20 @@ export class ChatWithAgentUseCase {
       );
     }
 
-    const [provider, knowledge, skillSet] = await Promise.all([
+    const [provider, knowledge, skillSet, memoryContext] = await Promise.all([
       this.modelProviders.get(agent.providerId),
       this.knowledgeRetriever.retrieve(
         agent.moduleIds,
         latestUserMessage.content.trim() || '请分析用户上传的图片或音频附件。',
       ),
       this.skillRuntime.load(agent.skillIds),
+      this.agentMemory.composeContext({
+        agentId: agent.id,
+        conversationId: command.conversationId,
+        incomingMessages: command.messages,
+        ownerKey: command.memoryOwnerKey,
+        query: latestUserMessage.content,
+      }),
     ]);
 
     if (!provider.chatModel) {
@@ -154,14 +170,18 @@ export class ChatWithAgentUseCase {
     }
 
     const conversationMessages = await this.buildConversationMessages(
-      command.messages,
+      memoryContext.messages,
     );
     const systemMessage: ChatMessageInput = {
       content: `${agent.systemPrompt}
 
 请优先依据下列企业知识回答；无法从资料确认时应明确说明，不得编造。
 
-${buildKnowledgeContext(knowledge)}${buildSkillInstructions(skillSet.instructions)}`,
+${buildKnowledgeContext(knowledge)}
+
+以下是跨会话长期记忆。若与当前问题相关，可以用于保持偏好、事实和历史连续性；若无关则忽略。
+
+${memoryContext.longTermContext}${buildSkillInstructions(skillSet.instructions)}`,
       role: 'system',
     };
     const request = {
@@ -184,7 +204,7 @@ ${buildKnowledgeContext(knowledge)}${buildSkillInstructions(skillSet.instruction
         : hasMultimodalContent
           ? this.streamWithTextOnlyFallback(request, [
               systemMessage,
-              ...buildTextOnlyMessages(command.messages),
+              ...buildTextOnlyMessages(memoryContext.messages),
             ])
           : this.modelGateway.streamChat(request);
 
@@ -196,7 +216,17 @@ ${buildKnowledgeContext(knowledge)}${buildSkillInstructions(skillSet.instruction
         moduleId: result.moduleId,
         score: result.score,
       })),
-      content: this.trackConversation(agent.id, content),
+      content: this.trackConversation(
+        {
+          agentId: agent.id,
+          conversationId: command.conversationId,
+          memoryOwnerKey: command.memoryOwnerKey,
+          messages: command.messages,
+          source: command.access,
+        },
+        content,
+      ),
+      conversationId: command.conversationId,
     };
   }
 
@@ -309,20 +339,47 @@ ${buildKnowledgeContext(knowledge)}${buildSkillInstructions(skillSet.instruction
   }
 
   private async *trackConversation(
-    agentId: string,
+    command: {
+      agentId: string;
+      conversationId?: string;
+      memoryOwnerKey?: string;
+      messages: ConversationMessage[];
+      source: ChatWithAgentCommand['access'];
+    },
     content: AsyncIterable<string>,
   ): AsyncIterable<string> {
+    let answer = '';
     let completed = false;
 
     try {
       for await (const delta of content) {
+        answer += delta;
         yield delta;
       }
 
       completed = true;
     } finally {
       if (completed) {
-        await this.agentRepository.incrementConversationCount(agentId);
+        await this.agentRepository.incrementConversationCount(command.agentId);
+
+        try {
+          await this.agentMemory.recordTurn({
+            agentId: command.agentId,
+            answer,
+            conversationId: command.conversationId,
+            messages: command.messages,
+            ownerKey: command.memoryOwnerKey,
+            source: command.source,
+          });
+        } catch (error) {
+          this.logger.warn(
+            JSON.stringify({
+              error:
+                error instanceof Error ? error.message : '记忆写入发生未知错误',
+              operation: 'agent_memory.record_turn',
+            }),
+          );
+        }
       }
     }
   }

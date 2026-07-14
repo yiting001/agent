@@ -85,6 +85,9 @@ export class ObservabilityService {
       inputTokens: input.inputTokens ?? 0,
       metadata: {
         ...(current?.source ? { source: current.source } : {}),
+        ...(current?.conversationId
+          ? { conversationId: current.conversationId }
+          : {}),
         ...input.metadata,
       },
       method: input.method,

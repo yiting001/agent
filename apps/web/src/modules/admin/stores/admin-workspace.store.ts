@@ -323,10 +323,18 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
 
   function chat(
     agentId: string,
+    conversationId: string,
+    memoryOwnerKey: string,
     messages: ConversationMessage[],
     onDelta: (content: string) => void,
   ): ReturnType<typeof gateway.chat> {
-    return gateway.chat(agentId, messages, onDelta);
+    return gateway.chat(
+      agentId,
+      conversationId,
+      memoryOwnerKey,
+      messages,
+      onDelta,
+    );
   }
 
   function uploadChatAttachment(

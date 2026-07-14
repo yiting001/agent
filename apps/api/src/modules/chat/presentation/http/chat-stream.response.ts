@@ -25,6 +25,7 @@ export async function sendAgentChatStream(
   writeEvent(response, 'metadata', {
     agentId: chat.agentId,
     citations: chat.citations,
+    conversationId: chat.conversationId,
   });
 
   try {
