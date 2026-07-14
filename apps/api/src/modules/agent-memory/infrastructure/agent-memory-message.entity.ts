@@ -39,6 +39,6 @@ export class AgentMemoryMessageEntity {
   position: number;
 
   @Index()
-  @Column('datetime')
+  @Column('timestamptz')
   createdAt: Date;
 }

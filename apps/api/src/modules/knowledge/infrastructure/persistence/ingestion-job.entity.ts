@@ -23,12 +23,12 @@ export class IngestionJobEntity {
   @Column('text', { nullable: true })
   errorMessage?: string;
 
-  @Column('datetime', { nullable: true })
+  @Column('timestamptz', { nullable: true })
   startedAt?: Date;
 
-  @Column('datetime', { nullable: true })
+  @Column('timestamptz', { nullable: true })
   completedAt?: Date;
 
-  @Column('datetime')
+  @Column('timestamptz')
   createdAt: Date;
 }

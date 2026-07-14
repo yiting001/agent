@@ -21,6 +21,7 @@ import type {
 } from '../src/modules/model-providers/application/model-gateway';
 import { ModelGateway } from '../src/modules/model-providers/application/model-gateway';
 import { ApplicationErrorFilter } from '../src/shared/presentation/application-error.filter';
+import { createControlledTaskScheduler } from './controlled-task-scheduler';
 import { uploadTestImage, waitForMemoryId } from './agent-memory-test-helpers';
 import { createInMemoryAgentMemoryIndex } from './in-memory-agent-memory.index';
 import { readStringProperty } from './read-value';
@@ -38,7 +39,6 @@ describe('Agent memory task queue', () => {
   beforeAll(async () => {
     process.env.CREDENTIAL_ENCRYPTION_KEY = '55'.repeat(32);
     process.env.DATABASE_MIGRATIONS_RUN = 'false';
-    process.env.DATABASE_PATH = ':memory:';
     process.env.DATABASE_SYNCHRONIZE = 'true';
     process.env.AGENT_MEMORY_TASK_BACKOFF_BASE_MS = '1';
     process.env.AGENT_MEMORY_TASK_MAX_ATTEMPTS = '2';
@@ -88,7 +88,7 @@ describe('Agent memory task queue', () => {
       upsert: async (dimensions, memories): Promise<void> => {
         if (failNextIndexUpsert) {
           failNextIndexUpsert = false;
-          throw new Error('zvec unavailable');
+          throw new Error('vector index unavailable');
         }
 
         await baseMemoryIndex.upsert(dimensions, memories);
@@ -108,10 +108,7 @@ describe('Agent memory task queue', () => {
         onApplicationShutdown: () => undefined,
       })
       .overrideProvider(AgentMemoryTaskScheduler)
-      .useValue({
-        onApplicationBootstrap: () => undefined,
-        onApplicationShutdown: () => undefined,
-      })
+      .useValue(createControlledTaskScheduler(() => processNext.execute()))
       .compile();
 
     app = testingModule.createNestApplication<INestApplication<Server>>();
@@ -167,7 +164,7 @@ describe('Agent memory task queue', () => {
     await app.close();
   });
 
-  it('deduplicates concurrent episodes and recovers Zvec inconsistency', async () => {
+  it('deduplicates concurrent episodes and recovers vector index inconsistency', async () => {
     const attachment = await uploadTestImage(app, {
       agentId,
       fileName: 'idempotent.png',
@@ -447,7 +444,7 @@ describe('Agent memory task queue', () => {
       ownerKey,
     });
     const now = new Date();
-    const memory = await tasks.enqueueEpisode({
+    const { memory } = await tasks.enqueueEpisode({
       agentId,
       artifacts: [
         {

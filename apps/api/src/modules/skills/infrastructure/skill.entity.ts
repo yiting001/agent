@@ -22,18 +22,18 @@ export class SkillEntity {
   @Column('text', { default: '' })
   endpoint: string;
 
-  @Column('simple-json')
+  @Column('jsonb')
   headers: Record<string, string>;
 
-  @Column('simple-json')
+  @Column('jsonb')
   tools: SkillTool[];
 
   @Column('boolean', { default: true })
   enabled: boolean;
 
-  @Column('datetime')
+  @Column('timestamptz')
   createdAt: Date;
 
-  @Column('datetime')
+  @Column('timestamptz')
   updatedAt: Date;
 }

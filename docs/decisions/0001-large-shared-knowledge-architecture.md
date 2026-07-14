@@ -1,5 +1,7 @@
 # 大容量共享知识架构
 
+> 存储选型已由 [ADR-0003](0003-postgresql-pgvector-redis-and-message-boundary.md) 取代；本文保留原始业务分层和上传设计背景。
+
 ## 状态
 
 已采纳。

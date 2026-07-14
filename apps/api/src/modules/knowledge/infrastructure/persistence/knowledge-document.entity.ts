@@ -35,9 +35,9 @@ export class KnowledgeDocumentEntity {
   @Column('text', { nullable: true })
   errorMessage?: string;
 
-  @Column('datetime')
+  @Column('timestamptz')
   createdAt: Date;
 
-  @Column('datetime')
+  @Column('timestamptz')
   updatedAt: Date;
 }

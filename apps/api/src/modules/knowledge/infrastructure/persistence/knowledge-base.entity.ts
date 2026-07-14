@@ -20,9 +20,9 @@ export class KnowledgeBaseEntity {
   @Column('integer')
   embeddingDimensions: number;
 
-  @Column('datetime')
+  @Column('timestamptz')
   createdAt: Date;
 
-  @Column('datetime')
+  @Column('timestamptz')
   updatedAt: Date;
 }

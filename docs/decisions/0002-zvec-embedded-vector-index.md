@@ -1,5 +1,7 @@
 # 使用 Zvec 作为默认向量索引
 
+> 本决策已由 [ADR-0003](0003-postgresql-pgvector-redis-and-message-boundary.md) 取代，不再是当前生产实现。
+
 ## 状态
 
 已采纳。

@@ -33,10 +33,10 @@ export class AgentMemoryThreadEntity {
   @Column('text')
   title: string;
 
-  @Column('datetime')
+  @Column('timestamptz')
   createdAt: Date;
 
   @Index()
-  @Column('datetime')
+  @Column('timestamptz')
   updatedAt: Date;
 }

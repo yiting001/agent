@@ -10,8 +10,8 @@ export class AddBrandSettings1752151000000 implements MigrationInterface {
         "softwareName" text NOT NULL,
         "iconStorageKey" text,
         "iconMimeType" text,
-        "createdAt" datetime NOT NULL,
-        "updatedAt" datetime NOT NULL
+        "createdAt" timestamp with time zone NOT NULL,
+        "updatedAt" timestamp with time zone NOT NULL
       )
     `);
   }

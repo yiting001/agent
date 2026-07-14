@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { ApplicationError } from '../../../../shared/application/application-error';
 import { ApiApplicationRepository } from '../../../api-access/application/api-application.repository';
 import { ApiKeyAuthenticatorService } from '../../../api-access/application/api-key-authenticator.service';
+import { EnforceApiRateLimitService } from '../../../api-access/application/enforce-api-rate-limit.service';
 import { ChatWithAgentUseCase } from '../../application/chat-with-agent.use-case';
 import { sendOpenAiChatStream } from './chat-stream.response';
 import { OpenAiChatCompletionDto } from './openai-chat-completion.dto';
@@ -38,6 +39,7 @@ export class OpenAiChatCompletionController {
     private readonly useCase: ChatWithAgentUseCase,
     private readonly authenticator: ApiKeyAuthenticatorService,
     private readonly applications: ApiApplicationRepository,
+    private readonly rateLimit: EnforceApiRateLimitService,
   ) {}
 
   @Post('completions')
@@ -50,6 +52,11 @@ export class OpenAiChatCompletionController {
     const application = await this.authenticator.authenticate(
       readBearerToken(authorization),
     );
+
+    await this.rateLimit.execute({
+      identifier: application.id,
+      kind: 'application',
+    });
     const command = {
       agentId: application.agentId,
       conversationId: body.conversationId,

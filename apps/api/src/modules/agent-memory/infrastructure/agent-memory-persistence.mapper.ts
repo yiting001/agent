@@ -39,30 +39,13 @@ export function toArtifact(
   };
 }
 
-function parseEmbedding(value?: string): number[] | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(value);
-
-    return Array.isArray(parsed) &&
-      parsed.every((item) => typeof item === 'number')
-      ? parsed
-      : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 export function toTask(entity: AgentMemoryTaskEntity): AgentMemoryTask {
   return {
     agentId: entity.agentId,
     attempts: entity.attempts,
     completedAt: entity.completedAt ?? undefined,
     createdAt: entity.createdAt,
-    embedding: parseEmbedding(entity.embeddingJson),
+    embedding: entity.embeddingJson,
     embeddingDimensions: entity.embeddingDimensions,
     id: entity.id,
     kind: entity.kind,

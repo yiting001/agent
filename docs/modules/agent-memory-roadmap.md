@@ -12,7 +12,7 @@ flowchart LR
   Chat --> Pending[pending 情景与原图关系]
   Pending --> Extract[多模态摘要与实体提取]
   Extract --> Ready[ready 情景]
-  Ready --> Index[独立 Zvec 索引]
+  Ready --> Index[独立 pgvector 索引]
   Index --> Recall[实体 + 向量 + 时间混合召回]
   Recall --> Evidence[必要时重新读取原图]
   Evidence --> Answer[回答或低置信度澄清]
@@ -23,11 +23,11 @@ flowchart LR
 - `agentId + ownerKey` 隔离的图片上传、读取、召回和删除。
 - `pending / ready / failed` 情景状态及视觉提取失败降级。
 - 图片摘要、可检索实体、重要度和原始附件关系。
-- 独立于企业知识库的 Zvec 情景索引。
+- 独立于企业知识库的 pgvector 情景索引。
 - “上次”“最近”“那只狗”“前一张”等中文指代召回。
 - 颜色、数量、品种、OCR 等视觉问题的原图回读。
 - 候选接近或证据不足时的澄清约束。
-- SQLite、索引、附件关系和无引用媒体的联动删除。
+- PostgreSQL、索引、附件关系和无引用媒体的联动删除。
 - 列表、单条删除、清空和原始图片查看接口。
 
 ## 当前 P0 已实现
@@ -38,24 +38,24 @@ flowchart LR
 
 已完成：
 
-- SQLite `agent_memory_tasks` 持久化队列，任务状态为 `queued / processing / succeeded / dead`。
+- PostgreSQL `agent_memory_tasks` 持久化队列，任务状态为 `queued / processing / succeeded / dead`。
 - pending 情景、artifact 和 extract 任务在同一事务写入，任务表兼作 Outbox。
-- 情景 SHA-256 幂等键、`(memoryId, kind)` 唯一任务和 `memoryId` Zvec upsert。
+- 情景 SHA-256 幂等键、`(memoryId, kind)` 唯一任务和 `memoryId` pgvector upsert。
 - 自动重试、指数退避、最大次数、dead、单条 retry 和批量 recover。
 - 条件 UPDATE 领取、独立 lease owner 和超时 processing 回收。
-- index 任务持久化 embedding；Zvec 故障重试不重复调用 embedding 模型。
+- index 任务持久化 embedding；pgvector 故障重试不重复调用 embedding 模型。
 - 服务启动立即恢复，之后按配置周期扫描历史 pending 和 ready 未索引情景。
 
 #### 2. 数据一致性巡检
 
 已完成 owner/agent 范围内的定期检查和安全修复：
 
-- SQLite ready 情景缺少 Zvec 点时清空 `indexedAt` 并重排 index 任务。
+- PostgreSQL ready 情景缺少 pgvector 点时清空 `indexedAt` 并重排 index 任务。
 - artifact 指向不存在的附件时将情景和活动任务标为 failed/dead。
 - 超过阈值且无 artifact 引用的 owner 绑定图片自动删除。
 - pending 缺任务、ready 未索引缺任务时自动补建。
 
-当前 Zvec 适配器只能按 SQLite memoryId 查询是否存在，无法全量枚举 Zvec ID，因此“Zvec 有点但 SQLite 已删除”的反向孤儿巡检仍未实现。
+当前应用端口只能按 PostgreSQL memoryId 查询是否存在，尚未提供 pgvector ID 分页枚举，因此“pgvector 有点但 PostgreSQL 已删除”的反向孤儿巡检仍未实现。
 
 #### 3. 记忆专项监控与告警
 
@@ -177,7 +177,7 @@ flowchart LR
 
 #### 14. 跨模态专用 embedding
 
-当前 Zvec 保存的是情景摘要文本 embedding。尚未使用图片 embedding，因此主要依赖模型摘要质量。
+当前 pgvector 保存的是情景摘要文本 embedding。尚未使用图片 embedding，因此主要依赖模型摘要质量。
 
 后续可评估 CLIP、SigLIP 或供应商多模态 embedding，并采用：
 
@@ -221,4 +221,4 @@ flowchart TD
   P2B --> P2C[跨模态 embedding]
 ```
 
-下一阶段建议先实现“专项仪表盘与每日成本预算 + 保留期与回收站 + Zvec 全量 ID 枚举”。管理 UI、用户纠错和隐私开关随后推进，仍优先于图谱或专用多模态 embedding。
+基础设施已迁移到 PostgreSQL + pgvector，并使用 Redis 保护 API/public chat 高成本入口；RocketMQ 在拆分独立 Worker 前不接入。下一阶段必须优先完成 workspace/tenant 根模型、统一认证、权限矩阵和 RLS，再实现“专项仪表盘与每日成本预算 + 保留期与回收站 + pgvector 全量 ID 枚举”。管理 UI、用户纠错和隐私开关随后推进，仍优先于图谱或专用多模态 embedding。

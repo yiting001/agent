@@ -50,10 +50,10 @@ export class AgentMemoryTaskEntity {
   @Column('integer')
   maxAttempts: number;
 
-  @Column('datetime')
+  @Column('timestamptz')
   nextRunAt: Date;
 
-  @Column('datetime', { nullable: true })
+  @Column('timestamptz', { nullable: true })
   lockedAt?: Date | null;
 
   @Column('text', { nullable: true })
@@ -62,18 +62,18 @@ export class AgentMemoryTaskEntity {
   @Column('text', { nullable: true })
   lastError?: string | null;
 
-  @Column('text', { nullable: true })
-  embeddingJson?: string;
+  @Column('jsonb', { nullable: true })
+  embeddingJson?: number[];
 
   @Column('integer', { nullable: true })
   embeddingDimensions?: number;
 
-  @Column('datetime')
+  @Column('timestamptz')
   createdAt: Date;
 
-  @Column('datetime')
+  @Column('timestamptz')
   updatedAt: Date;
 
-  @Column('datetime', { nullable: true })
+  @Column('timestamptz', { nullable: true })
   completedAt?: Date | null;
 }

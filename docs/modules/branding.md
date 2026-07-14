@@ -2,7 +2,7 @@
 
 ## 目标
 
-管理员在后台统一修改软件名称和图标，配置由 NestJS 与 SQLite 真实持久化，并应用到：
+管理员在后台统一修改软件名称和图标，配置由 NestJS 与 PostgreSQL 真实持久化，并应用到：
 
 - Vue 管理后台侧栏、工作台和浏览器标题。
 - Vue 智能体对话测试页。
@@ -36,7 +36,7 @@ flowchart LR
   Eyou[EyouCMS 对话页] --> API
   Store --> Gateway[BrandSettingsGateway]
   Gateway --> API[NestJS Branding API]
-  API --> SQLite[(SQLite)]
+  API --> PostgreSQL[(PostgreSQL)]
   API --> Files[(品牌图标文件)]
 ```
 
@@ -55,8 +55,8 @@ flowchart LR
 
 ## 持久化
 
-- SQLite 的 `brand_settings` 单例记录只保存名称、图标 MIME 类型和存储键。
-- 图标二进制写入 `BRAND_STORAGE_PATH`，不写入 SQLite。
+- PostgreSQL 的 `brand_settings` 单例记录只保存名称、图标 MIME 类型和存储键。
+- 图标二进制写入 `BRAND_STORAGE_PATH`，不写入 PostgreSQL。
 - 新图标成功保存数据库后才删除旧图标；数据库保存失败时清理新文件。
 - 图标响应使用带更新时间版本参数的 URL，允许浏览器安全缓存。
 

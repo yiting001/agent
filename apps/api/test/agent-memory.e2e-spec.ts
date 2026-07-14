@@ -6,7 +6,6 @@ import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
 import { AgentMemoryIndex } from '../src/modules/agent-memory/application/agent-memory.index';
-import { AgentMemoryTaskScheduler } from '../src/modules/agent-memory/infrastructure/agent-memory-task.scheduler';
 import { IngestionScheduler } from '../src/modules/knowledge/infrastructure/indexing/ingestion.scheduler';
 import type {
   ChatCompletionInput,
@@ -28,7 +27,6 @@ describe('Agent memory', () => {
   beforeAll(async () => {
     process.env.CREDENTIAL_ENCRYPTION_KEY = '44'.repeat(32);
     process.env.DATABASE_MIGRATIONS_RUN = 'false';
-    process.env.DATABASE_PATH = ':memory:';
     process.env.DATABASE_SYNCHRONIZE = 'true';
     process.env.AGENT_MEMORY_TASK_BACKOFF_BASE_MS = '1';
     process.env.AGENT_MEMORY_TASK_MAX_ATTEMPTS = '2';
@@ -81,11 +79,6 @@ describe('Agent memory', () => {
       .overrideProvider(AgentMemoryIndex)
       .useValue(memoryIndex)
       .overrideProvider(IngestionScheduler)
-      .useValue({
-        onApplicationBootstrap: () => undefined,
-        onApplicationShutdown: () => undefined,
-      })
-      .overrideProvider(AgentMemoryTaskScheduler)
       .useValue({
         onApplicationBootstrap: () => undefined,
         onApplicationShutdown: () => undefined,
@@ -274,6 +267,8 @@ describe('Agent memory', () => {
             memory !== null &&
             'type' in memory &&
             memory.type === 'episodic' &&
+            'status' in memory &&
+            memory.status === 'ready' &&
             'artifacts' in memory &&
             Array.isArray(memory.artifacts) &&
             memory.artifacts.length === 1,

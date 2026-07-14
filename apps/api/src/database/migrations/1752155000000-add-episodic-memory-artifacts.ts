@@ -27,7 +27,7 @@ export class AddEpisodicMemoryArtifacts1752155000000
         "fileName" text NOT NULL,
         "mimeType" text NOT NULL,
         "sizeBytes" integer NOT NULL,
-        "createdAt" datetime NOT NULL,
+        "createdAt" timestamp with time zone NOT NULL,
         CONSTRAINT "FK_agent_memory_artifacts_memory"
           FOREIGN KEY ("memoryId") REFERENCES "agent_memories" ("id")
           ON DELETE CASCADE,

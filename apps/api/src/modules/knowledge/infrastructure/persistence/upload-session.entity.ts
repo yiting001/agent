@@ -31,9 +31,9 @@ export class UploadSessionEntity {
   @Column('text')
   status: UploadSessionStatus;
 
-  @Column('datetime')
+  @Column('timestamptz')
   expiresAt: Date;
 
-  @Column('datetime')
+  @Column('timestamptz')
   createdAt: Date;
 }

@@ -14,9 +14,9 @@ export class BrandSettingsEntity {
   @Column('text', { nullable: true })
   iconMimeType?: string;
 
-  @Column('datetime')
+  @Column('timestamptz')
   createdAt: Date;
 
-  @Column('datetime')
+  @Column('timestamptz')
   updatedAt: Date;
 }

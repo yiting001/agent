@@ -15,9 +15,9 @@ export class KnowledgeModuleEntity {
   @Column('text')
   description: string;
 
-  @Column('datetime')
+  @Column('timestamptz')
   createdAt: Date;
 
-  @Column('datetime')
+  @Column('timestamptz')
   updatedAt: Date;
 }

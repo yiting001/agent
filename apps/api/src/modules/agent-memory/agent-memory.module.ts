@@ -10,6 +10,7 @@ import { AgentMemoryMaintenanceService } from './application/agent-memory-mainte
 import { AgentMemoryManagementService } from './application/agent-memory-management.service';
 import { AgentMemoryRepository } from './application/agent-memory.repository';
 import { AgentMemoryService } from './application/agent-memory.service';
+import { AgentMemoryTaskDispatcher } from './application/agent-memory-task.dispatcher';
 import { AgentMemoryTaskRepository } from './application/agent-memory-task.repository';
 import { AgentMemoryTaskObservabilityService } from './application/agent-memory-task-observability.service';
 import { ProcessNextAgentMemoryTaskUseCase } from './application/process-next-agent-memory-task.use-case';
@@ -22,7 +23,7 @@ import { AgentMemoryThreadEntity } from './infrastructure/agent-memory-thread.en
 import { TypeOrmAgentMemoryRepository } from './infrastructure/typeorm-agent-memory.repository';
 import { TypeOrmAgentMemoryTaskMaintenanceStore } from './infrastructure/typeorm-agent-memory-task-maintenance.store';
 import { TypeOrmAgentMemoryTaskRepository } from './infrastructure/typeorm-agent-memory-task.repository';
-import { ZvecAgentMemoryIndex } from './infrastructure/zvec-agent-memory.index';
+import { PgvectorAgentMemoryIndex } from './infrastructure/pgvector-agent-memory.index';
 import { ClearAgentMemoryController } from './presentation/http/clear-agent-memory.controller';
 import { DeleteAgentMemoryController } from './presentation/http/delete-agent-memory.controller';
 import { GetAgentMemoryArtifactController } from './presentation/http/get-agent-memory-artifact.controller';
@@ -46,6 +47,7 @@ import { GetAgentMemoryHealthController } from './presentation/http/get-agent-me
   exports: [
     AgentEpisodicMemoryService,
     AgentMemoryService,
+    AgentMemoryTaskDispatcher,
     ProcessNextAgentMemoryTaskUseCase,
   ],
   imports: [
@@ -70,8 +72,12 @@ import { GetAgentMemoryHealthController } from './presentation/http/get-agent-me
     TypeOrmAgentMemoryTaskMaintenanceStore,
     ProcessNextAgentMemoryTaskUseCase,
     {
+      provide: AgentMemoryTaskDispatcher,
+      useExisting: AgentMemoryTaskScheduler,
+    },
+    {
       provide: AgentMemoryIndex,
-      useClass: ZvecAgentMemoryIndex,
+      useClass: PgvectorAgentMemoryIndex,
     },
     {
       provide: AgentMemoryRepository,

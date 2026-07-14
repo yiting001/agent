@@ -25,9 +25,8 @@ describe('Health endpoint', () => {
   let app: INestApplication<Server>;
 
   beforeAll(async () => {
-    process.env.DATABASE_PATH = ':memory:';
     process.env.DATABASE_MIGRATIONS_RUN = 'false';
-    process.env.DATABASE_SYNCHRONIZE = 'false';
+    process.env.DATABASE_SYNCHRONIZE = 'true';
     process.env.API_SERVICE_NAME = 'agent-api-test';
 
     const testingModule = await Test.createTestingModule({

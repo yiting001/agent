@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 
+import { unwrapPostgresRows } from '../../../../shared/infrastructure/postgres/postgres-query-result';
 import { KnowledgeUploadRepository } from '../../application/knowledge-upload.repository';
 import type { KnowledgeDocument } from '../../domain/knowledge';
 import type {
@@ -31,30 +32,33 @@ export class TypeOrmKnowledgeUploadRepository extends KnowledgeUploadRepository 
   }
 
   async claimNextJob(): Promise<IngestionJob | undefined> {
-    return this.dataSource.transaction(async (manager) => {
-      const repository = manager.getRepository(IngestionJobEntity);
-      const job = await repository.findOne({
-        order: { createdAt: 'ASC' },
-        where: { status: 'queued' },
-      });
+    const startedAt = new Date();
+    const result: unknown = await this.dataSource.query(
+      `
+        WITH next_job AS (
+          SELECT "id"
+          FROM "knowledge_ingestion_jobs"
+          WHERE "status" = 'queued'
+          ORDER BY "createdAt" ASC
+          FOR UPDATE SKIP LOCKED
+          LIMIT 1
+        )
+        UPDATE "knowledge_ingestion_jobs" AS job
+        SET
+          "attempts" = job."attempts" + 1,
+          "progress" = 1,
+          "startedAt" = $1,
+          "status" = 'processing'
+        FROM next_job
+        WHERE job."id" = next_job."id"
+        RETURNING job.*
+      `,
+      [startedAt],
+    );
+    const rows = unwrapPostgresRows<IngestionJobEntity>(result);
+    const job = rows[0];
 
-      if (!job) {
-        return undefined;
-      }
-
-      const startedAt = new Date();
-      const claimed = {
-        ...job,
-        attempts: job.attempts + 1,
-        progress: 1,
-        startedAt,
-        status: 'processing' as const,
-      };
-
-      await repository.save(claimed);
-
-      return claimed;
-    });
+    return job ? { ...job } : undefined;
   }
 
   async completeUpload(

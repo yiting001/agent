@@ -28,9 +28,9 @@ export class AgentEntity {
   @Column('integer', { default: 0 })
   conversationCount: number;
 
-  @Column('datetime')
+  @Column('timestamptz')
   createdAt: Date;
 
-  @Column('datetime')
+  @Column('timestamptz')
   updatedAt: Date;
 }

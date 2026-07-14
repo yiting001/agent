@@ -3,6 +3,7 @@ export type ApplicationErrorCode =
   | 'invalid_operation'
   | 'not_found'
   | 'service_unavailable'
+  | 'too_many_requests'
   | 'unauthorized';
 
 export class ApplicationError extends Error {

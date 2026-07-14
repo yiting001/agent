@@ -4,47 +4,39 @@
 
 ```mermaid
 flowchart LR
-  Browser[浏览器]
-  Nginx[Nginx / HTTPS]
-  Vue[Vue 静态文件]
-  Eyou[EyouCMS 对话页]
-  API[NestJS API]
-  SQLite[(SQLite)]
-  Zvec[(Zvec)]
-  Files[知识文档、附件、品牌图标]
-
-  Browser --> Nginx
-  Nginx --> Vue
-  Nginx --> Eyou
-  Nginx --> API
-  API --> SQLite
-  API --> Zvec
-  API --> Files
+  Browser[浏览器] --> Gateway[Nginx / HTTPS]
+  Gateway --> Vue[Vue 静态文件]
+  Gateway --> API[NestJS API]
+  API --> PG[(PostgreSQL 16 + pgvector)]
+  API --> Redis[(Redis 7)]
+  API --> Files[知识文档、附件、品牌图标]
 ```
 
-Vue 管理后台与 EyouCMS 页面只调用 NestJS API。模型密钥、SQLite、Zvec
-和上传文件必须保留在服务端，不得复制到 Web 或 EyouCMS 目录。
+PostgreSQL 保存业务事实、任务、Outbox、向量和观测数据。Redis 只保存短 TTL 限流状态，不是备份恢复的权威数据。模型密钥、数据库连接、Redis 连接和上传文件必须保留在服务端。
 
 ## 环境要求
 
-- Linux x64 服务器。
-- Node.js `20.18.x`。
-- pnpm `9.15.9`。
-- Nginx 或具备相同反向代理能力的网关。
-- EyouCMS 站点，仅在发布 EyouCMS 对话页时需要。
+- Linux x64；
+- Node.js `20.18.x`；
+- pnpm `9.15.9`；
+- PostgreSQL 16 且安装 pgvector `0.8.x`；
+- Redis 7；
+- Nginx 或同等反向代理。
+
+## 本地基础设施
+
+仓库 `compose.yaml` 仅用于开发和验证：
 
 ```bash
-corepack enable
-corepack prepare pnpm@9.15.9 --activate
-node --version
-pnpm --version
+docker compose up -d postgres redis
+docker compose ps
 ```
 
-## 安装与构建
+首次初始化会创建 `agent` 与 `agent_test` 数据库。PostgreSQL 和 Redis 镜像均固定版本并配置健康检查；生产环境应使用受管服务或独立高可用部署，不应直接复用示例密码和端口暴露。
+
+## 安装、迁移与构建
 
 ```bash
-git clone https://github.com/yiting001/agent.git
-cd agent
 pnpm install --frozen-lockfile
 pnpm format:check
 pnpm lint
@@ -54,60 +46,68 @@ pnpm build
 pnpm build:server
 ```
 
-主要产物：
-
-- Vue 管理后台：`apps/web/dist/`。
-- NestJS 单文件入口：`apps/api/dist-single/server.js`。
-
-`better-sqlite3`、Zvec 和 PDF 解析器包含原生模块或运行时资源，因此服务器上仍需保留
-生产依赖，不能只复制 `server.js`。
-
-## NestJS 生产配置
-
-复制配置文件：
-
-```bash
-cp apps/api/.env.example apps/api/.env
-openssl rand -hex 32
-```
-
-将生成值写入 `CREDENTIAL_ENCRYPTION_KEY`，并至少调整以下配置：
+生产启动前由单个 migration job 执行 migration，多个 API 副本不要同时抢跑：
 
 ```dotenv
 NODE_ENV=production
-API_PORT=3000
-CORS_ORIGIN=https://admin.example.com,https://www.example.com
-DATABASE_PATH=/srv/agent-data/agent.sqlite
+DATABASE_URL=postgresql://agent_service:<password>@postgres.example.com:5432/agent?sslmode=require
+DATABASE_POOL_MAX=20
+DATABASE_STATEMENT_TIMEOUT_MS=30000
 DATABASE_MIGRATIONS_RUN=true
 DATABASE_SYNCHRONIZE=false
+REDIS_URL=rediss://:<password>@redis.example.com:6379
+REDIS_KEY_PREFIX=agent-production
+HTTP_TRUST_PROXY_HOPS=1
+```
+
+migration job 成功后，长期运行的 API 副本建议设置 `DATABASE_MIGRATIONS_RUN=false`。生产代码不会启用 `dropSchema`；该能力只在 `NODE_ENV=test` 且连接独立 `TEST_DATABASE_URL` 时启用。
+
+完整配置从 `apps/api/.env.example` 复制。还必须生成并稳定保存：
+
+```bash
+openssl rand -hex 32
+```
+
+```dotenv
 CREDENTIAL_ENCRYPTION_KEY=<固定的 64 位十六进制密钥>
 BRAND_STORAGE_PATH=/srv/agent-data/brand-storage
 CHAT_ATTACHMENT_STORAGE_PATH=/srv/agent-data/chat-attachments
 KNOWLEDGE_STORAGE_PATH=/srv/agent-data/knowledge-storage
-ZVEC_DATA_PATH=/srv/agent-data/zvec-data
-OBSERVABILITY_RETENTION_DAYS=30
-OBSERVABILITY_SLOW_REQUEST_MS=2000
-OBSERVABILITY_SLOW_MODEL_MS=30000
-OBSERVABILITY_HIGH_COST_USD=0.1
 ```
 
-创建并授权持久化目录：
+更换 `CREDENTIAL_ENCRYPTION_KEY` 会导致已保存模型密钥无法解密。连接 URL、密码和该密钥不得写入仓库或日志。
 
-```bash
-sudo mkdir -p /srv/agent-data/{brand-storage,chat-attachments,knowledge-storage,zvec-data}
-sudo chown -R agent:agent /srv/agent-data
+## 向量配置
+
+```dotenv
+VECTOR_HNSW_M=16
+VECTOR_HNSW_EF_CONSTRUCTION=64
+VECTOR_HNSW_EF_SEARCH=40
+VECTOR_UPSERT_BATCH_SIZE=256
 ```
 
-`CREDENTIAL_ENCRYPTION_KEY` 用于加密模型密钥。首次投入使用后必须稳定保存；更换该值会使
-已保存的模型密钥无法解密。SQLite、Zvec 和三个文件目录必须一起备份。
+知识和情景向量按维度写入共享表。`<= 2000` 维使用 `vector`，`2001～4000` 维使用 `halfvec`，超过 4000 维会拒绝创建。调整 HNSW 参数前必须基于实际召回率、写入耗时和 p95 检索延迟压测。
 
-观测事件保存在同一个 SQLite 数据库中，默认保留 30 天。慢请求、慢模型调用和
-单次高成本阈值均从环境变量读取；生产环境应按服务等级目标和模型预算调整。模型
-单价在“模型配置”页面按美元/百万 Token 维护，不在代码中硬编码。
+## Redis 与限流
 
-## systemd 启动 API
+```dotenv
+RATE_LIMIT_WINDOW_MS=60000
+API_RATE_LIMIT_MAX=120
+PUBLIC_CHAT_RATE_LIMIT_MAX=30
+```
 
-创建 `/etc/systemd/system/agent-api.service`：
+API application 按 application ID 限流，public chat 按 agent 与来源 IP 限流。Redis key 只保存标识符哈希。生产配置 Redis 后，Redis 不可用会拒绝高成本入口，避免无限调用模型；不配置 Redis 的进程内 fallback 只适合单实例开发。
+
+`HTTP_TRUST_PROXY_HOPS` 必须等于客户端到 API 之间受信任反向代理的固定跳数；示例 Nginx 与 API 直连时为 `1`。不要在 API 可被公网绕过代理访问时启用，否则攻击者可伪造来源 IP。
+
+## 健康检查
+
+- `GET /api/health`：liveness，不访问外部依赖；
+- `GET /api/health/readiness`：检查 PostgreSQL、pgvector extension 和 Redis。
+
+负载均衡器只应向 readiness 返回 200 的实例发送流量。Redis 未配置时 readiness 显示 `disabled`；已配置但连接失败时返回 503。
+
+## systemd 示例
 
 ```ini
 [Unit]
@@ -128,26 +128,14 @@ Environment=NODE_ENV=production
 WantedBy=multi-user.target
 ```
 
-启动并检查：
+服务工作目录必须是 `apps/api`，以读取该目录中的 `.env`。
 
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now agent-api
-sudo systemctl status agent-api
-curl http://127.0.0.1:3000/api/health
-```
-
-服务的工作目录必须是 `apps/api`，这样 NestJS 才会读取该目录中的 `.env`。
-
-## Nginx 发布 Vue 管理后台
-
-将 `apps/web/dist/` 发布到 `/var/www/agent-admin/`，示例站点配置：
+## Nginx 示例
 
 ```nginx
 server {
     listen 443 ssl http2;
     server_name admin.example.com;
-
     root /var/www/agent-admin;
     index index.html;
 
@@ -167,60 +155,45 @@ server {
 }
 ```
 
-`proxy_buffering off` 用于保证智能体 SSE 流式回复及时到达浏览器。生产环境应配置有效
-TLS 证书，并只开放 Nginx 的 80/443 端口。
+只开放网关端口；PostgreSQL、Redis 和 API 内部端口不得直接暴露公网。
 
-## 发布 EyouCMS 对话页
+## 备份、恢复与升级
 
-1. 将 `templates/eyoucms/agent-platform.htm` 复制到站点模板目录。
-2. 将 `templates/eyoucms/skin/css/agent-*.css` 和
-   `templates/eyoucms/skin/js/agent-platform.js` 复制到当前模板的 `skin` 目录。
-3. 确认模板已有 `header.htm`、`footer.htm`、`skin/css/style.css` 和
-   `skin/css/all.min.css`。
-4. 编辑 `agent-platform.js` 顶部配置：
+必须使用同一恢复点保存：
 
-   ```js
-   const AGENT_BACKEND_BASE_URL = 'https://api.example.com/api';
-   ```
+1. PostgreSQL 全量备份与 WAL/PITR；
+2. 知识文档、聊天附件和品牌文件；
+3. `CREDENTIAL_ENCRYPTION_KEY` 的安全副本；
+4. 已审核代码版本和 migration 版本。
 
-5. 在 EyouCMS 中创建 `agent_id` 自定义字段，并填写已发布智能体 ID。
-6. 为目标单页或栏目选择 `agent-platform.htm`，重新生成页面并清理模板缓存。
-7. 将 EyouCMS 站点域名加入 API 的 `CORS_ORIGIN`。
+Redis 限流状态无需恢复。恢复后先运行 schema 和 pgvector extension 检查，再验证动态向量表、文件引用和 `/api/health/readiness`。
 
-`agent-site-layout.js` 会在页面加载和窗口变化时自动测量站点固定/粘性导航的
-高度并写入 `--chat-site-navigation-height`，通常无需手动配置。特殊主题下
-自动测量不准时，可在 `agent-foundation.css` 中手动覆盖：
+从 SQLite/Zvec 升级不是普通 migration：
 
-```css
-.agent-chat-page--eyoucms {
-  --chat-site-navigation-height: 72px;
-}
-```
+- 在维护窗口停止写入；
+- 导出并校验 SQLite 业务数据；
+- 定义旧数据到 workspace 的映射后再导入 PostgreSQL；
+- 从权威文档和情景摘要重新生成 pgvector 索引；
+- 对记录数、附件引用和检索抽样做双重校验；
+- 保留旧数据只读备份，直到验收完成。
 
-对话工作区高度会同步扣除该值，桌面端和移动端都不会被公共导航覆盖。
+当前仓库尚未提供自动化 SQLite/Zvec 导入工具，不能把旧生产目录直接挂载到新版本。
 
-## 更新与回滚
+## RocketMQ 边界
 
-更新前先备份 `/srv/agent-data` 和 `apps/api/.env`：
+当前单体继续使用 PostgreSQL 任务表与 `FOR UPDATE SKIP LOCKED`。只有模型/索引 Worker 独立部署或出现多个事件订阅方、跨服务削峰、延迟消息需求后，才通过 PostgreSQL Outbox 发布 RocketMQ；消费者仍需实现幂等、重复投递、乱序和死信处理。详见 [ADR-0003](decisions/0003-postgresql-pgvector-redis-and-message-boundary.md)。
 
-```bash
-git fetch origin
-git checkout <已审核的版本>
-pnpm install --frozen-lockfile
-pnpm build
-pnpm build:server
-sudo systemctl restart agent-api
-```
+## 商用安全前置
 
-回滚时检出上一个已验证版本、重新安装锁文件依赖并重新构建。若新版本已经执行不可逆数据
-迁移，应同时恢复同一时间点的 SQLite、Zvec 和文件目录备份。
+数据库迁移不等于完成多租户 SaaS。上线外部租户前还必须实现 workspace/member/API key 身份上下文、资源 workspace 外键、权限矩阵、审计和 PostgreSQL RLS。当前 `ownerKey` 只隔离记忆，不能作为 tenantId。
 
 ## 发布检查
 
-- `GET /api/health` 返回成功。
-- 管理后台刷新任意路由不会出现 404。
-- EyouCMS 公共导航不覆盖对话头部。
-- EyouCMS 页面能读取品牌并获得流式回复。
-- 浏览器控制台没有 CORS、Mixed Content 或资源 404。
-- SQLite、Zvec、知识文档、附件和品牌图标均写入持久化目录。
-- API 端口不直接暴露到公网。
+- migration 在独立任务中成功，API 副本未启用 `synchronize`；
+- liveness 与 readiness 均符合预期；
+- PostgreSQL 连接池、慢查询、磁盘、WAL 和 HNSW 索引可观测；
+- Redis 故障时高成本入口 fail-closed；
+- SSE 流式回复无代理缓冲；
+- 文件目录或对象存储具备持久化和备份；
+- 数据库、Redis、API 内部端口未暴露公网；
+- 尚未完成 workspace/RLS 时不得开放多租户商用注册。
