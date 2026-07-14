@@ -32,6 +32,7 @@ import { ListAgentMemoryTasksController } from './presentation/http/list-agent-m
 import { RecoverAgentMemoryTasksController } from './presentation/http/recover-agent-memory-tasks.controller';
 import { RetryAgentMemoryController } from './presentation/http/retry-agent-memory.controller';
 import { GetAgentMemoryHealthController } from './presentation/http/get-agent-memory-health.controller';
+import { MemoryOwnerIdentityModule } from './memory-owner-identity.module';
 
 @Module({
   controllers: [
@@ -53,6 +54,7 @@ import { GetAgentMemoryHealthController } from './presentation/http/get-agent-me
   imports: [
     AgentsModule,
     ChatAttachmentModule,
+    MemoryOwnerIdentityModule,
     ModelProvidersModule,
     TypeOrmModule.forFeature([
       AgentMemoryArtifactEntity,

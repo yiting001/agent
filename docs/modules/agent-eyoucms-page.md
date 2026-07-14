@@ -206,8 +206,10 @@ http://localhost:4173/preview/agent-platform.html?agentId=<智能体ID>
 - 点击“开始新对话”“重新开始”或清空按钮会恢复初始状态。
 - 手机端点击左上角菜单按钮可打开最近对话抽屉。
 
-页面按智能体在 `localStorage` 中最多保存 30 条会话副本，并把同一
-`conversationId` 和浏览器级随机 `memoryOwnerKey` 交给平台后端。服务端按 owner 隔离并保存最近短期消息，召回长期偏好/事实，
+页面按智能体在 `localStorage` 中最多保存 30 条会话副本。首次加载通过
+`POST /api/memory-owner-tokens` 获取匿名 bearer token，后续把同一
+`conversationId` 和 `memoryOwnerToken` 交给平台后端。服务端验证 HMAC 签名、派生
+内部 ownerKey，再按 owner 隔离并保存最近短期消息，召回长期偏好/事实，
 因此刷新页面或跨会话提问时仍能保持连续性。第三方模型密钥始终留在后端。
 
 ## 接入边界

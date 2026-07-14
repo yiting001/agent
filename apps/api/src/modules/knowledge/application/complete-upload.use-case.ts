@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 
+import type { ApplicationConfig } from '../../../config/application.config';
 import { ApplicationError } from '../../../shared/application/application-error';
 import type { KnowledgeDocument } from '../domain/knowledge';
 import { KnowledgeObjectStorage } from './knowledge-object-storage';
@@ -8,10 +10,17 @@ import { KnowledgeUploadRepository } from './knowledge-upload.repository';
 
 @Injectable()
 export class CompleteUploadUseCase {
+  private readonly maxAttempts: number;
+
   constructor(
     private readonly repository: KnowledgeUploadRepository,
     private readonly storage: KnowledgeObjectStorage,
-  ) {}
+    configService: ConfigService,
+  ) {
+    const config = configService.getOrThrow<ApplicationConfig>('application');
+
+    this.maxAttempts = config.ingestionMaxAttempts;
+  }
 
   async execute(
     uploadSessionId: string,
@@ -74,8 +83,11 @@ export class CompleteUploadUseCase {
         createdAt: now,
         documentId,
         id: randomUUID(),
+        maxAttempts: this.maxAttempts,
+        nextRunAt: now,
         progress: 0,
         status: 'queued',
+        updatedAt: now,
       },
     );
     await this.storage.deleteMany(orderedParts.map((part) => part.storageKey));

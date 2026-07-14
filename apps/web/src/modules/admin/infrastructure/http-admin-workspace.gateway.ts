@@ -30,6 +30,10 @@ interface UploadSessionSummary {
   id: string;
 }
 
+interface MemoryOwnerTokenResponse {
+  token: string;
+}
+
 function parseRecord(value: string): Record<string, unknown> {
   const parsed: unknown = JSON.parse(value);
 
@@ -48,7 +52,7 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
   async chat(
     agentId: string,
     conversationId: string,
-    memoryOwnerKey: string,
+    memoryOwnerToken: string,
     messages: ConversationMessage[],
     onDelta: (content: string) => void,
   ): Promise<AgentChatResponse> {
@@ -60,7 +64,7 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
 
     await this.httpClient.postEventStream(
       `/agents/${agentId}/chat`,
-      { conversationId, memoryOwnerKey, messages },
+      { conversationId, memoryOwnerToken, messages },
       (event, data) => {
         const payload = parseRecord(data);
 
@@ -149,6 +153,15 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
       description: input.description,
       name: input.name,
     });
+  }
+
+  async createMemoryOwnerToken(): Promise<string> {
+    const response = await this.httpClient.post<
+      MemoryOwnerTokenResponse,
+      Record<string, never>
+    >('/memory-owner-tokens', {});
+
+    return response.token;
   }
 
   deleteAgent(agentId: string): Promise<void> {
@@ -262,7 +275,7 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
 
   uploadChatAttachment(
     agentId: string,
-    ownerKey: string,
+    ownerToken: string,
     file: File,
   ): Promise<ChatAttachmentSummary> {
     return this.httpClient.postFile<ChatAttachmentSummary>(
@@ -270,7 +283,7 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
       file,
       {
         'X-Agent-Id': agentId,
-        'X-Memory-Owner-Key': ownerKey,
+        'X-Memory-Owner-Token': ownerToken,
       },
     );
   }

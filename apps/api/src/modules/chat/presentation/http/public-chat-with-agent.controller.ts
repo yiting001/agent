@@ -10,17 +10,19 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 
+import { MemoryOwnerIdentity } from '../../../agent-memory/application/memory-owner-identity';
 import { EnforceApiRateLimitService } from '../../../api-access/application/enforce-api-rate-limit.service';
 import { ChatWithAgentUseCase } from '../../application/chat-with-agent.use-case';
 import { sendAgentChatStream } from './chat-stream.response';
 import { ChatWithAgentDto } from './chat-with-agent.dto';
 
-/** 无 API 密钥的公开聊天入口，仅拒绝 disabled 智能体。 */
+/** 无 API 密钥的公开聊天入口，仅允许 published 智能体。 */
 @ApiTags('public-chat')
 @Controller('public/agents/:agentId/chat')
 export class PublicChatWithAgentController {
   constructor(
     private readonly chatWithAgent: ChatWithAgentUseCase,
+    private readonly ownerIdentity: MemoryOwnerIdentity,
     private readonly rateLimit: EnforceApiRateLimitService,
   ) {}
 
@@ -42,7 +44,9 @@ export class PublicChatWithAgentController {
     const command = {
       agentId,
       conversationId: body.conversationId,
-      memoryOwnerKey: body.memoryOwnerKey,
+      memoryOwnerKey: body.memoryOwnerToken
+        ? this.ownerIdentity.resolve(body.memoryOwnerToken)
+        : undefined,
       messages: body.messages,
       access: 'public' as const,
     };

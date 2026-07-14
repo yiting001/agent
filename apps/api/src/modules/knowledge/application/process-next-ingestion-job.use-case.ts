@@ -1,11 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { randomUUID } from 'node:crypto';
 
 import type { ApplicationConfig } from '../../../config/application.config';
 import { ModelGateway } from '../../model-providers/application/model-gateway';
 import { ModelProviderRuntimeService } from '../../model-providers/application/model-provider-runtime.service';
-import type { IngestionJob } from '../domain/knowledge-upload';
+import {
+  buildKnowledgeChunkId,
+  createIngestionLockOwner,
+  type IngestionJob,
+  resolveIngestionNextRunAt,
+  sanitizeIngestionError,
+} from '../domain/knowledge-upload';
 import { DocumentTextExtractor } from './document-text-extractor';
 import { KnowledgeCatalogService } from './knowledge-catalog.service';
 import { KnowledgeObjectStorage } from './knowledge-object-storage';
@@ -16,7 +21,9 @@ import { VectorIndex } from './vector-index';
 /** 领取并完成一个知识文档摄取任务的应用用例。 */
 @Injectable()
 export class ProcessNextIngestionJobUseCase {
+  private readonly backoffBaseMs: number;
   private readonly batchSize: number;
+  private readonly lockTimeoutMs: number;
   private readonly maxDocumentBytes: number;
 
   constructor(
@@ -32,13 +39,26 @@ export class ProcessNextIngestionJobUseCase {
   ) {
     const config = configService.getOrThrow<ApplicationConfig>('application');
 
+    this.backoffBaseMs = config.ingestionBackoffBaseMs;
     this.batchSize = config.embeddingBatchSize;
+    this.lockTimeoutMs = config.ingestionLockTimeoutMs;
     this.maxDocumentBytes = config.knowledgeMaxDocumentBytes;
+  }
+
+  /** 回收进程中断遗留的过期 processing 租约。 */
+  reclaimExpired(): Promise<number> {
+    return this.repository.reclaimExpired({
+      lockTimeoutMs: this.lockTimeoutMs,
+      now: new Date(),
+    });
   }
 
   /** 无任务时返回 false，便于调度器排空队列后停止当前 tick。 */
   async execute(): Promise<boolean> {
-    const job = await this.repository.claimNextJob();
+    const job = await this.repository.claimNextJob({
+      lockOwner: createIngestionLockOwner(),
+      now: new Date(),
+    });
 
     if (!job) {
       return false;
@@ -62,8 +82,12 @@ export class ProcessNextIngestionJobUseCase {
     }
 
     document.status = 'processing';
+    document.errorMessage = undefined;
     document.updatedAt = new Date();
-    await this.repository.updateDocument(document);
+
+    if (!(await this.repository.startJob(job, document))) {
+      return;
+    }
 
     const module = await this.catalog.getModule(document.moduleId);
     const knowledgeBase = await this.catalog.getBase(module.knowledgeBaseId);
@@ -86,10 +110,13 @@ export class ProcessNextIngestionJobUseCase {
       throw new Error('知识库的嵌入模型配置不完整。');
     }
 
+    await this.vectorIndex.deleteDocuments(knowledgeBase, [document.id]);
     await this.vectorIndex.ensureCollection(knowledgeBase);
 
     for (let offset = 0; offset < chunks.length; offset += this.batchSize) {
       const batch = chunks.slice(offset, offset + this.batchSize);
+
+      await this.assertLease(job, job.progress);
       const embeddings = await this.modelGateway.embed({
         apiKey: provider.apiKey,
         baseUrl: provider.baseUrl,
@@ -101,6 +128,7 @@ export class ProcessNextIngestionJobUseCase {
         providerId: provider.id,
       });
 
+      await this.assertLease(job, job.progress);
       await this.vectorIndex.upsert(
         knowledgeBase,
         batch.map((chunk, index) => ({
@@ -108,49 +136,61 @@ export class ProcessNextIngestionJobUseCase {
           content: chunk.content,
           documentId: document.id,
           fileName: document.fileName,
-          id: randomUUID(),
+          id: buildKnowledgeChunkId(document.id, chunk.index),
           moduleId: document.moduleId,
           vector: embeddings[index] ?? [],
         })),
       );
 
-      job.progress = Math.min(
+      const progress = Math.min(
         99,
         Math.round(((offset + batch.length) / chunks.length) * 100),
       );
-      await this.repository.updateJob(job);
+
+      await this.assertLease(job, progress);
+      job.progress = progress;
     }
 
     const completedAt = new Date();
 
     document.chunkCount = chunks.length;
+    document.errorMessage = undefined;
     document.status = 'ready';
     document.updatedAt = completedAt;
-    job.completedAt = completedAt;
-    job.progress = 100;
-    job.status = 'completed';
 
-    await this.repository.updateDocument(document);
-    await this.repository.updateJob(job);
+    await this.repository.completeJob(job, document);
   }
 
-  /** 将文档和任务同时标记失败，保留可诊断错误。 */
+  /** 按最大次数重排队或终止，并仅允许当前租约持有者更新。 */
   private async fail(job: IngestionJob, error: unknown): Promise<void> {
-    const errorMessage =
-      error instanceof Error ? error.message : '文档处理发生未知错误。';
+    const errorMessage = sanitizeIngestionError(error);
     const document = await this.repository.findDocument(job.documentId);
-    const completedAt = new Date();
+    const now = new Date();
+    const dead = job.attempts >= job.maxAttempts;
 
-    if (document) {
-      document.errorMessage = errorMessage;
-      document.status = 'failed';
-      document.updatedAt = completedAt;
-      await this.repository.updateDocument(document);
+    await this.repository.failJob({
+      dead,
+      document,
+      errorMessage,
+      job,
+      nextRunAt: dead
+        ? job.nextRunAt
+        : resolveIngestionNextRunAt({
+            attempts: job.attempts,
+            baseDelayMs: this.backoffBaseMs,
+            now,
+          }),
+      now,
+    });
+  }
+
+  /** 进度写入同时续租；失败表示该 worker 已失去任务所有权。 */
+  private async assertLease(
+    job: IngestionJob,
+    progress: number,
+  ): Promise<void> {
+    if (!(await this.repository.updateJobProgress(job, progress, new Date()))) {
+      throw new Error('摄取任务租约已失效。');
     }
-
-    job.completedAt = completedAt;
-    job.errorMessage = errorMessage;
-    job.status = 'failed';
-    await this.repository.updateJob(job);
   }
 }

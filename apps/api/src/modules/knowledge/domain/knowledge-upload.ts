@@ -1,3 +1,5 @@
+import { createHash, randomUUID } from 'node:crypto';
+
 /** 分片上传会话在完成合并前保持 open。 */
 export type UploadSessionStatus = 'completed' | 'open';
 /** 文档摄取任务的持久化状态。 */
@@ -59,8 +61,65 @@ export interface IngestionJob {
   documentId: string;
   errorMessage?: string;
   id: string;
+  /** 当前租约的领取时间。 */
+  lockedAt?: Date;
+  /** 当前租约持有者；完成和失败更新时必须匹配。 */
+  lockOwner?: string;
+  /** 允许的最大领取次数。 */
+  maxAttempts: number;
+  /** 退避结束后允许再次领取的时间。 */
+  nextRunAt: Date;
   /** 0-100 的摄取进度。 */
   progress: number;
   startedAt?: Date;
   status: IngestionJobStatus;
+  updatedAt: Date;
+}
+
+const MAX_INGESTION_ERROR_LENGTH = 500;
+const MAX_INGESTION_BACKOFF_MS = 5 * 60_000;
+
+/** 为当前进程生成跨 worker 不冲突的摄取租约持有者。 */
+export function createIngestionLockOwner(): string {
+  return `knowledge-ingestion-${process.pid}-${randomUUID()}`;
+}
+
+/** 为同一文档切片生成重试稳定的向量主键。 */
+export function buildKnowledgeChunkId(
+  documentId: string,
+  chunkIndex: number,
+): string {
+  return createHash('sha256')
+    .update(`${documentId}:${chunkIndex}`)
+    .digest('hex');
+}
+
+/** 计算带五分钟上限的指数退避时间。 */
+export function resolveIngestionNextRunAt(input: {
+  attempts: number;
+  baseDelayMs: number;
+  now: Date;
+}): Date {
+  const exponent = Math.max(0, input.attempts - 1);
+  const delay = Math.min(
+    MAX_INGESTION_BACKOFF_MS,
+    input.baseDelayMs * 2 ** Math.min(exponent, 10),
+  );
+
+  return new Date(input.now.getTime() + delay);
+}
+
+/** 清洗摄取异常中的密钥、base64 和内部路径。 */
+export function sanitizeIngestionError(error: unknown): string {
+  const message =
+    error instanceof Error ? error.message : '文档处理发生未知错误。';
+
+  return message
+    .replace(/data:[^,\s]+;base64,[^\s"]+/g, '[redacted-base64]')
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/g, 'Bearer [redacted]')
+    .replace(/\bsk-[A-Za-z0-9_-]{12,}\b/g, '[redacted-key]')
+    .replace(/\bapi[_-]?key\s*[=:]\s*\S+/gi, 'api-key=[redacted]')
+    .replace(/[A-Za-z]:\\(?:[^\\\s]+\\)+[^\\\s]*/g, '[redacted-path]')
+    .replace(/(?:\/[A-Za-z0-9._-]+){2,}/g, '[redacted-path]')
+    .slice(0, MAX_INGESTION_ERROR_LENGTH);
 }

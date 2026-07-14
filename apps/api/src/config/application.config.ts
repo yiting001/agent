@@ -33,6 +33,9 @@ const DEFAULT_UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024;
 const DEFAULT_MAX_DOCUMENT_BYTES = 128 * 1024 * 1024;
 const DEFAULT_PREVIEW_MAX_CHARS = 20_000;
 const DEFAULT_INGESTION_POLL_INTERVAL_MS = 2_000;
+const DEFAULT_INGESTION_BACKOFF_BASE_MS = 1_000;
+const DEFAULT_INGESTION_LOCK_TIMEOUT_MS = 5 * 60_000;
+const DEFAULT_INGESTION_MAX_ATTEMPTS = 3;
 const DEFAULT_HTTP_TRUST_PROXY_HOPS = 0;
 const DEFAULT_KNOWLEDGE_CHUNK_CHARACTERS = 1_200;
 const DEFAULT_KNOWLEDGE_CHUNK_OVERLAP = 180;
@@ -99,6 +102,12 @@ export interface ApplicationConfig {
   embeddingBatchSize: number;
   /** Express 信任的反向代理跳数，影响 request.ip 和限流身份。 */
   httpTrustProxyHops: number;
+  /** 摄取失败后的指数退避基准时长。 */
+  ingestionBackoffBaseMs: number;
+  /** processing 摄取任务超过该时长后允许回收。 */
+  ingestionLockTimeoutMs: number;
+  /** 摄取任务超过最大领取次数后进入 failed。 */
+  ingestionMaxAttempts: number;
   ingestionPollIntervalMs: number;
   knowledgeChunkCharacters: number;
   /** 相邻切片重叠字符数，启动时强制小于切片长度。 */
@@ -317,6 +326,21 @@ export const applicationConfig = registerAs(
         'HTTP_TRUST_PROXY_HOPS',
         process.env.HTTP_TRUST_PROXY_HOPS,
         DEFAULT_HTTP_TRUST_PROXY_HOPS,
+      ),
+      ingestionBackoffBaseMs: parsePositiveInteger(
+        'INGESTION_BACKOFF_BASE_MS',
+        process.env.INGESTION_BACKOFF_BASE_MS,
+        DEFAULT_INGESTION_BACKOFF_BASE_MS,
+      ),
+      ingestionLockTimeoutMs: parsePositiveInteger(
+        'INGESTION_LOCK_TIMEOUT_MS',
+        process.env.INGESTION_LOCK_TIMEOUT_MS,
+        DEFAULT_INGESTION_LOCK_TIMEOUT_MS,
+      ),
+      ingestionMaxAttempts: parsePositiveInteger(
+        'INGESTION_MAX_ATTEMPTS',
+        process.env.INGESTION_MAX_ATTEMPTS,
+        DEFAULT_INGESTION_MAX_ATTEMPTS,
       ),
       ingestionPollIntervalMs: parsePositiveInteger(
         'INGESTION_POLL_INTERVAL_MS',

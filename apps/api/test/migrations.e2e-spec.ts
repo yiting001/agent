@@ -68,7 +68,7 @@ describe('Database migrations', () => {
       });
   });
 
-  it('migrates and rolls back pgvector and agent memory task schemas', async () => {
+  it('migrates and rolls back ingestion leases, pgvector and memory tasks', async () => {
     const dataSource = app.get(DataSource);
     const queryRunner = dataSource.createQueryRunner();
 
@@ -77,14 +77,36 @@ describe('Database migrations', () => {
       const memoryTable = await queryRunner.getTable('agent_memories');
       const vectorCollections =
         await queryRunner.getTable('vector_collections');
+      const ingestionJobs = await queryRunner.getTable(
+        'knowledge_ingestion_jobs',
+      );
 
       expect(taskTable).toBeDefined();
       expect(taskTable?.findColumnByName('embeddingJson')?.type).toBe('jsonb');
       expect(memoryTable?.findColumnByName('idempotencyKey')).toBeDefined();
       expect(memoryTable?.findColumnByName('indexedAt')).toBeDefined();
       expect(vectorCollections).toBeDefined();
+      expect(ingestionJobs?.findColumnByName('lockOwner')).toBeDefined();
+      expect(ingestionJobs?.findColumnByName('lockedAt')).toBeDefined();
+      expect(ingestionJobs?.findColumnByName('nextRunAt')).toBeDefined();
     } finally {
       await queryRunner.release();
+    }
+
+    await dataSource.undoLastMigration();
+    const ingestionRolledBack = dataSource.createQueryRunner();
+
+    try {
+      const ingestionJobs = await ingestionRolledBack.getTable(
+        'knowledge_ingestion_jobs',
+      );
+
+      expect(ingestionJobs?.findColumnByName('lockOwner')).toBeUndefined();
+      expect(await ingestionRolledBack.hasTable('vector_collections')).toBe(
+        true,
+      );
+    } finally {
+      await ingestionRolledBack.release();
     }
 
     await dataSource.undoLastMigration();

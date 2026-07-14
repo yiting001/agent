@@ -147,6 +147,13 @@ export class PgvectorVectorIndex extends VectorIndex {
             WHERE
               "knowledgeBaseId" = $2
               AND "moduleId" = ANY($3::text[])
+              AND EXISTS (
+                SELECT 1
+                FROM "knowledge_documents" AS document
+                WHERE
+                  document."id" = "${definition.tableName}"."documentId"
+                  AND document."status" = 'ready'
+              )
             ORDER BY "embedding" <=> $1
             LIMIT $4
           `,

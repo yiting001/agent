@@ -924,8 +924,8 @@
               <strong>不能宣称“完整商用多租户 SaaS”</strong>
               当前没有 workspace/member/authenticated
               principal、统一资源租户外键和 PostgreSQL RLS；多数管理 API
-              没有身份鉴权，公开聊天的
-              <code>memoryOwnerKey</code> 仍由客户端提供。
+              没有身份鉴权。公开聊天已使用服务端签名匿名 owner token， 但 bearer
+              token 仍不等于账号或租户身份。
             </div>
           </div>
 
@@ -1800,11 +1800,11 @@
                 </div>
               </div>
               <div class="callout warning">
-                <strong>状态语义中的真实差异</strong>
-                正式 API 明确只允许
-                <code>published</code>；公开目录和公开聊天当前都只排除
-                <code>disabled</code>，因此 <code>draft</code> Agent
-                也会被公开列出并可直接访问。这是“可运行状态”而不是完整发布授权边界。
+                <strong>公开发布边界</strong>
+                正式 API、公开目录和公开聊天都只允许
+                <code>published</code>；<code>draft</code>
+                不进入公开目录且公开聊天返回 422，<code>disabled</code>
+                保持停用。后台测试入口仍可验证草稿 Agent。
               </div>
             </div>
           </details>
@@ -1882,7 +1882,20 @@
                   <code>DocumentTextExtractor</code> 端口组合具体格式实现。
                 </li>
                 <li>TextChunker 负责将文本切分为稳定的 chunk。</li>
-                <li>批量 embedding 与向量 upsert 大小由配置控制。</li>
+                <li>
+                  claim 使用 <code>FOR UPDATE SKIP LOCKED</code>；lockOwner
+                  限制完成/失败/进度更新，超时 lease 由 scheduler reclaim。
+                </li>
+                <li>
+                  attempts/maxAttempts、nextRunAt 和封顶指数退避控制失败重试。
+                </li>
+                <li>
+                  批量 embedding 与向量 upsert 大小由配置控制；chunk ID 由
+                  documentId + index 稳定哈希，重试不会重复插入。
+                </li>
+                <li>
+                  检索只接受 ready 文档，processing/failed 向量被 SQL 排除。
+                </li>
                 <li>删除文档/模块/知识库时同步清理文件、任务、关系和向量。</li>
               </ul>
             </div>
@@ -1941,10 +1954,12 @@
                 </li>
                 <li>所有管理、读取、重试、修复都要求 agentId + ownerKey。</li>
               </ul>
-              <div class="callout warning">
-                <strong>隔离不等于认证</strong>
-                ownerKey 已贯穿数据库、文件和向量查询，但 admin/public
-                场景中它来自客户端；在账号体系建立前，它只能作为隔离键，不能作为可信租户身份。
+              <div class="callout success">
+                <strong>匿名 owner 可信派生</strong>
+                Admin/Public 浏览器只持有服务端签发的 HMAC bearer
+                token；Controller 校验签名后以 SHA-256 派生内部
+                ownerKey，客户端不能直接构造或篡改 ownerKey。token
+                被窃取后仍可重放，且不代表 workspace/member 身份。
               </div>
             </div>
           </details>
@@ -2012,7 +2027,9 @@
                     <li>只有 published Agent 可创建应用。</li>
                     <li>原始 <code>ag_live_...</code> 密钥只返回一次。</li>
                     <li>数据库只保存 SHA-256 hash 与 maskedKey。</li>
-                    <li>正式 API 使用 application.id 作为 memoryOwnerKey。</li>
+                    <li>
+                      正式 API 使用已认证 application.id 作为内部 ownerKey。
+                    </li>
                     <li>Redis key 中 identifier 先做 SHA-256。</li>
                   </ul>
                 </div>
@@ -2171,7 +2188,7 @@
               <div class="flow-node">上传 /api/chat-attachments</div>
               <div class="arrow">→</div>
               <div class="flow-node">
-                提交附件 ID + conversationId + ownerKey
+                提交附件 ID + conversationId + owner token
               </div>
               <div class="arrow">→</div>
               <div class="flow-node external">
@@ -2185,10 +2202,9 @@
           </div>
           <ul>
             <li>
-              <code>memoryOwnerKey</code> 在浏览器本地生成并复用，<code
-                >conversationId</code
-              >
-              每次新对话生成。
+              <code>memoryOwnerToken</code>
+              由服务端签发并在浏览器本地复用，<code>conversationId</code>
+              每次新对话生成；内部 ownerKey 从不返回客户端。
             </li>
             <li>FetchHttpClient 统一处理 SSE 块，并按 event/data 交给上层。</li>
             <li>
@@ -2198,8 +2214,21 @@
             <li>
               前端支持 Markdown、表格、代码块、KaTeX、ECharts、D3 和 Mermaid。
             </li>
+            <li>
+              D3、ECharts、Mermaid 按内容动态加载；ECharts 按系列族注册，KaTeX、
+              D3 和 Mermaid 核心通过 Vite manualChunks 拆分，图表销毁与 Mermaid
+              strict security 保持不变。
+            </li>
             <li>浏览器不直接持有第三方模型密钥。</li>
           </ul>
+          <div class="callout">
+            <strong>构建产物边界</strong>
+            ECharts runtime 已从约 1.14 MB 降至约 417 kB，按 cartesian /
+            hierarchy / map / specialty 继续异步拆分；主对话视图约 119 kB。
+            Mermaid 11.16 的可选 Cynefin parser 是上游单文件生成模块，约 691
+            kB， 仅渲染该图型时加载。项目没有通过提高 chunk warning
+            阈值隐藏该剩余告警。
+          </div>
 
           <h3>EyouCMS 独立页面</h3>
           <div class="grid grid-2">
@@ -2543,6 +2572,15 @@
                     vector extension、vector_collections registry、动态表管理
                   </td>
                 </tr>
+                <tr>
+                  <td>
+                    <code>1752158000000-add-knowledge-ingestion-leases</code>
+                  </td>
+                  <td>
+                    摄取 lockOwner/lockedAt、attempts、nextRunAt、claim/reclaim
+                    索引与旧 processing 数据恢复
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -2693,7 +2731,7 @@
               </div>
               <div class="sequence-row">
                 <div class="message" style="--from: 4; --to: 5">
-                  领取 queued job
+                  SKIP LOCKED 领取 + lockOwner lease
                 </div>
               </div>
               <div class="sequence-row">
@@ -2708,12 +2746,17 @@
               </div>
               <div class="sequence-row">
                 <div class="message" style="--from: 6; --to: 7">
-                  批量 upsert HNSW 表
+                  稳定 chunk ID 批量 upsert HNSW 表
                 </div>
               </div>
               <div class="sequence-row">
                 <div class="message return" style="--from: 4; --to: 7">
                   document=ready / job=completed
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message alert" style="--from: 4; --to: 5">
+                  失败退避重试；lease 超时回收；max → failed
                 </div>
               </div>
             </div>
@@ -2741,13 +2784,23 @@
                 <div class="state terminal">ready</div>
                 <div class="state-note">可被 RAG 检索</div>
               </div>
-              <div class="arrow">或</div>
+              <div class="arrow">/</div>
+              <div>
+                <div class="state">queued</div>
+                <div class="state-note">退避或 lease 回收</div>
+              </div>
+              <div class="arrow">/</div>
               <div>
                 <div class="state dead">failed</div>
-                <div class="state-note">保存错误信息</div>
+                <div class="state-note">达到最大 attempts</div>
               </div>
             </div>
           </div>
+          <p>
+            摄取任务保存 attempts、maxAttempts、nextRunAt、lockOwner 与
+            lockedAt； 完成、进度和失败更新都要求当前 lease owner。检索仅返回
+            ready 文档， processing/failed 文档不会进入公开回答。
+          </p>
 
           <h3>流程三：Chat + RAG + Memory 主时序</h3>
           <div class="diagram">
@@ -2764,12 +2817,12 @@
               </div>
               <div class="sequence-row">
                 <div class="message" style="--from: 1; --to: 2">
-                  消息 + conversationId + ownerKey
+                  消息 + conversationId + owner token
                 </div>
               </div>
               <div class="sequence-row">
                 <div class="message" style="--from: 2; --to: 3">
-                  转换 command / 校验入口
+                  校验 HMAC token / 派生 ownerKey / 转换 command
                 </div>
               </div>
               <div class="sequence-row">
@@ -3004,7 +3057,13 @@
                   <td>Public Agents</td>
                   <td><code>GET /api/public/agents</code></td>
                   <td>公开 Agent 最小目录</td>
-                  <td><span class="badge green">公开</span></td>
+                  <td><span class="badge green">仅 published</span></td>
+                </tr>
+                <tr>
+                  <td>Owner Identity</td>
+                  <td><code>POST /api/memory-owner-tokens</code></td>
+                  <td>签发浏览器匿名记忆 bearer token</td>
+                  <td>公开签发；HMAC 校验后才派生内部 ownerKey</td>
                 </tr>
                 <tr>
                   <td>Chat</td>
@@ -3020,7 +3079,7 @@
                   <td>Attachments</td>
                   <td><code>POST /api/chat-attachments</code></td>
                   <td>上传图片或音频并返回附件 ID</td>
-                  <td>可通过 headers 绑定 agent/owner</td>
+                  <td>可通过 X-Agent-Id + X-Memory-Owner-Token 绑定</td>
                 </tr>
                 <tr>
                   <td>Knowledge</td>
@@ -3062,7 +3121,7 @@
                     <code>GET .../artifacts/:artifactId</code>
                   </td>
                   <td>记忆列表、删除、清空、artifact 读取</td>
-                  <td>要求 ownerKey，但没有可信 principal</td>
+                  <td>要求签名 owner token，但没有账号 principal</td>
                 </tr>
                 <tr>
                   <td>Memory Ops</td>
@@ -3073,7 +3132,7 @@
                     <code>GET .../memory-health</code>
                   </td>
                   <td>任务查看、恢复、重试与一致性健康</td>
-                  <td>要求 ownerKey，但没有管理角色授权</td>
+                  <td>要求签名 owner token，但没有管理角色授权</td>
                 </tr>
                 <tr>
                   <td>Models</td>
@@ -3177,16 +3236,16 @@
                       >MODEL_REQUEST_TIMEOUT_MS</code
                     >
                   </td>
-                  <td>密钥加密与外部调用超时</td>
+                  <td>模型密钥加密、匿名 owner token HMAC 与外部调用超时</td>
                 </tr>
                 <tr>
                   <td>Knowledge</td>
                   <td>
                     <code>KNOWLEDGE_STORAGE_PATH</code
-                    >、<code>INGESTION_POLL_INTERVAL_MS</code>、embedding
-                    batch/chunk 限制
+                    >、<code>INGESTION_POLL_INTERVAL_MS</code>、<code>INGESTION_LOCK_TIMEOUT_MS</code>、max
+                    attempts/backoff、embedding batch/chunk 限制
                   </td>
-                  <td>文件路径、调度频率、解析和批量策略</td>
+                  <td>文件路径、调度、lease/retry、解析和批量策略</td>
                 </tr>
                 <tr>
                   <td>Vector</td>
@@ -3327,8 +3386,8 @@ git diff --check</code></pre>
             </div>
             <div class="callout success">
               <strong>记忆</strong>
-              agentId + ownerKey
-              贯穿数据库、artifact、原图和向量；图片被明确标记为不可信外部证据。
+              agentId + ownerKey 贯穿数据库、artifact、原图和向量；浏览器 token
+              由 HMAC 校验后派生 ownerKey，图片被明确标记为不可信外部证据。
             </div>
             <div class="callout success">
               <strong>可靠性</strong>
@@ -3381,15 +3440,11 @@ git diff --check</code></pre>
                   <td><span class="badge red">P0</span></td>
                 </tr>
                 <tr>
-                  <td>ownerKey 客户端可控</td>
-                  <td>Public/Admin 对话由浏览器提供 memoryOwnerKey</td>
-                  <td>它不是经过认证的用户身份，泄露后可能读取同 scope 记忆</td>
-                  <td><span class="badge red">P0</span></td>
-                </tr>
-                <tr>
-                  <td>Public 可访问 draft</td>
-                  <td>公开聊天只拒绝 disabled，未要求 published</td>
-                  <td>未发布 Agent 会进入公开目录，并可被外部用户直接调用</td>
+                  <td>匿名 bearer token 可重放</td>
+                  <td>
+                    已阻止 ownerKey 伪造，但 token 仍保存在浏览器且不是账号身份
+                  </td>
+                  <td>token 被窃取后可访问同 owner scope，无法表达成员权限</td>
                   <td><span class="badge amber">P1</span></td>
                 </tr>
                 <tr>

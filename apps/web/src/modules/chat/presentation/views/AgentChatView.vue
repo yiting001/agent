@@ -28,7 +28,8 @@ interface PendingAttachment {
 }
 
 const MAX_ATTACHMENTS = 6;
-const MEMORY_OWNER_STORAGE_KEY = 'agent-memory-owner';
+const LEGACY_MEMORY_OWNER_KEY_STORAGE_KEY = 'agent-memory-owner';
+const MEMORY_OWNER_TOKEN_STORAGE_KEY = 'agent-memory-owner-token-v1';
 const SUPPORTED_ATTACHMENT_TYPES = new Set([
   'audio/mpeg',
   'audio/wav',
@@ -39,20 +40,23 @@ const SUPPORTED_ATTACHMENT_TYPES = new Set([
   'image/webp',
 ]);
 
-function getMemoryOwnerKey(): string {
+function readMemoryOwnerToken(): string {
   try {
-    const existing = window.localStorage.getItem(MEMORY_OWNER_STORAGE_KEY);
+    window.localStorage.removeItem(LEGACY_MEMORY_OWNER_KEY_STORAGE_KEY);
 
-    if (existing) {
-      return existing;
-    }
-
-    const ownerKey = createRandomId();
-    window.localStorage.setItem(MEMORY_OWNER_STORAGE_KEY, ownerKey);
-
-    return ownerKey;
+    return (
+      window.localStorage.getItem(MEMORY_OWNER_TOKEN_STORAGE_KEY)?.trim() ?? ''
+    );
   } catch {
-    return createRandomId();
+    return '';
+  }
+}
+
+function storeMemoryOwnerToken(token: string): void {
+  try {
+    window.localStorage.setItem(MEMORY_OWNER_TOKEN_STORAGE_KEY, token);
+  } catch {
+    return;
   }
 }
 
@@ -62,11 +66,13 @@ const brandStore = useBrandSettingsStore();
 const messages = ref<ChatMessage[]>([]);
 const message = ref('');
 const replying = ref(false);
+const initializing = ref(false);
+const initializationFailed = ref(false);
 const errorMessage = ref('');
 const pendingAttachments = ref<PendingAttachment[]>([]);
 const conversation = ref<HTMLElement>();
 const conversationId = ref(createRandomId());
-const memoryOwnerKey = getMemoryOwnerKey();
+const memoryOwnerToken = ref(readMemoryOwnerToken());
 
 const agentId = computed(() => {
   const routeAgentId = route.params.agentId;
@@ -105,7 +111,8 @@ async function sendMessage(content = message.value): Promise<void> {
   if (
     (!question && !pendingAttachments.value.length) ||
     replying.value ||
-    !agentId.value
+    !agentId.value ||
+    !memoryOwnerToken.value
   ) {
     return;
   }
@@ -119,7 +126,7 @@ async function sendMessage(content = message.value): Promise<void> {
       pending.map((item) =>
         workspaceStore.uploadChatAttachment(
           agentId.value,
-          memoryOwnerKey,
+          memoryOwnerToken.value,
           item.file,
         ),
       ),
@@ -165,7 +172,7 @@ async function sendMessage(content = message.value): Promise<void> {
     const response = await workspaceStore.chat(
       agentId.value,
       conversationId.value,
-      memoryOwnerKey,
+      memoryOwnerToken.value,
       history,
       (delta) => {
         reply.content += delta;
@@ -252,13 +259,38 @@ function revokePreviewUrls(): void {
   }
 }
 
-onMounted(async () => {
-  if (!workspaceStore.agents.length) {
-    await workspaceStore.initialize();
+async function initializeChat(): Promise<void> {
+  if (initializing.value) {
+    return;
   }
 
-  resetConversation();
-});
+  initializing.value = true;
+  initializationFailed.value = false;
+  errorMessage.value = '';
+
+  try {
+    if (!memoryOwnerToken.value) {
+      memoryOwnerToken.value = await workspaceStore.createMemoryOwnerToken();
+      storeMemoryOwnerToken(memoryOwnerToken.value);
+    }
+
+    if (!workspaceStore.agents.length) {
+      await workspaceStore.initialize();
+    }
+
+    resetConversation();
+  } catch (error) {
+    initializationFailed.value = true;
+    errorMessage.value =
+      error instanceof Error
+        ? error.message
+        : '对话初始化失败，请检查服务后重试。';
+  } finally {
+    initializing.value = false;
+  }
+}
+
+onMounted(initializeChat);
 
 onBeforeUnmount(revokePreviewUrls);
 </script>
@@ -306,6 +338,7 @@ onBeforeUnmount(revokePreviewUrls);
               v-for="question in quickQuestions"
               :key="question"
               type="button"
+              :disabled="initializing || !memoryOwnerToken"
               @click="sendMessage(question)"
             >
               <BaseIcon name="chat" />
@@ -360,7 +393,17 @@ onBeforeUnmount(revokePreviewUrls);
               </small>
             </div>
           </article>
-          <p v-if="errorMessage" class="chat-error">{{ errorMessage }}</p>
+          <p v-if="errorMessage" class="chat-error">
+            {{ errorMessage }}
+            <button
+              v-if="initializationFailed"
+              type="button"
+              :disabled="initializing"
+              @click="initializeChat"
+            >
+              {{ initializing ? '正在重试…' : '重试初始化' }}
+            </button>
+          </p>
         </div>
       </div>
     </section>
@@ -394,7 +437,7 @@ onBeforeUnmount(revokePreviewUrls);
             type="file"
             accept="image/png,image/jpeg,image/webp,image/gif,audio/mpeg,audio/wav"
             multiple
-            :disabled="replying || !agent"
+            :disabled="replying || initializing || !agent || !memoryOwnerToken"
             @change="selectAttachments"
           />
         </label>
@@ -402,8 +445,10 @@ onBeforeUnmount(revokePreviewUrls);
           v-model="message"
           rows="1"
           maxlength="8000"
-          placeholder="输入你的问题，按回车发送…"
-          :disabled="!agent"
+          :placeholder="
+            initializing ? '正在初始化安全凭证…' : '输入你的问题，按回车发送…'
+          "
+          :disabled="initializing || !agent || !memoryOwnerToken"
           @keydown.enter.exact.prevent="sendMessage()"
         ></textarea>
         <button
@@ -411,7 +456,9 @@ onBeforeUnmount(revokePreviewUrls);
           :disabled="
             (!message.trim() && !pendingAttachments.length) ||
             replying ||
-            !agent
+            initializing ||
+            !agent ||
+            !memoryOwnerToken
           "
           aria-label="发送消息"
         >

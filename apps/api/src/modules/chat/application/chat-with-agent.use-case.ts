@@ -22,7 +22,7 @@ import { SkillToolLoopService } from './skill-tool-loop.service';
 
 /** 三类聊天入口共享的应用命令。 */
 export interface ChatWithAgentCommand {
-  /** 调用方来源：admin 无限制；public 排除已停用；api 仅限已发布。 */
+  /** 调用方来源：admin 无限制；public 与 api 仅限已发布。 */
   access: 'admin' | 'api' | 'public';
   agentId: string;
   /** 复用已有记忆线程；缺省时可创建新线程。 */
@@ -145,7 +145,14 @@ export class ChatWithAgentUseCase {
     if (command.access === 'public' && agent.status === 'disabled') {
       throw new ApplicationError(
         'invalid_operation',
-        '智能体已停用，暂时无法对话。',
+        '智能体已停用，暂时无法公开对话。',
+      );
+    }
+
+    if (command.access === 'public' && agent.status === 'draft') {
+      throw new ApplicationError(
+        'invalid_operation',
+        '智能体尚未发布，暂时无法公开对话。',
       );
     }
 

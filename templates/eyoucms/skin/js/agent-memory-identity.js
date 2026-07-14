@@ -1,7 +1,8 @@
 (function () {
   'use strict';
 
-  const OWNER_STORAGE_KEY = 'agent-memory-owner';
+  const LEGACY_OWNER_KEY_STORAGE_KEY = 'agent-memory-owner';
+  const OWNER_TOKEN_STORAGE_KEY = 'agent-memory-owner-token-v1';
 
   function createId() {
     if (window.crypto?.randomUUID) {
@@ -11,25 +12,40 @@
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
-  function getOwnerKey() {
+  async function getOwnerToken(request) {
     try {
-      const existing = window.localStorage.getItem(OWNER_STORAGE_KEY);
+      window.localStorage.removeItem(LEGACY_OWNER_KEY_STORAGE_KEY);
+
+      const existing = window.localStorage.getItem(OWNER_TOKEN_STORAGE_KEY);
 
       if (existing) {
         return existing;
       }
-
-      const ownerKey = createId();
-      window.localStorage.setItem(OWNER_STORAGE_KEY, ownerKey);
-
-      return ownerKey;
     } catch {
-      return createId();
+      // 无本地存储时仍可使用当前页面生命周期内的 bearer token。
     }
+
+    const response = await request('/memory-owner-tokens', {
+      body: '{}',
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    });
+
+    if (!response || typeof response.token !== 'string') {
+      throw new Error('记忆主体凭证签发失败。');
+    }
+
+    try {
+      window.localStorage.setItem(OWNER_TOKEN_STORAGE_KEY, response.token);
+    } catch {
+      return response.token;
+    }
+
+    return response.token;
   }
 
   window.AgentMemoryIdentity = {
     createConversationId: createId,
-    getOwnerKey,
+    getOwnerToken,
   };
 })();

@@ -14,6 +14,7 @@ import { AddAgentMemory1752154000000 } from './database/migrations/1752154000000
 import { AddEpisodicMemoryArtifacts1752155000000 } from './database/migrations/1752155000000-add-episodic-memory-artifacts';
 import { AddAgentMemoryTasks1752156000000 } from './database/migrations/1752156000000-add-agent-memory-tasks';
 import { EnablePgvector1752157000000 } from './database/migrations/1752157000000-enable-pgvector';
+import { AddKnowledgeIngestionLeases1752158000000 } from './database/migrations/1752158000000-add-knowledge-ingestion-leases';
 import { BrandingModule } from './modules/branding/branding.module';
 import { HealthModule } from './modules/health/health.module';
 import { AgentMemoryModule } from './modules/agent-memory/agent-memory.module';
@@ -52,6 +53,7 @@ import { RedisModule } from './shared/infrastructure/redis/redis.module';
             AddEpisodicMemoryArtifacts1752155000000,
             AddAgentMemoryTasks1752156000000,
             EnablePgvector1752157000000,
+            AddKnowledgeIngestionLeases1752158000000,
           ],
           migrationsRun: config.databaseMigrationsRun,
           extra: {

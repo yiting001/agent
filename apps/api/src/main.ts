@@ -24,7 +24,7 @@ async function bootstrap(): Promise<void> {
       'Content-Type',
       'X-Agent-Id',
       'X-File-Name',
-      'X-Memory-Owner-Key',
+      'X-Memory-Owner-Token',
     ],
     exposedHeaders: ['X-Trace-Id'],
     maxAge: 86_400,

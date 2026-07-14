@@ -60,7 +60,7 @@ export class IngestionScheduler
     });
   }
 
-  /** 持续领取任务，直到仓储返回无可用任务。 */
+  /** 先回收过期租约，再持续领取任务直到队列为空。 */
   private async tick(): Promise<void> {
     if (this.processing) {
       return;
@@ -69,6 +69,8 @@ export class IngestionScheduler
     this.processing = true;
 
     try {
+      await this.processNext.reclaimExpired();
+
       while (await this.processNext.execute()) {
         continue;
       }

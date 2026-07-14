@@ -22,7 +22,11 @@ import type {
 import { ModelGateway } from '../src/modules/model-providers/application/model-gateway';
 import { ApplicationErrorFilter } from '../src/shared/presentation/application-error.filter';
 import { createControlledTaskScheduler } from './controlled-task-scheduler';
-import { uploadTestImage, waitForMemoryId } from './agent-memory-test-helpers';
+import {
+  issueMemoryOwner,
+  uploadTestImage,
+  waitForMemoryId,
+} from './agent-memory-test-helpers';
 import { createInMemoryAgentMemoryIndex } from './in-memory-agent-memory.index';
 import { readStringProperty } from './read-value';
 
@@ -32,7 +36,9 @@ describe('Agent memory task queue', () => {
   let failNextIndexUpsert = false;
   let memoryIndex: AgentMemoryIndex;
   let otherAgentId = '';
-  const ownerKey = 'owner-memory-task-e2e';
+  let otherOwnerToken = '';
+  let ownerKey = '';
+  let ownerToken = '';
   let processNext: ProcessNextAgentMemoryTaskUseCase;
   let tasks: AgentMemoryTaskRepository;
 
@@ -122,6 +128,8 @@ describe('Agent memory task queue', () => {
     );
     app.useGlobalFilters(new ApplicationErrorFilter());
     await app.init();
+    ({ ownerKey, ownerToken } = await issueMemoryOwner(app));
+    ({ ownerToken: otherOwnerToken } = await issueMemoryOwner(app));
     processNext = app.get(ProcessNextAgentMemoryTaskUseCase);
     tasks = app.get(AgentMemoryTaskRepository);
 
@@ -168,11 +176,11 @@ describe('Agent memory task queue', () => {
     const attachment = await uploadTestImage(app, {
       agentId,
       fileName: 'idempotent.png',
-      ownerKey,
+      ownerToken,
     });
     const chatRequest = {
       conversationId: 'conversation-idempotent',
-      memoryOwnerKey: ownerKey,
+      memoryOwnerToken: ownerToken,
       messages: [
         {
           attachments: [attachment],
@@ -197,7 +205,7 @@ describe('Agent memory task queue', () => {
 
     const memories = await request(app.getHttpServer())
       .get(`/api/agents/${agentId}/memories`)
-      .query({ ownerKey })
+      .set('X-Memory-Owner-Token', ownerToken)
       .expect(200);
     const episodes = Array.isArray(memories.body)
       ? (memories.body as unknown[]).filter(
@@ -221,7 +229,7 @@ describe('Agent memory task queue', () => {
     await memoryIndex.delete([memoryId]);
     await request(app.getHttpServer())
       .get(`/api/agents/${agentId}/memory-health`)
-      .query({ ownerKey })
+      .set('X-Memory-Owner-Token', ownerToken)
       .expect(200)
       .expect(({ body }) => {
         expect(body).toEqual(expect.objectContaining({ readyWithoutIndex: 1 }));
@@ -234,14 +242,14 @@ describe('Agent memory task queue', () => {
     const attachment = await uploadTestImage(app, {
       agentId,
       fileName: 'dead.png',
-      ownerKey,
+      ownerToken,
     });
 
     await request(app.getHttpServer())
       .post(`/api/agents/${agentId}/chat`)
       .send({
         conversationId: 'conversation-dead',
-        memoryOwnerKey: ownerKey,
+        memoryOwnerToken: ownerToken,
         messages: [
           {
             attachments: [attachment],
@@ -263,7 +271,8 @@ describe('Agent memory task queue', () => {
 
     const deadResponse = await request(app.getHttpServer())
       .get(`/api/agents/${agentId}/memory-tasks`)
-      .query({ ownerKey, status: 'dead' })
+      .query({ status: 'dead' })
+      .set('X-Memory-Owner-Token', ownerToken)
       .expect(200);
     const deadBody: unknown = deadResponse.body;
 
@@ -276,11 +285,13 @@ describe('Agent memory task queue', () => {
     ]);
     await request(app.getHttpServer())
       .get(`/api/agents/${agentId}/memory-tasks`)
-      .query({ ownerKey: 'other-owner', status: 'dead' })
+      .query({ status: 'dead' })
+      .set('X-Memory-Owner-Token', otherOwnerToken)
       .expect(200, []);
     await request(app.getHttpServer())
       .get(`/api/agents/${otherAgentId}/memory-tasks`)
-      .query({ ownerKey, status: 'dead' })
+      .query({ status: 'dead' })
+      .set('X-Memory-Owner-Token', ownerToken)
       .expect(200, []);
 
     if (!Array.isArray(deadBody) || deadBody.length === 0) {
@@ -291,11 +302,11 @@ describe('Agent memory task queue', () => {
 
     await request(app.getHttpServer())
       .post(`/api/agents/${agentId}/memories/${memoryId}/retry`)
-      .query({ ownerKey: 'other-owner' })
+      .set('X-Memory-Owner-Token', otherOwnerToken)
       .expect(202, { recovered: 0 });
     await request(app.getHttpServer())
       .post(`/api/agents/${agentId}/memories/${memoryId}/retry`)
-      .query({ ownerKey })
+      .set('X-Memory-Owner-Token', ownerToken)
       .expect(202, { recovered: 1 });
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -304,7 +315,7 @@ describe('Agent memory task queue', () => {
     }
     await request(app.getHttpServer())
       .post(`/api/agents/${agentId}/memory-tasks/recover`)
-      .query({ ownerKey })
+      .set('X-Memory-Owner-Token', ownerToken)
       .expect(202, { recovered: 1 });
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -381,7 +392,7 @@ describe('Agent memory task queue', () => {
     const image = await uploadTestImage(app, {
       agentId,
       fileName: 'missing-evidence.png',
-      ownerKey,
+      ownerToken,
     });
     const attachmentId = readStringProperty(image, 'id');
     const sourceThreadId = 'conversation-missing-evidence';
@@ -390,7 +401,7 @@ describe('Agent memory task queue', () => {
       .post(`/api/agents/${agentId}/chat`)
       .send({
         conversationId: sourceThreadId,
-        memoryOwnerKey: ownerKey,
+        memoryOwnerToken: ownerToken,
         messages: [
           {
             attachments: [image],
@@ -402,7 +413,7 @@ describe('Agent memory task queue', () => {
       .expect(200);
     const memoryId = await waitForMemoryId(app, {
       agentId,
-      ownerKey,
+      ownerToken,
       sourceThreadId,
     });
 
@@ -421,11 +432,11 @@ describe('Agent memory task queue', () => {
     await storage.delete(attachmentId, { agentId, ownerKey });
     await request(app.getHttpServer())
       .get(`/api/agents/${agentId}/memory-health`)
-      .query({ ownerKey })
+      .set('X-Memory-Owner-Token', ownerToken)
       .expect(200);
     await request(app.getHttpServer())
       .get(`/api/agents/${agentId}/memories`)
-      .query({ ownerKey })
+      .set('X-Memory-Owner-Token', ownerToken)
       .expect(200)
       .expect(({ body }) => {
         expect(body).toEqual(
@@ -441,7 +452,7 @@ describe('Agent memory task queue', () => {
     const image = await uploadTestImage(app, {
       agentId,
       fileName: 'historical-pending.png',
-      ownerKey,
+      ownerToken,
     });
     const now = new Date();
     const { memory } = await tasks.enqueueEpisode({

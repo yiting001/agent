@@ -4,7 +4,7 @@
 
 智能体记忆系统让同一个智能体在多轮和跨会话中保持上下文连续性：
 
-- **短期记忆**：按 `memoryOwnerKey + conversationId` 持久化最近对话轮次，下一次请求可以只提交最新问题，服务端会恢复该会话最近消息。
+- **短期记忆**：按服务端派生的 `ownerKey + conversationId` 持久化最近对话轮次，下一次请求可以只提交最新问题，服务端会恢复该会话最近消息。
 - **长期记忆**：从用户显式要求“记住”的内容、姓名和偏好中提取稳定事实，跨会话召回并注入系统上下文。
 - **图片情景记忆**：成功对话中的 owner 绑定图片会异步提取客观摘要和实体，保存原图引用，并支持“上次那只狗”“前一张图片”等跨会话指代。
 - **独立混合检索**：情景记忆使用独立 pgvector 维度表和过滤字段，并结合向量、实体词、时间顺序、新近性和重要度重排，不与企业知识库索引混用。
@@ -34,6 +34,7 @@
 ```text
 apps/api/src/modules/agent-memory/
 ├── agent-memory.module.ts
+├── memory-owner-identity.module.ts
 ├── domain/
 │   ├── agent-memory-task.ts
 │   └── agent-memory.ts
@@ -47,6 +48,7 @@ apps/api/src/modules/agent-memory/
 │   ├── agent-memory-task.repository.ts
 │   ├── episode-extraction.ts
 │   ├── episodic-memory-query.ts
+│   ├── memory-owner-identity.ts
 │   └── process-next-agent-memory-task.use-case.ts
 ├── infrastructure/
 │   ├── agent-memory-artifact.entity.ts
@@ -55,12 +57,14 @@ apps/api/src/modules/agent-memory/
 │   ├── agent-memory-task.entity.ts
 │   ├── agent-memory-task.scheduler.ts
 │   ├── agent-memory-thread.entity.ts
+│   ├── hmac-memory-owner-identity.ts
 │   ├── typeorm-agent-memory.repository.ts
 │   ├── typeorm-agent-memory-task-maintenance.store.ts
 │   ├── typeorm-agent-memory-task.repository.ts
 │   └── pgvector-agent-memory.index.ts
 └── presentation/http/
     ├── clear-agent-memory.controller.ts
+    ├── create-memory-owner-token.controller.ts
     ├── delete-agent-memory.controller.ts
     ├── get-agent-memory-artifact.controller.ts
     ├── get-agent-memory-health.controller.ts
@@ -68,7 +72,7 @@ apps/api/src/modules/agent-memory/
     ├── list-agent-memory-tasks.controller.ts
     ├── recover-agent-memory-tasks.controller.ts
     ├── retry-agent-memory.controller.ts
-    └── memory-owner-key.ts
+    └── resolve-memory-owner-key.ts
 ```
 
 ## 数据流
@@ -84,7 +88,8 @@ sequenceDiagram
   participant Media as ChatAttachmentStorage
   participant Model as ModelGateway
 
-  UI->>Chat: messages + conversationId + memoryOwnerKey
+  UI->>Chat: memoryOwnerToken + messages + conversationId
+  Chat->>Chat: 校验 HMAC token 并派生内部 ownerKey
   Chat->>Stable: 恢复短期消息与稳定事实
   Chat->>Episode: 混合召回图片情景
   Episode->>DB: owner + agent 范围候选
@@ -227,16 +232,23 @@ stateDiagram-v2
 ```json
 {
   "conversationId": "9fb4a3f7-91b7-46de-92a2-55d932f7a74f",
-  "memoryOwnerKey": "225f42d8-ea54-46fc-a59f-a702ea0f0509",
+  "memoryOwnerToken": "v1.<subject>.<signature>",
   "messages": [{ "role": "user", "content": "请记住：我喜欢中文回答" }],
   "stream": true
 }
 ```
 
+浏览器首次访问时通过 `POST /api/memory-owner-tokens` 获取匿名 bearer token。服务端使用
+`CREDENTIAL_ENCRYPTION_KEY` 派生的 HMAC-SHA256 密钥校验 token，再以 SHA-256
+派生不暴露给客户端的稳定 `ownerKey`。篡改 token 会返回 401；轮换根密钥会使已有匿名
+token 失效。该 token 解决客户端直接伪造 ownerKey 的问题，但仍是可被窃取和重放的
+bearer credential，不等于账号登录、workspace/member 身份或租户授权。
+
 ### 长期记忆列表
 
 ```text
-GET /api/agents/:agentId/memories?ownerKey=<memoryOwnerKey>
+GET /api/agents/:agentId/memories
+X-Memory-Owner-Token: <anonymous bearer token>
 ```
 
 返回稳定记忆和图片情景摘要。图片情景包含 `status` 与 `artifacts` 元数据，可用于诊断、查看和删除。
@@ -244,18 +256,23 @@ GET /api/agents/:agentId/memories?ownerKey=<memoryOwnerKey>
 ### 查看情景原始图片
 
 ```text
-GET /api/agents/:agentId/memories/:memoryId/artifacts/:artifactId?ownerKey=<memoryOwnerKey>
+GET /api/agents/:agentId/memories/:memoryId/artifacts/:artifactId
+X-Memory-Owner-Token: <anonymous bearer token>
 ```
 
-接口同时校验 `agentId + ownerKey + memoryId + artifactId`，只返回该 owner 的原始图片。上传时 Vue 和 EyouCMS 会通过 `X-Agent-Id`、`X-Memory-Owner-Key` 将附件绑定到智能体和 owner；旧的无状态附件仍可用于当前对话，但不会形成长期图片情景。
+接口同时校验 `agentId + ownerKey + memoryId + artifactId`，只返回该 owner 的原始图片。上传时 Vue 和 EyouCMS 会通过 `X-Agent-Id`、`X-Memory-Owner-Token` 将附件绑定到智能体和 owner；旧的无状态附件仍可用于当前对话，但不会形成长期图片情景。
 
-记忆始终按 `agentId + memoryOwnerKey` 隔离。后台测试页和 EyouCMS 页面在浏览器首次访问时生成随机 owner key；OpenAI 兼容接口使用 API 应用 ID 作为 owner key。未提供 owner key 的旧调用保持无状态，不读取或写入长期记忆。
+记忆始终按 `agentId + ownerKey` 隔离。后台测试页和 EyouCMS 页面只持有服务端签发的匿名
+token；OpenAI 兼容接口继续使用已认证 API application ID 作为内部 ownerKey。未提供
+token 的聊天调用保持无状态，不读取或写入长期记忆。token 不通过 URL query 传递，避免
+进入浏览器历史、代理访问日志和 Referer。
 
 ### 删除和清空
 
 ```text
-DELETE /api/agents/:agentId/memories/:memoryId?ownerKey=<memoryOwnerKey>
-DELETE /api/agents/:agentId/memories?ownerKey=<memoryOwnerKey>
+DELETE /api/agents/:agentId/memories/:memoryId
+DELETE /api/agents/:agentId/memories
+X-Memory-Owner-Token: <anonymous bearer token>
 ```
 
 第一条删除指定记忆及其 pgvector 点和无引用图片；第二条清空该 owner 在指定智能体下的短期线程、短期消息、长期记忆、图片关系、向量和无引用媒体。
@@ -263,13 +280,14 @@ DELETE /api/agents/:agentId/memories?ownerKey=<memoryOwnerKey>
 ### 任务管理与健康检查
 
 ```text
-GET  /api/agents/:agentId/memory-tasks?ownerKey=<key>&status=queued|processing|succeeded|dead
-POST /api/agents/:agentId/memories/:memoryId/retry?ownerKey=<key>
-POST /api/agents/:agentId/memory-tasks/recover?ownerKey=<key>
-GET  /api/agents/:agentId/memory-health?ownerKey=<key>
+GET  /api/agents/:agentId/memory-tasks?status=queued|processing|succeeded|dead
+POST /api/agents/:agentId/memories/:memoryId/retry
+POST /api/agents/:agentId/memory-tasks/recover
+GET  /api/agents/:agentId/memory-health
+X-Memory-Owner-Token: <anonymous bearer token>
 ```
 
-所有接口同时按 `agentId + ownerKey` 过滤。单条 retry 和批量 recover 只重置该范围内的 dead 任务；health 会执行安全巡检并补建缺失任务、重建缺失索引、将缺失原始媒体的情景标为 failed，并删除超过 pending 超时且无 artifact 引用的 owner 绑定图片。当前阶段只提供服务端运维接口，不新增 Vue 管理页。
+所有接口先校验 token，再按 `agentId + ownerKey` 过滤。单条 retry 和批量 recover 只重置该范围内的 dead 任务；health 会执行安全巡检并补建缺失任务、重建缺失索引、将缺失原始媒体的情景标为 failed，并删除超过 pending 超时且无 artifact 引用的 owner 绑定图片。当前阶段只提供服务端运维接口，不新增 Vue 管理页。
 
 ## 记忆写入规则
 
@@ -295,18 +313,19 @@ GET  /api/agents/:agentId/memory-health?ownerKey=<key>
 
 ## 配置项
 
-| 环境变量                             | 默认值   | 说明                       |
-| ------------------------------------ | -------- | -------------------------- |
-| `AGENT_MEMORY_RECENT_MESSAGE_LIMIT`  | `12`     | 每个会话恢复的最近消息条数 |
-| `AGENT_MEMORY_RECALL_LIMIT`          | `6`      | 每次注入模型的稳定记忆条数 |
-| `AGENT_MEMORY_EPISODE_RECALL_LIMIT`  | `3`      | 每次最多注入的图片情景数   |
-| `AGENT_MEMORY_EPISODE_MIN_SCORE`     | `0.25`   | 情景召回最低混合分数       |
-| `AGENT_MEMORY_TASK_POLL_INTERVAL_MS` | `2000`   | PostgreSQL 队列轮询间隔    |
-| `AGENT_MEMORY_TASK_MAX_ATTEMPTS`     | `3`      | 单阶段最大尝试次数         |
-| `AGENT_MEMORY_TASK_BACKOFF_BASE_MS`  | `1000`   | 指数退避基础时长           |
-| `AGENT_MEMORY_TASK_LOCK_TIMEOUT_MS`  | `60000`  | processing lease 超时      |
-| `AGENT_MEMORY_PENDING_TIMEOUT_MS`    | `300000` | pending/无引用媒体巡检阈值 |
-| `AGENT_MEMORY_RECONCILE_INTERVAL_MS` | `60000`  | 一致性巡检间隔             |
+| 环境变量                             | 默认值   | 说明                                               |
+| ------------------------------------ | -------- | -------------------------------------------------- |
+| `CREDENTIAL_ENCRYPTION_KEY`          | 无       | 匿名 owner token HMAC 根密钥，同时用于模型凭证加密 |
+| `AGENT_MEMORY_RECENT_MESSAGE_LIMIT`  | `12`     | 每个会话恢复的最近消息条数                         |
+| `AGENT_MEMORY_RECALL_LIMIT`          | `6`      | 每次注入模型的稳定记忆条数                         |
+| `AGENT_MEMORY_EPISODE_RECALL_LIMIT`  | `3`      | 每次最多注入的图片情景数                           |
+| `AGENT_MEMORY_EPISODE_MIN_SCORE`     | `0.25`   | 情景召回最低混合分数                               |
+| `AGENT_MEMORY_TASK_POLL_INTERVAL_MS` | `2000`   | PostgreSQL 队列轮询间隔                            |
+| `AGENT_MEMORY_TASK_MAX_ATTEMPTS`     | `3`      | 单阶段最大尝试次数                                 |
+| `AGENT_MEMORY_TASK_BACKOFF_BASE_MS`  | `1000`   | 指数退避基础时长                                   |
+| `AGENT_MEMORY_TASK_LOCK_TIMEOUT_MS`  | `60000`  | processing lease 超时                              |
+| `AGENT_MEMORY_PENDING_TIMEOUT_MS`    | `300000` | pending/无引用媒体巡检阈值                         |
+| `AGENT_MEMORY_RECONCILE_INTERVAL_MS` | `60000`  | 一致性巡检间隔                                     |
 
 ## 日志、指标、成本与告警
 
@@ -324,12 +343,13 @@ GET  /api/agents/:agentId/memory-health?ownerKey=<key>
 - PostgreSQL/pgvector 集成测试覆盖真实 upsert、cosine search、删除及 owner/agent 过滤；任务并发领取使用 `FOR UPDATE SKIP LOCKED`。
 - migration E2E 验证任务表、幂等列和索引时间列的 up/down。
 - 对话入口保持向后兼容；不传 `conversationId` 时仍按原来的请求消息工作。
-- 未提供 `memoryOwnerKey` 的调用保持无状态，不自动记录图片情景。
+- E2E 覆盖匿名 token 签发、签名篡改拒绝、旧客户端 ownerKey 拒绝和两个 token 之间的数据隔离。
+- 未提供 `memoryOwnerToken` 的聊天调用保持无状态，不自动记录图片情景。
 
 ## 扩展方式
 
 - 若需要后台人工维护，可复用任务列表、retry、recover 和 health 接口增加 Vue/Pinia 管理页。
 - 后续优先补充保留期、反向 pgvector 孤儿枚举、专项仪表盘和预算告警，再评估实体图谱和跨模态专用 embedding。
-- 当前 ownerKey 仍不是 workspace/tenant 身份；商用多租户上线前必须完成统一认证、资源 workspace 外键和 PostgreSQL RLS。
+- 匿名 owner token 仍不是 workspace/tenant 身份；商用多租户上线前必须完成统一认证、资源 workspace 外键、权限模型和 PostgreSQL RLS。
 - 完整的未实现项、优先级和推荐实施顺序见
   [图片情景记忆后续路线](agent-memory-roadmap.md)。

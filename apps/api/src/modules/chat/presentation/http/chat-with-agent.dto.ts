@@ -1,4 +1,5 @@
 import { Type } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -31,6 +32,10 @@ export class ChatWithAgentDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(80)
-  memoryOwnerKey?: string;
+  @MaxLength(160)
+  @ApiPropertyOptional({
+    description: '由 POST /api/memory-owner-tokens 签发的匿名 bearer token',
+    example: 'v1.<subject>.<signature>',
+  })
+  memoryOwnerToken?: string;
 }
