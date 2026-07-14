@@ -5,6 +5,7 @@ import { AgentCatalogService } from '../../agents/application/agent-catalog.serv
 import { AgentRepository } from '../../agents/application/agent.repository';
 import { AgentEpisodicMemoryService } from '../../agent-memory/application/agent-episodic-memory.service';
 import { AgentMemoryService } from '../../agent-memory/application/agent-memory.service';
+import { ProcessNextAgentMemoryTaskUseCase } from '../../agent-memory/application/process-next-agent-memory-task.use-case';
 import { KnowledgeRetrieverService } from '../../knowledge/application/knowledge-retriever.service';
 import {
   type ChatMessageInput,
@@ -88,6 +89,7 @@ export class ChatWithAgentUseCase {
     private readonly agentRepository: AgentRepository,
     private readonly agentMemory: AgentMemoryService,
     private readonly episodicMemory: AgentEpisodicMemoryService,
+    private readonly processNextMemoryTask: ProcessNextAgentMemoryTaskUseCase,
     private readonly knowledgeRetriever: KnowledgeRetrieverService,
     private readonly modelProviders: ModelProviderRuntimeService,
     private readonly modelGateway: ModelGateway,
@@ -451,6 +453,7 @@ ${episodicContext.context || '未检索到足够可靠的历史图片情景；�
               messages: command.messages,
               ownerKey: command.memoryOwnerKey,
             })
+            .then(() => this.processNextMemoryTask.execute())
             .catch((error: unknown) => {
               this.logger.warn(
                 JSON.stringify({

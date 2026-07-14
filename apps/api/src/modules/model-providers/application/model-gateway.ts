@@ -25,6 +25,7 @@ export interface ChatMessageInput {
 
 export interface ModelCallTelemetry {
   inputCostPerMillionTokens?: number;
+  metadata?: Record<string, string | number | boolean>;
   operation?: string;
   outputCostPerMillionTokens?: number;
   providerId?: string;

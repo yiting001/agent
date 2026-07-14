@@ -21,6 +21,8 @@ export function createInMemoryAgentMemoryIndex(): AgentMemoryIndex {
 
       return Promise.resolve();
     },
+    exists: (memoryId: string): Promise<boolean> =>
+      Promise.resolve(memories.some((memory) => memory.memoryId === memoryId)),
     search: (input) =>
       Promise.resolve(
         memories

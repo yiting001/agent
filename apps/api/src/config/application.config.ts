@@ -32,6 +32,12 @@ const DEFAULT_AGENT_MEMORY_RECALL_LIMIT = 6;
 const DEFAULT_AGENT_MEMORY_EPISODE_RECALL_LIMIT = 3;
 const DEFAULT_AGENT_MEMORY_EPISODE_MIN_SCORE = 0.25;
 const DEFAULT_AGENT_MEMORY_ZVEC_COLLECTION_PREFIX = 'agent_memory';
+const DEFAULT_AGENT_MEMORY_TASK_POLL_INTERVAL_MS = 2_000;
+const DEFAULT_AGENT_MEMORY_TASK_MAX_ATTEMPTS = 3;
+const DEFAULT_AGENT_MEMORY_TASK_BACKOFF_BASE_MS = 1_000;
+const DEFAULT_AGENT_MEMORY_TASK_LOCK_TIMEOUT_MS = 60_000;
+const DEFAULT_AGENT_MEMORY_PENDING_TIMEOUT_MS = 5 * 60_000;
+const DEFAULT_AGENT_MEMORY_RECONCILE_INTERVAL_MS = 60_000;
 
 /** Runtime values owned by the API process. */
 export type ZvecIndexType = 'diskann' | 'hnsw';
@@ -39,8 +45,14 @@ export type ZvecIndexType = 'diskann' | 'hnsw';
 export interface ApplicationConfig {
   agentMemoryEpisodeMinScore: number;
   agentMemoryEpisodeRecallLimit: number;
+  agentMemoryPendingTimeoutMs: number;
   agentMemoryRecallLimit: number;
+  agentMemoryReconcileIntervalMs: number;
   agentMemoryRecentMessageLimit: number;
+  agentMemoryTaskBackoffBaseMs: number;
+  agentMemoryTaskLockTimeoutMs: number;
+  agentMemoryTaskMaxAttempts: number;
+  agentMemoryTaskPollIntervalMs: number;
   agentMemoryZvecCollectionPrefix: string;
   brandIconMaxBytes: number;
   brandStoragePath: string;
@@ -188,15 +200,45 @@ export const applicationConfig = registerAs(
         process.env.AGENT_MEMORY_EPISODE_RECALL_LIMIT,
         DEFAULT_AGENT_MEMORY_EPISODE_RECALL_LIMIT,
       ),
+      agentMemoryPendingTimeoutMs: parsePositiveInteger(
+        'AGENT_MEMORY_PENDING_TIMEOUT_MS',
+        process.env.AGENT_MEMORY_PENDING_TIMEOUT_MS,
+        DEFAULT_AGENT_MEMORY_PENDING_TIMEOUT_MS,
+      ),
       agentMemoryRecallLimit: parsePositiveInteger(
         'AGENT_MEMORY_RECALL_LIMIT',
         process.env.AGENT_MEMORY_RECALL_LIMIT,
         DEFAULT_AGENT_MEMORY_RECALL_LIMIT,
       ),
+      agentMemoryReconcileIntervalMs: parsePositiveInteger(
+        'AGENT_MEMORY_RECONCILE_INTERVAL_MS',
+        process.env.AGENT_MEMORY_RECONCILE_INTERVAL_MS,
+        DEFAULT_AGENT_MEMORY_RECONCILE_INTERVAL_MS,
+      ),
       agentMemoryRecentMessageLimit: parsePositiveInteger(
         'AGENT_MEMORY_RECENT_MESSAGE_LIMIT',
         process.env.AGENT_MEMORY_RECENT_MESSAGE_LIMIT,
         DEFAULT_AGENT_MEMORY_RECENT_MESSAGE_LIMIT,
+      ),
+      agentMemoryTaskBackoffBaseMs: parsePositiveInteger(
+        'AGENT_MEMORY_TASK_BACKOFF_BASE_MS',
+        process.env.AGENT_MEMORY_TASK_BACKOFF_BASE_MS,
+        DEFAULT_AGENT_MEMORY_TASK_BACKOFF_BASE_MS,
+      ),
+      agentMemoryTaskLockTimeoutMs: parsePositiveInteger(
+        'AGENT_MEMORY_TASK_LOCK_TIMEOUT_MS',
+        process.env.AGENT_MEMORY_TASK_LOCK_TIMEOUT_MS,
+        DEFAULT_AGENT_MEMORY_TASK_LOCK_TIMEOUT_MS,
+      ),
+      agentMemoryTaskMaxAttempts: parsePositiveInteger(
+        'AGENT_MEMORY_TASK_MAX_ATTEMPTS',
+        process.env.AGENT_MEMORY_TASK_MAX_ATTEMPTS,
+        DEFAULT_AGENT_MEMORY_TASK_MAX_ATTEMPTS,
+      ),
+      agentMemoryTaskPollIntervalMs: parsePositiveInteger(
+        'AGENT_MEMORY_TASK_POLL_INTERVAL_MS',
+        process.env.AGENT_MEMORY_TASK_POLL_INTERVAL_MS,
+        DEFAULT_AGENT_MEMORY_TASK_POLL_INTERVAL_MS,
       ),
       agentMemoryZvecCollectionPrefix: parseCollectionPrefix(
         'AGENT_MEMORY_ZVEC_COLLECTION_PREFIX',

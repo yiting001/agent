@@ -52,6 +52,8 @@ function toMemory(entity: AgentMemoryEntity): AgentMemory {
     createdAt: entity.createdAt,
     id: entity.id,
     importance: entity.importance,
+    idempotencyKey: entity.idempotencyKey,
+    indexedAt: entity.indexedAt ?? undefined,
     lastAccessedAt: entity.lastAccessedAt,
     ownerKey: entity.ownerKey,
     sourceThreadId: entity.sourceThreadId,
@@ -252,6 +254,8 @@ export class TypeOrmAgentMemoryRepository extends AgentMemoryRepository {
       createdAt: existing?.createdAt ?? now,
       id: existing?.id ?? randomUUID(),
       importance: Math.max(existing?.importance ?? 0, input.importance),
+      idempotencyKey: existing?.idempotencyKey ?? input.idempotencyKey,
+      indexedAt: existing?.indexedAt ?? input.indexedAt,
       lastAccessedAt: existing?.lastAccessedAt,
       ownerKey: input.ownerKey,
       sourceThreadId: existing?.sourceThreadId ?? input.sourceThreadId,
@@ -320,6 +324,7 @@ export class TypeOrmAgentMemoryRepository extends AgentMemoryRepository {
     }
 
     entity.content = input.content;
+    entity.indexedAt = input.indexedAt;
     entity.importance = input.importance;
     entity.status = input.status;
     entity.updatedAt = new Date();

@@ -13,7 +13,13 @@ async function bootstrap(): Promise<void> {
   const config = configService.getOrThrow<ApplicationConfig>('application');
 
   app.enableCors({
-    allowedHeaders: ['Authorization', 'Content-Type', 'X-File-Name'],
+    allowedHeaders: [
+      'Authorization',
+      'Content-Type',
+      'X-Agent-Id',
+      'X-File-Name',
+      'X-Memory-Owner-Key',
+    ],
     exposedHeaders: ['X-Trace-Id'],
     maxAge: 86_400,
     methods: ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT'],

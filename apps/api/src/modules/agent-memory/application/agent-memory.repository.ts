@@ -9,6 +9,8 @@ export interface SaveMemoryInput {
   agentId: string;
   content: string;
   importance: number;
+  idempotencyKey?: string;
+  indexedAt?: Date;
   ownerKey: string;
   sourceThreadId?: string;
   status?: AgentMemory['status'];
@@ -28,6 +30,7 @@ export interface SaveMemoryArtifactInput {
 export interface UpdateMemoryInput {
   agentId: string;
   content: string;
+  indexedAt?: Date;
   importance: number;
   memoryId: string;
   ownerKey: string;
