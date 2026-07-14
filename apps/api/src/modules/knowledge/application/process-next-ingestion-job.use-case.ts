@@ -91,8 +91,11 @@ export class ProcessNextIngestionJobUseCase {
         apiKey: provider.apiKey,
         baseUrl: provider.baseUrl,
         dimensions: knowledgeBase.embeddingDimensions,
+        inputCostPerMillionTokens: provider.embeddingInputCostPerMillionTokens,
         input: batch.map((chunk) => chunk.content),
         model: knowledgeBase.embeddingModel,
+        operation: 'embedding.document_ingestion',
+        providerId: provider.id,
       });
 
       await this.vectorIndex.upsert(

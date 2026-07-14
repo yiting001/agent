@@ -73,6 +73,18 @@ export const adminRoute: RouteRecordRaw = {
     },
     {
       component: () =>
+        import(
+          '@/modules/observability/presentation/views/ObservabilityView.vue'
+        ),
+      meta: {
+        description: '查看执行链路、性能、模型成本和异常告警。',
+        title: '观测与监控',
+      },
+      name: 'observability',
+      path: 'observability',
+    },
+    {
+      component: () =>
         import('@/modules/admin/presentation/views/BrandSettingsView.vue'),
       meta: {
         description: '统一设置管理端与用户对话页面的软件名称和图标。',

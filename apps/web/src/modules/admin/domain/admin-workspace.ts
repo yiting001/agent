@@ -120,10 +120,13 @@ export interface KnowledgeBaseSummary {
 
 export interface ModelProviderSummary {
   baseUrl: string;
+  chatInputCostPerMillionTokens?: number;
   chatModel?: string;
+  chatOutputCostPerMillionTokens?: number;
   configured: boolean;
   description: string;
   embeddingDimensions?: number;
+  embeddingInputCostPerMillionTokens?: number;
   embeddingModel?: string;
   enabled: boolean;
   id: string;
@@ -169,9 +172,12 @@ export interface CreateKnowledgeModuleInput {
 export interface ConfigureProviderInput {
   apiKey: string;
   baseUrl: string;
+  chatInputCostPerMillionTokens?: number;
   chatModel?: string;
+  chatOutputCostPerMillionTokens?: number;
   description: string;
   embeddingDimensions?: number;
+  embeddingInputCostPerMillionTokens?: number;
   embeddingModel?: string;
   key: string;
   name: string;

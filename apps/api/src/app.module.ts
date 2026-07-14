@@ -9,6 +9,7 @@ import {
 import { InitialKnowledgePlatform1752150000000 } from './database/migrations/1752150000000-initial-knowledge-platform';
 import { AddBrandSettings1752151000000 } from './database/migrations/1752151000000-add-brand-settings';
 import { AddAgentSkills1752152000000 } from './database/migrations/1752152000000-add-agent-skills';
+import { AddObservability1752153000000 } from './database/migrations/1752153000000-add-observability';
 import { BrandingModule } from './modules/branding/branding.module';
 import { HealthModule } from './modules/health/health.module';
 import { AgentsModule } from './modules/agents/agents.module';
@@ -17,6 +18,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { ModelProvidersModule } from './modules/model-providers/model-providers.module';
 import { SkillsModule } from './modules/skills/skills.module';
+import { ObservabilityModule } from './modules/observability/observability.module';
 
 @Module({
   imports: [
@@ -38,6 +40,7 @@ import { SkillsModule } from './modules/skills/skills.module';
             InitialKnowledgePlatform1752150000000,
             AddBrandSettings1752151000000,
             AddAgentSkills1752152000000,
+            AddObservability1752153000000,
           ],
           migrationsRun: config.databaseMigrationsRun,
           synchronize: config.databaseSynchronize,
@@ -46,6 +49,7 @@ import { SkillsModule } from './modules/skills/skills.module';
       },
     }),
     ModelProvidersModule,
+    ObservabilityModule,
     BrandingModule,
     KnowledgeModule,
     SkillsModule,

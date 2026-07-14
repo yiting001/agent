@@ -9,7 +9,9 @@ import { ModelProviderEntity } from './model-provider.entity';
 function toDomain(entity: ModelProviderEntity): ModelProvider {
   return {
     baseUrl: entity.baseUrl,
+    chatInputCostPerMillionTokens: entity.chatInputCostPerMillionTokens,
     chatModel: entity.chatModel,
+    chatOutputCostPerMillionTokens: entity.chatOutputCostPerMillionTokens,
     createdAt: entity.createdAt,
     credential: {
       authTag: entity.credentialAuthTag,
@@ -18,6 +20,8 @@ function toDomain(entity: ModelProviderEntity): ModelProvider {
     },
     description: entity.description,
     embeddingDimensions: entity.embeddingDimensions,
+    embeddingInputCostPerMillionTokens:
+      entity.embeddingInputCostPerMillionTokens,
     embeddingModel: entity.embeddingModel,
     enabled: entity.enabled,
     id: entity.id,
@@ -59,13 +63,17 @@ export class TypeOrmModelProviderRepository extends ModelProviderRepository {
   async save(provider: ModelProvider): Promise<void> {
     await this.repository.save({
       baseUrl: provider.baseUrl,
+      chatInputCostPerMillionTokens: provider.chatInputCostPerMillionTokens,
       chatModel: provider.chatModel,
+      chatOutputCostPerMillionTokens: provider.chatOutputCostPerMillionTokens,
       createdAt: provider.createdAt,
       credentialAuthTag: provider.credential.authTag,
       credentialCiphertext: provider.credential.ciphertext,
       credentialInitializationVector: provider.credential.initializationVector,
       description: provider.description,
       embeddingDimensions: provider.embeddingDimensions,
+      embeddingInputCostPerMillionTokens:
+        provider.embeddingInputCostPerMillionTokens,
       embeddingModel: provider.embeddingModel,
       enabled: provider.enabled,
       id: provider.id,

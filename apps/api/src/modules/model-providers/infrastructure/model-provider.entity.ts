@@ -20,11 +20,20 @@ export class ModelProviderEntity {
   @Column('text', { nullable: true })
   chatModel?: string;
 
+  @Column('real', { nullable: true })
+  chatInputCostPerMillionTokens?: number;
+
+  @Column('real', { nullable: true })
+  chatOutputCostPerMillionTokens?: number;
+
   @Column('text', { nullable: true })
   embeddingModel?: string;
 
   @Column('integer', { nullable: true })
   embeddingDimensions?: number;
+
+  @Column('real', { nullable: true })
+  embeddingInputCostPerMillionTokens?: number;
 
   @Column('text')
   credentialCiphertext: string;

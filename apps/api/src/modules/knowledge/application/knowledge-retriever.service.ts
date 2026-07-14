@@ -48,8 +48,12 @@ export class KnowledgeRetrieverService {
             apiKey: provider.apiKey,
             baseUrl: provider.baseUrl,
             dimensions: knowledgeBase.embeddingDimensions,
+            inputCostPerMillionTokens:
+              provider.embeddingInputCostPerMillionTokens,
             input: [query],
             model: knowledgeBase.embeddingModel,
+            operation: 'embedding.knowledge_query',
+            providerId: provider.id,
           });
           const vector = embeddings[0];
 

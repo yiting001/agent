@@ -12,12 +12,17 @@ import {
 } from '../../model-providers/application/model-gateway';
 import type { Skill } from '../../skills/domain/skill';
 import { SkillRuntimeService } from '../../skills/application/skill-runtime.service';
+import { ObservabilityService } from '../../observability/application/observability.service';
 
 export interface ToolLoopRequest {
   apiKey: string;
   baseUrl: string;
+  inputCostPerMillionTokens?: number;
   messages: ToolLoopMessage[];
   model: string;
+  operation?: string;
+  outputCostPerMillionTokens?: number;
+  providerId?: string;
   temperature: number;
 }
 
@@ -46,6 +51,7 @@ export class SkillToolLoopService {
   constructor(
     private readonly modelGateway: ModelGateway,
     private readonly skillRuntime: SkillRuntimeService,
+    private readonly observability: ObservabilityService,
     configService: ConfigService,
   ) {
     const config = configService.getOrThrow<ApplicationConfig>('application');
@@ -61,8 +67,12 @@ export class SkillToolLoopService {
       const input: ToolChatInput = {
         apiKey: request.apiKey,
         baseUrl: request.baseUrl,
+        inputCostPerMillionTokens: request.inputCostPerMillionTokens,
         messages,
         model: request.model,
+        operation: request.operation,
+        outputCostPerMillionTokens: request.outputCostPerMillionTokens,
+        providerId: request.providerId,
         temperature: request.temperature,
         tools: definitions,
       };
@@ -138,10 +148,18 @@ export class SkillToolLoopService {
     }
 
     try {
-      return await this.skillRuntime.callTool(
-        skill,
-        call.name,
-        parseToolArguments(call.arguments),
+      return await this.observability.track(
+        {
+          category: 'tool',
+          metadata: { skillId: skill.id },
+          operation: `tool.${call.name}`,
+        },
+        () =>
+          this.skillRuntime.callTool(
+            skill,
+            call.name,
+            parseToolArguments(call.arguments),
+          ),
       );
     } catch (error) {
       return error instanceof Error ? error.message : '工具执行失败。';

@@ -96,9 +96,13 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
     >(`/model-providers/${encodeURIComponent(input.key)}`, {
       apiKey: input.apiKey,
       baseUrl: input.baseUrl,
+      chatInputCostPerMillionTokens: input.chatInputCostPerMillionTokens,
       chatModel: input.chatModel,
+      chatOutputCostPerMillionTokens: input.chatOutputCostPerMillionTokens,
       description: input.description,
       embeddingDimensions: input.embeddingDimensions,
+      embeddingInputCostPerMillionTokens:
+        input.embeddingInputCostPerMillionTokens,
       embeddingModel: input.embeddingModel,
       name: input.name,
     });

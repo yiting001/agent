@@ -23,7 +23,14 @@ export interface ChatMessageInput {
   role: 'assistant' | 'system' | 'user';
 }
 
-export interface ChatCompletionInput {
+export interface ModelCallTelemetry {
+  inputCostPerMillionTokens?: number;
+  operation?: string;
+  outputCostPerMillionTokens?: number;
+  providerId?: string;
+}
+
+export interface ChatCompletionInput extends ModelCallTelemetry {
   apiKey: string;
   baseUrl: string;
   messages: ChatMessageInput[];
@@ -68,7 +75,7 @@ export type ToolLoopMessage =
   | ChatMessageInput
   | ToolResultMessage;
 
-export interface ToolChatInput {
+export interface ToolChatInput extends ModelCallTelemetry {
   apiKey: string;
   baseUrl: string;
   messages: ToolLoopMessage[];
@@ -82,7 +89,7 @@ export interface ToolChatResult {
   toolCalls: ChatToolCall[];
 }
 
-export interface EmbeddingInput {
+export interface EmbeddingInput extends ModelCallTelemetry {
   apiKey: string;
   baseUrl: string;
   dimensions?: number;

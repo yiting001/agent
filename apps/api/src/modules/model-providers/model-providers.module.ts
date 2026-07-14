@@ -10,6 +10,7 @@ import { ModelProviderRuntimeService } from './application/model-provider-runtim
 import { AesCredentialCipher } from './infrastructure/aes-credential-cipher';
 import { ModelProviderEntity } from './infrastructure/model-provider.entity';
 import { OpenAiCompatibleGateway } from './infrastructure/openai-compatible.gateway';
+import { ModelCallObserver } from './infrastructure/model-call-observer';
 import { TypeOrmModelProviderRepository } from './infrastructure/typeorm-model-provider.repository';
 import { ConfigureModelProviderController } from './presentation/http/configure-model-provider.controller';
 import { ListModelProvidersController } from './presentation/http/list-model-providers.controller';
@@ -21,6 +22,7 @@ import { ListModelProvidersController } from './presentation/http/list-model-pro
   providers: [
     ConfigureModelProviderUseCase,
     ListModelProvidersUseCase,
+    ModelCallObserver,
     ModelProviderRuntimeService,
     {
       provide: CredentialCipher,

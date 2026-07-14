@@ -1,0 +1,80 @@
+export type ObservabilityAlertSeverity = 'critical' | 'warning';
+export type ObservabilityCategory = 'http' | 'model' | 'tool';
+export type ObservabilityStatus = 'cancelled' | 'error' | 'ok';
+export type TokenCountSource = 'actual' | 'estimated' | 'unavailable';
+
+export interface ObservabilityEvent {
+  agentId?: string;
+  alertMessage?: string;
+  alertSeverity?: ObservabilityAlertSeverity;
+  category: ObservabilityCategory;
+  costUsdMicros: number;
+  durationMs: number;
+  errorMessage?: string;
+  id: string;
+  inputTokens: number;
+  metadata: Record<string, string | number | boolean>;
+  method?: string;
+  model?: string;
+  operation: string;
+  outputTokens: number;
+  parentSpanId?: string;
+  providerId?: string;
+  route?: string;
+  spanId: string;
+  startedAt: Date;
+  status: ObservabilityStatus;
+  statusCode?: number;
+  tokenCountSource: TokenCountSource;
+  traceId: string;
+}
+
+export interface ObservabilityDashboard {
+  alerts: Array<{
+    message: string;
+    occurredAt: string;
+    operation: string;
+    severity: ObservabilityAlertSeverity;
+    traceId: string;
+  }>;
+  generatedAt: string;
+  goldenSignals: {
+    averageLatencyMs: number;
+    errorRate: number;
+    modelCallCount: number;
+    p95LatencyMs: number;
+    requestCount: number;
+  };
+  recentTraces: Array<{
+    costUsd: number;
+    durationMs: number;
+    inputTokens: number;
+    operation: string;
+    outputTokens: number;
+    spanCount: number;
+    startedAt: string;
+    status: ObservabilityStatus;
+    traceId: string;
+  }>;
+  runtime: {
+    heapTotalBytes: number;
+    heapUsedBytes: number;
+    heapUtilization: number;
+    rssBytes: number;
+    uptimeSeconds: number;
+  };
+  series: Array<{
+    costUsd: number;
+    errorCount: number;
+    modelCallCount: number;
+    requestCount: number;
+    startedAt: string;
+  }>;
+  usage: {
+    estimatedCostUsd: number;
+    inputTokens: number;
+    outputTokens: number;
+    pricedModelCallCount: number;
+  };
+  windowHours: number;
+}

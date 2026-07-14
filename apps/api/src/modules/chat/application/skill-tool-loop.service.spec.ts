@@ -7,6 +7,7 @@ import type {
 } from '../../model-providers/application/model-gateway';
 import type { SkillRuntimeService } from '../../skills/application/skill-runtime.service';
 import type { Skill } from '../../skills/domain/skill';
+import type { ObservabilityService } from '../../observability/application/observability.service';
 import { SkillToolLoopService } from './skill-tool-loop.service';
 
 const mcpSkill: Skill = {
@@ -58,12 +59,16 @@ function buildService(
       return Promise.resolve('工具结果');
     },
   } as SkillRuntimeService;
+  const observability = {
+    track: (_input: unknown, operation: () => Promise<unknown>) => operation(),
+  } as ObservabilityService;
 
   return {
     calls,
     service: new SkillToolLoopService(
       gateway,
       runtime,
+      observability,
       configService(maxRounds),
     ),
   };
