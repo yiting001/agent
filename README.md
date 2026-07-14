@@ -75,6 +75,9 @@ openssl rand -hex 32
 异常告警。设计与配置见
 [观测与监控文档](docs/modules/observability.md)。
 
+智能体对话支持服务端短期会话记忆和跨会话长期偏好/事实记忆。设计、接口与配置见
+[智能体记忆系统文档](docs/modules/agent-memory.md)。
+
 对话默认流式输出，支持 Markdown、数学公式、ECharts/D3 图表、Mermaid
 流程图/思维导图，以及图片和音频输入。格式与接口见
 [流式富内容与多模态对话文档](docs/modules/rich-streaming-chat.md)。

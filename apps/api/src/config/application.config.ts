@@ -27,11 +27,15 @@ const DEFAULT_OBSERVABILITY_RETENTION_DAYS = 30;
 const DEFAULT_OBSERVABILITY_SLOW_MODEL_MS = 30_000;
 const DEFAULT_OBSERVABILITY_SLOW_REQUEST_MS = 2_000;
 const DEFAULT_SKILL_TOOL_MAX_ROUNDS = 5;
+const DEFAULT_AGENT_MEMORY_RECENT_MESSAGE_LIMIT = 12;
+const DEFAULT_AGENT_MEMORY_RECALL_LIMIT = 6;
 
 /** Runtime values owned by the API process. */
 export type ZvecIndexType = 'diskann' | 'hnsw';
 
 export interface ApplicationConfig {
+  agentMemoryRecallLimit: number;
+  agentMemoryRecentMessageLimit: number;
   brandIconMaxBytes: number;
   brandStoragePath: string;
   chatAttachmentMaxBytes: number;
@@ -164,6 +168,16 @@ export const applicationConfig = registerAs(
     }
 
     return {
+      agentMemoryRecallLimit: parsePositiveInteger(
+        'AGENT_MEMORY_RECALL_LIMIT',
+        process.env.AGENT_MEMORY_RECALL_LIMIT,
+        DEFAULT_AGENT_MEMORY_RECALL_LIMIT,
+      ),
+      agentMemoryRecentMessageLimit: parsePositiveInteger(
+        'AGENT_MEMORY_RECENT_MESSAGE_LIMIT',
+        process.env.AGENT_MEMORY_RECENT_MESSAGE_LIMIT,
+        DEFAULT_AGENT_MEMORY_RECENT_MESSAGE_LIMIT,
+      ),
       brandIconMaxBytes: parsePositiveInteger(
         'BRAND_ICON_MAX_BYTES',
         process.env.BRAND_ICON_MAX_BYTES,

@@ -52,6 +52,8 @@ export class OpenAiChatCompletionController {
     );
     const command = {
       agentId: application.agentId,
+      conversationId: body.conversationId,
+      memoryOwnerKey: application.id,
       messages: body.messages,
       access: 'api' as const,
     };

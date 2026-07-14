@@ -210,4 +210,5 @@ export interface AgentChatResponse {
     moduleId: string;
     score: number;
   }>;
+  conversationId?: string;
 }

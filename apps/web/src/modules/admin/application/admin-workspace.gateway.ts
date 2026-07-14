@@ -24,6 +24,8 @@ import type {
 export abstract class AdminWorkspaceGateway {
   abstract chat(
     agentId: string,
+    conversationId: string,
+    memoryOwnerKey: string,
     messages: ConversationMessage[],
     onDelta: (content: string) => void,
   ): Promise<AgentChatResponse>;

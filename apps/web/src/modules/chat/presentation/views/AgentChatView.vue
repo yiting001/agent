@@ -28,6 +28,7 @@ interface PendingAttachment {
 }
 
 const MAX_ATTACHMENTS = 6;
+const MEMORY_OWNER_STORAGE_KEY = 'agent-memory-owner';
 const SUPPORTED_ATTACHMENT_TYPES = new Set([
   'audio/mpeg',
   'audio/wav',
@@ -38,6 +39,23 @@ const SUPPORTED_ATTACHMENT_TYPES = new Set([
   'image/webp',
 ]);
 
+function getMemoryOwnerKey(): string {
+  try {
+    const existing = window.localStorage.getItem(MEMORY_OWNER_STORAGE_KEY);
+
+    if (existing) {
+      return existing;
+    }
+
+    const ownerKey = createRandomId();
+    window.localStorage.setItem(MEMORY_OWNER_STORAGE_KEY, ownerKey);
+
+    return ownerKey;
+  } catch {
+    return createRandomId();
+  }
+}
+
 const route = useRoute();
 const workspaceStore = useAdminWorkspaceStore();
 const brandStore = useBrandSettingsStore();
@@ -47,6 +65,8 @@ const replying = ref(false);
 const errorMessage = ref('');
 const pendingAttachments = ref<PendingAttachment[]>([]);
 const conversation = ref<HTMLElement>();
+const conversationId = ref(createRandomId());
+const memoryOwnerKey = getMemoryOwnerKey();
 
 const agentId = computed(() => {
   const routeAgentId = route.params.agentId;
@@ -138,6 +158,8 @@ async function sendMessage(content = message.value): Promise<void> {
     messages.value.push(reply);
     const response = await workspaceStore.chat(
       agentId.value,
+      conversationId.value,
+      memoryOwnerKey,
       history,
       (delta) => {
         reply.content += delta;
@@ -206,6 +228,7 @@ function removePendingAttachment(index: number): void {
 function resetConversation(): void {
   revokePreviewUrls();
   messages.value = [welcomeMessage()];
+  conversationId.value = createRandomId();
   message.value = '';
   errorMessage.value = '';
   replying.value = false;

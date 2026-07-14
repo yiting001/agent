@@ -38,6 +38,8 @@ const AGENT_DEFAULT_AGENT_ID = '';
   let replying = false;
   let ready = false;
   let agentId = '';
+  let conversationId = window.AgentMemoryIdentity.createConversationId();
+  const memoryOwnerKey = window.AgentMemoryIdentity.getOwnerKey();
   let attachmentController;
   let conversationStore;
   const richContent = window.AgentRichContent
@@ -248,6 +250,9 @@ const AGENT_DEFAULT_AGENT_ID = '';
       agentId,
       nav: historyNav,
       onSelect: (selected) => {
+        conversationId = selected
+          ? selected.id
+          : window.AgentMemoryIdentity.createConversationId();
         restoreConversation(selected ? selected.messages : []);
         window.AgentSidebar?.close();
       },
@@ -363,7 +368,7 @@ const AGENT_DEFAULT_AGENT_ID = '';
 
       await streamRequest(
         `/public/agents/${agentId}/chat`,
-        { messages, stream: true },
+        { conversationId, memoryOwnerKey, messages, stream: true },
         (delta) => {
           answer += delta;
 
@@ -392,7 +397,7 @@ const AGENT_DEFAULT_AGENT_ID = '';
       }
 
       messages.push({ content: answer, role: 'assistant' });
-      conversationStore?.save(messages);
+      conversationStore?.save(messages, conversationId);
     } catch (error) {
       const errorMessage = createMessage(
         'assistant',
@@ -416,6 +421,7 @@ const AGENT_DEFAULT_AGENT_ID = '';
 
   function resetConversation() {
     conversationStore?.startNew();
+    conversationId = window.AgentMemoryIdentity.createConversationId();
     restoreConversation([]);
     conversation.scrollTop = 0;
     window.AgentSidebar?.close();

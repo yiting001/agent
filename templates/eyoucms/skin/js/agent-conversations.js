@@ -151,12 +151,13 @@ const AGENT_CONVERSATION_LIMIT = 30;
 
     return {
       /** 保存当前消息记录；没有活动会话时自动创建一条。 */
-      save(messages) {
+      save(messages, conversationId) {
         if (!messages.length) {
           return;
         }
 
         const snapshot = messages.map((message) => ({ ...message }));
+        activeId = activeId || conversationId || '';
         const existing = conversations.find(
           (conversation) => conversation.id === activeId,
         );
@@ -166,7 +167,7 @@ const AGENT_CONVERSATION_LIMIT = 30;
           existing.title = conversationTitle(snapshot);
           existing.updatedAt = Date.now();
         } else {
-          activeId = createId();
+          activeId = conversationId || createId();
           conversations.unshift({
             id: activeId,
             messages: snapshot,

@@ -47,6 +47,8 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
 
   async chat(
     agentId: string,
+    conversationId: string,
+    memoryOwnerKey: string,
     messages: ConversationMessage[],
     onDelta: (content: string) => void,
   ): Promise<AgentChatResponse> {
@@ -58,7 +60,7 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
 
     await this.httpClient.postEventStream(
       `/agents/${agentId}/chat`,
-      { messages },
+      { conversationId, memoryOwnerKey, messages },
       (event, data) => {
         const payload = parseRecord(data);
 
@@ -66,6 +68,10 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
           result = {
             ...result,
             citations: payload.citations as AgentChatResponse['citations'],
+            conversationId:
+              typeof payload.conversationId === 'string'
+                ? payload.conversationId
+                : result.conversationId,
           };
         }
 

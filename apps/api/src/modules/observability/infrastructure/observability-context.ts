@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 export interface ObservabilityTraceContext {
   agentId?: string;
+  conversationId?: string;
   source?: string;
   spanId: string;
   traceId: string;
@@ -17,7 +18,10 @@ export class ObservabilityContext {
   }
 
   enrich(
-    attributes: Pick<ObservabilityTraceContext, 'agentId' | 'source'>,
+    attributes: Pick<
+      ObservabilityTraceContext,
+      'agentId' | 'conversationId' | 'source'
+    >,
   ): void {
     const current = this.current();
 

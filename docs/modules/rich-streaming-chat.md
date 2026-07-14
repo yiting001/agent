@@ -3,6 +3,7 @@
 ## 功能范围
 
 - 智能体后台与公开接口默认使用 SSE 流式输出。
+- 对话入口支持可选 `conversationId`，用于服务端短期记忆和长期记忆归档。
 - Vue 管理端回答支持 Markdown、LaTeX、ECharts、D3 和 Mermaid；
   EyouCMS 用户页支持 Markdown、LaTeX、表格、ECharts（含仪表盘）和 Mermaid。
 - Vue 管理端和 EyouCMS 用户页都可在单条消息中上传图片或音频，并与文本一并提交模型。
@@ -19,6 +20,8 @@ flowchart LR
   Vue -->|SSE 对话| Chat[ChatWithAgentUseCase]
   Eyou -->|公开 SSE 对话| Chat
   API[OpenAI 兼容 API] --> Chat
+  Chat --> Memory[AgentMemoryService]
+  Memory --> SQLite[(SQLite 记忆库)]
   Chat --> Storage
   Chat --> Model[ModelGateway]
   Model --> Provider[OpenAI 兼容模型]
@@ -93,6 +96,9 @@ EyouCMS 页的渲染库由 `templates/eyoucms/skin/js/agent-rich-content.js`
 
 OpenAI 兼容接口 `POST /api/v1/chat/completions` 同样默认流式；显式传入
 `"stream": false` 可关闭。
+
+请求体可传入 `conversationId` 和 `memoryOwnerKey`。同一 owner 下同一 ID 的成功对话会写入服务端短期记忆；用户显式要求
+“记住”的事实或偏好会进入长期记忆，并在后续相关问题中召回。
 
 ## 多模态附件
 

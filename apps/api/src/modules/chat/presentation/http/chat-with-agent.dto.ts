@@ -5,6 +5,8 @@ import {
   IsBoolean,
   IsArray,
   IsOptional,
+  IsString,
+  MaxLength,
   ValidateNested,
 } from 'class-validator';
 
@@ -21,4 +23,14 @@ export class ChatWithAgentDto {
   @IsOptional()
   @IsBoolean()
   stream?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  conversationId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  memoryOwnerKey?: string;
 }

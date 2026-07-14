@@ -18,6 +18,8 @@ export class ChatWithAgentController {
   ): Promise<void> {
     const command = {
       agentId,
+      conversationId: body.conversationId,
+      memoryOwnerKey: body.memoryOwnerKey,
       messages: body.messages,
       access: 'admin' as const,
     };

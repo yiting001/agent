@@ -6,6 +6,7 @@ import {
   IsBoolean,
   IsOptional,
   IsString,
+  MaxLength,
   ValidateNested,
 } from 'class-validator';
 
@@ -26,4 +27,9 @@ export class OpenAiChatCompletionDto {
   @IsOptional()
   @IsBoolean()
   stream?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  conversationId?: string;
 }

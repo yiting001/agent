@@ -21,6 +21,8 @@ export class PublicChatWithAgentController {
   ): Promise<void> {
     const command = {
       agentId,
+      conversationId: body.conversationId,
+      memoryOwnerKey: body.memoryOwnerKey,
       messages: body.messages,
       access: 'public' as const,
     };
