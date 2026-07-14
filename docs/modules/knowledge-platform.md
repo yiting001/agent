@@ -40,8 +40,35 @@ flowchart RL
 2. 创建知识库并锁定嵌入模型与维度。
 3. 在知识库中创建业务知识模块。
 4. 将文档分片上传到模块。
-5. Worker 完成解析、清洗、切片、嵌入和 pgvector 写入。
+5. Worker 通过 PostgreSQL lease 领取任务，完成解析、清洗、切片、嵌入和 pgvector 写入。
 6. 创建智能体时选择一个或多个模块；模块可以同时绑定多个智能体。
+
+### 摄取任务状态机与故障恢复
+
+```mermaid
+stateDiagram-v2
+  [*] --> queued
+  queued --> processing: FOR UPDATE SKIP LOCKED / attempts + 1
+  processing --> completed: 文档 ready + 向量完成
+  processing --> queued: 可重试失败 / 指数退避
+  processing --> queued: lease 超时回收
+  processing --> failed: attempts >= maxAttempts
+```
+
+- `ingestion_jobs` 保存 `attempts`、`maxAttempts`、`nextRunAt`、`lockOwner`、
+  `lockedAt` 和 `updatedAt`；旧 `processing` 数据由 migration 回收到 `queued`
+  或在已耗尽尝试次数时进入 `failed`。
+- claim 在短事务中使用 `FOR UPDATE SKIP LOCKED`，按 `nextRunAt + createdAt`
+  领取一个到期任务；完成、进度和失败更新都要求当前 `lockOwner`，过期 Worker
+  不能覆盖新 Worker 的结果。
+- scheduler 每个 tick 先回收超时 lease，再排空当前可运行队列。可重试失败清除
+  lease 并按指数退避设置 `nextRunAt`；达到上限后任务和文档都进入 `failed`。
+- 向量 ID 为 `sha256(documentId:chunkIndex)`，重试时 upsert 相同 ID，不重复创建
+  chunk。写入前删除该文档旧向量，批次前后续租并检查 owner。
+- 检索 SQL 只返回关联文档状态为 `ready` 的向量，`processing`、`failed` 文档即使
+  留有旧向量也不会进入公开回答。
+- 外部 embedding 调用不放在数据库事务内；进程在模型成功、结果尚未写回时崩溃，
+  可能重复调用一次模型，但稳定向量 ID 保证最终索引幂等。
 
 ### 知识库管理（编辑 / 删除 / 内容查看）
 
@@ -89,6 +116,8 @@ flowchart LR
 - API 应用密钥只返回一次，数据库只保存 SHA-256 哈希和脱敏前缀。
 - 文件名不参与磁盘路径拼接；服务端只使用生成的存储键。
 - 上传完成前校验分片连续性、总大小和可选 SHA-256。
+- `/api/public/agents` 与 public chat 只接受 `published` Agent；`draft` 不进入
+  公开目录且公开对话返回 422，`disabled` 保持停用，后台测试入口仍可验证草稿。
 
 ## 容量边界
 
@@ -100,6 +129,9 @@ flowchart LR
 - `VECTOR_HNSW_EF_CONSTRUCTION`：HNSW 构建候选集大小。
 - `VECTOR_HNSW_EF_SEARCH`：单连接检索候选集大小。
 - `VECTOR_UPSERT_BATCH_SIZE`：单次向量 upsert 的切片数量。
+- `INGESTION_MAX_ATTEMPTS`：单个摄取任务最大领取次数，默认 `3`。
+- `INGESTION_BACKOFF_BASE_MS`：摄取失败指数退避基础时长，默认 `1000`。
+- `INGESTION_LOCK_TIMEOUT_MS`：processing lease 超时，默认 `300000`。
 - 知识库累计容量通过流式对象存储扩展，不受单次请求内存限制。
 - PDF 和 DOCX 解析器需要读取单个文件，因此生产环境应限制超大单文件，并优先拆分资料。
 
@@ -127,6 +159,8 @@ pgvector 与业务元数据位于 PostgreSQL，可由多个 API/Worker 实例并
 - 模型凭证加密后不以明文出现在数据库或响应。
 - API 应用密钥只返回一次且可校验。
 - 基础文本解析、重叠切片和任务状态测试。
+- 并发 claim、过期 lease 回收、失效 owner 更新拒绝、可重试失败、最大次数失败和
+  错误脱敏测试。
 - pgvector 真实 upsert、cosine search、删除和模块过滤测试。
 - 前端所有管理数据来自 NestJS API，不再包含业务演示数组或本地模拟回复。
 - 知识库 / 模块 / 文档的更新、删除、绑定冲突与清理行为端到端测试。

@@ -10,6 +10,7 @@ import { ChatWithAgentUseCase } from '../../application/chat-with-agent.use-case
 import { sendOpenAiChatStream } from './chat-stream.response';
 import { OpenAiChatCompletionDto } from './openai-chat-completion.dto';
 
+/** OpenAI Chat Completions 兼容的非流式响应。 */
 interface OpenAiChatCompletionResponse {
   choices: Array<{
     finish_reason: 'stop';
@@ -25,6 +26,7 @@ interface OpenAiChatCompletionResponse {
   object: 'chat.completion';
 }
 
+/** 严格读取 Bearer 凭证，不接受查询参数或其他认证格式。 */
 function readBearerToken(authorization: string | undefined): string {
   if (!authorization?.startsWith('Bearer ')) {
     throw new ApplicationError('unauthorized', '缺少 Bearer API 密钥。');
@@ -33,6 +35,7 @@ function readBearerToken(authorization: string | undefined): string {
   return authorization.slice('Bearer '.length).trim();
 }
 
+/** 使用 API 应用凭证暴露 OpenAI 兼容聊天入口。 */
 @Controller('v1/chat')
 export class OpenAiChatCompletionController {
   constructor(
@@ -44,6 +47,7 @@ export class OpenAiChatCompletionController {
 
   @Post('completions')
   @HttpCode(200)
+  /** 认证和限流成功后才调用绑定的 published 智能体。 */
   async execute(
     @Headers('authorization') authorization: string | undefined,
     @Body() body: OpenAiChatCompletionDto,

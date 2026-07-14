@@ -1,4 +1,4 @@
-/** Public health information returned by the application boundary. */
+/** 不依赖外部基础设施的公开存活状态。 */
 export interface HealthStatus {
   readonly service: string;
   readonly status: 'ok';

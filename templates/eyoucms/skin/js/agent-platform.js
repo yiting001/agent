@@ -38,7 +38,7 @@ const AGENT_DEFAULT_AGENT_ID = '';
   let ready = false;
   let agentId = '';
   let conversationId = window.AgentMemoryIdentity.createConversationId();
-  const memoryOwnerKey = window.AgentMemoryIdentity.getOwnerKey();
+  let memoryOwnerToken = '';
   let attachmentController;
   let conversationStore;
   const richContent = window.AgentRichContent
@@ -144,7 +144,7 @@ const AGENT_DEFAULT_AGENT_ID = '';
         'Content-Type': file.type,
         'X-Agent-Id': agentId,
         'X-File-Name': encodeURIComponent(file.name),
-        'X-Memory-Owner-Key': memoryOwnerKey,
+        'X-Memory-Owner-Token': memoryOwnerToken,
       },
       method: 'POST',
     });
@@ -215,6 +215,7 @@ const AGENT_DEFAULT_AGENT_ID = '';
   }
 
   async function initializeAgent() {
+    memoryOwnerToken = await window.AgentMemoryIdentity.getOwnerToken(request);
     const requestedAgentId =
       query.get('agentId') ||
       validConfiguredValue(configuredAgentId) ||
@@ -369,7 +370,7 @@ const AGENT_DEFAULT_AGENT_ID = '';
 
       await streamRequest(
         `/public/agents/${agentId}/chat`,
-        { conversationId, memoryOwnerKey, messages, stream: true },
+        { conversationId, memoryOwnerToken, messages, stream: true },
         (delta) => {
           answer += delta;
 

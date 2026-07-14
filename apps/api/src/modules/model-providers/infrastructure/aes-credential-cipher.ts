@@ -10,12 +10,14 @@ import { CredentialCipher } from '../application/credential-cipher';
 const ALGORITHM = 'aes-256-gcm';
 const KEY_HEX_LENGTH = 64;
 
+/** 使用 AES-256-GCM 实现供应商密钥的机密性与完整性保护。 */
 @Injectable()
 export class AesCredentialCipher extends CredentialCipher {
   constructor(private readonly configService: ConfigService) {
     super();
   }
 
+  /** 认证标签校验失败时由 crypto 直接抛错，绝不返回部分明文。 */
   decrypt(credential: EncryptedCredential): string {
     const key = this.getKey();
     const decipher = createDecipheriv(
@@ -32,6 +34,7 @@ export class AesCredentialCipher extends CredentialCipher {
     ]).toString('utf8');
   }
 
+  /** 每次加密使用新的 96 位随机 IV，避免同密钥下重复 nonce。 */
   encrypt(plaintext: string): EncryptedCredential {
     const key = this.getKey();
     const initializationVector = randomBytes(12);
@@ -48,6 +51,7 @@ export class AesCredentialCipher extends CredentialCipher {
     };
   }
 
+  /** 延迟读取并严格校验 32 字节十六进制根密钥。 */
   private getKey(): Buffer {
     const config =
       this.configService.getOrThrow<ApplicationConfig>('application');

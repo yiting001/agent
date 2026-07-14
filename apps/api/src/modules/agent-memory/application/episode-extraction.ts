@@ -1,17 +1,23 @@
 import type { ChatMessageInput } from '../../model-providers/application/model-gateway';
 
+/** 从多模态模型响应中接受的受限情景摘要。 */
 export interface EpisodeExtraction {
+  /** 最多 20 个、每个最多 40 字符的可检索实体。 */
   entities: string[];
+  /** 1-5 的业务重要度。 */
   importance: number;
+  /** 最多 500 字符的客观事实摘要。 */
   summary: string;
 }
 
+/** 截断模型输出，防止异常长内容进入记忆和提示词。 */
 function truncate(value: string, maxLength: number): string {
   return value.length <= maxLength
     ? value
     : `${value.slice(0, maxLength - 1)}…`;
 }
 
+/** 从可能夹杂文本的模型响应中提取首个 JSON 对象。 */
 function parseJsonObject(value: string): Record<string, unknown> | undefined {
   const start = value.indexOf('{');
   const end = value.lastIndexOf('}');
@@ -31,6 +37,7 @@ function parseJsonObject(value: string): Record<string, unknown> | undefined {
   }
 }
 
+/** 严格校验并规范化模型生成的情景 JSON。 */
 export function parseEpisodeExtraction(
   value: string,
 ): EpisodeExtraction | undefined {
@@ -60,6 +67,7 @@ export function parseEpisodeExtraction(
   };
 }
 
+/** 构造禁止身份推断、只允许客观事实的多模态提取提示。 */
 export function buildEpisodeExtractionMessages(input: {
   answer: string;
   imageUrls: string[];
@@ -92,6 +100,7 @@ export function buildEpisodeExtractionMessages(input: {
   ];
 }
 
+/** 将已验证提取结果序列化为可检索记忆正文。 */
 export function formatReadyEpisode(extraction: EpisodeExtraction): string {
   const entities =
     extraction.entities.length > 0
@@ -101,6 +110,7 @@ export function formatReadyEpisode(extraction: EpisodeExtraction): string {
   return `情景摘要：${extraction.summary}${entities}`;
 }
 
+/** 在异步提取前生成不冒充已识别事实的 pending 正文。 */
 export function formatPendingEpisode(
   fileNames: string[],
   userContent: string,

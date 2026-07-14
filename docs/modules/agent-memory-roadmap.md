@@ -106,7 +106,7 @@ flowchart LR
 
 #### 7. 显式隐私与 Temporary Chat 控件
 
-当前未提供 `memoryOwnerKey` 的调用不会形成长期情景，但前端还没有统一的“临时聊天/关闭记忆”开关。
+当前未提供 `memoryOwnerToken` 的调用不会形成长期情景，但前端还没有统一的“临时聊天/关闭记忆”开关。
 
 后续需要：
 

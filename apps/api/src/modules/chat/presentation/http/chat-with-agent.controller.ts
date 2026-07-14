@@ -1,13 +1,17 @@
 import { Body, Controller, HttpCode, Param, Post, Res } from '@nestjs/common';
 import type { Response } from 'express';
 
+import { MemoryOwnerIdentity } from '../../../agent-memory/application/memory-owner-identity';
 import { ChatWithAgentUseCase } from '../../application/chat-with-agent.use-case';
 import { sendAgentChatStream } from './chat-stream.response';
 import { ChatWithAgentDto } from './chat-with-agent.dto';
 
 @Controller('agents')
 export class ChatWithAgentController {
-  constructor(private readonly useCase: ChatWithAgentUseCase) {}
+  constructor(
+    private readonly useCase: ChatWithAgentUseCase,
+    private readonly ownerIdentity: MemoryOwnerIdentity,
+  ) {}
 
   @Post(':id/chat')
   @HttpCode(200)
@@ -19,7 +23,9 @@ export class ChatWithAgentController {
     const command = {
       agentId,
       conversationId: body.conversationId,
-      memoryOwnerKey: body.memoryOwnerKey,
+      memoryOwnerKey: body.memoryOwnerToken
+        ? this.ownerIdentity.resolve(body.memoryOwnerToken)
+        : undefined,
       messages: body.messages,
       access: 'admin' as const,
     };

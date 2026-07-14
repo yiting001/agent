@@ -324,14 +324,14 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
   function chat(
     agentId: string,
     conversationId: string,
-    memoryOwnerKey: string,
+    memoryOwnerToken: string,
     messages: ConversationMessage[],
     onDelta: (content: string) => void,
   ): ReturnType<typeof gateway.chat> {
     return gateway.chat(
       agentId,
       conversationId,
-      memoryOwnerKey,
+      memoryOwnerToken,
       messages,
       onDelta,
     );
@@ -339,10 +339,14 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
 
   function uploadChatAttachment(
     agentId: string,
-    ownerKey: string,
+    ownerToken: string,
     file: File,
   ): ReturnType<typeof gateway.uploadChatAttachment> {
-    return gateway.uploadChatAttachment(agentId, ownerKey, file);
+    return gateway.uploadChatAttachment(agentId, ownerToken, file);
+  }
+
+  function createMemoryOwnerToken(): Promise<string> {
+    return gateway.createMemoryOwnerToken();
   }
 
   return {
@@ -356,6 +360,7 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     createApiApplication,
     createKnowledgeBase,
     createKnowledgeModule,
+    createMemoryOwnerToken,
     deleteAgent,
     deleteKnowledgeBase,
     deleteKnowledgeDocument,

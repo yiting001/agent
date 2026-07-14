@@ -16,10 +16,12 @@ import type {
 } from '../domain/agent-memory-task';
 import { sanitizeTaskError } from '../domain/agent-memory-task';
 
+/** 人工恢复任务的数量结果。 */
 export interface AgentMemoryRecoverResult {
   recovered: number;
 }
 
+/** 负责租约回收、任务恢复和 owner 范围一致性巡检。 */
 @Injectable()
 export class AgentMemoryMaintenanceService {
   private readonly lockTimeoutMs: number;
@@ -40,6 +42,7 @@ export class AgentMemoryMaintenanceService {
     this.pendingTimeoutMs = config.agentMemoryPendingTimeoutMs;
   }
 
+  /** 聚合任务、附件、媒体和向量索引的健康计数。 */
   async getHealth(
     agentId: string,
     ownerKey: string,
@@ -92,6 +95,7 @@ export class AgentMemoryMaintenanceService {
     return this.tasks.listTasks({ agentId, ownerKey, status });
   }
 
+  /** 将 dead 或 failed 任务重置为可调度状态。 */
   async recover(
     agentId: string,
     ownerKey: string,
@@ -108,6 +112,7 @@ export class AgentMemoryMaintenanceService {
     return { recovered };
   }
 
+  /** 修复单一 owner 范围内的挂起任务、缺失索引和孤儿媒体。 */
   async repairOwner(
     agentId: string,
     ownerKey: string,
@@ -205,6 +210,7 @@ export class AgentMemoryMaintenanceService {
     };
   }
 
+  /** 回收超过 lockTimeout 的 processing 租约。 */
   async reclaimExpired(): Promise<number> {
     return this.tasks.reclaimExpired({
       lockTimeoutMs: this.lockTimeoutMs,
@@ -212,6 +218,7 @@ export class AgentMemoryMaintenanceService {
     });
   }
 
+  /** 合并数据库和文件存储范围后逐 owner 执行巡检。 */
   async repairAll(): Promise<void> {
     const [memoryScopes, mediaScopes] = await Promise.all([
       this.tasks.listOwnerScopes(),

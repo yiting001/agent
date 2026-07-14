@@ -14,6 +14,7 @@ import type {
 import { ModelGateway } from '../src/modules/model-providers/application/model-gateway';
 import { ApplicationErrorFilter } from '../src/shared/presentation/application-error.filter';
 import { createInMemoryAgentMemoryIndex } from './in-memory-agent-memory.index';
+import { issueMemoryOwner } from './agent-memory-test-helpers';
 import { readStringProperty } from './read-value';
 
 describe('Agent memory', () => {
@@ -21,7 +22,8 @@ describe('Agent memory', () => {
   let otherAgentId = '';
   let app: INestApplication<Server>;
   const chatInputs: ChatCompletionInput[] = [];
-  const ownerKey = 'owner-memory-e2e';
+  let otherOwnerToken = '';
+  let ownerToken = '';
   let providerId = '';
 
   beforeAll(async () => {
@@ -96,6 +98,8 @@ describe('Agent memory', () => {
     );
     app.useGlobalFilters(new ApplicationErrorFilter());
     await app.init();
+    ({ ownerToken } = await issueMemoryOwner(app));
+    ({ ownerToken: otherOwnerToken } = await issueMemoryOwner(app));
 
     const providerResponse = await request(app.getHttpServer())
       .put('/api/model-providers/memory-e2e-provider')
@@ -149,12 +153,33 @@ describe('Agent memory', () => {
     await app.close();
   });
 
+  it('rejects unsigned owner keys and tampered owner tokens', async () => {
+    const [version, subject] = ownerToken.split('.');
+
+    await request(app.getHttpServer())
+      .post(`/api/agents/${agentId}/chat`)
+      .send({
+        memoryOwnerKey: 'forged-owner',
+        messages: [{ content: '伪造 owner', role: 'user' }],
+        stream: false,
+      })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post(`/api/agents/${agentId}/chat`)
+      .send({
+        memoryOwnerToken: `${version}.${subject}.invalid`,
+        messages: [{ content: '篡改 token', role: 'user' }],
+        stream: false,
+      })
+      .expect(401);
+  });
+
   it('persists, recalls, deletes and clears owner-scoped memory', async () => {
     await request(app.getHttpServer())
       .post(`/api/agents/${agentId}/chat`)
       .send({
         conversationId: 'conversation-a',
-        memoryOwnerKey: ownerKey,
+        memoryOwnerToken: ownerToken,
         messages: [{ content: '请记住：我喜欢中文回答', role: 'user' }],
         stream: false,
       })
@@ -170,7 +195,7 @@ describe('Agent memory', () => {
 
     const memories = await request(app.getHttpServer())
       .get(`/api/agents/${agentId}/memories`)
-      .query({ ownerKey })
+      .set('X-Memory-Owner-Token', ownerToken)
       .expect(200);
 
     const memoryBody: unknown = memories.body;
@@ -186,7 +211,7 @@ describe('Agent memory', () => {
       .post(`/api/agents/${agentId}/chat`)
       .send({
         conversationId: 'conversation-b',
-        memoryOwnerKey: ownerKey,
+        memoryOwnerToken: ownerToken,
         messages: [{ content: '我喜欢怎样的回答？', role: 'user' }],
         stream: false,
       })
@@ -204,16 +229,16 @@ describe('Agent memory', () => {
 
     await request(app.getHttpServer())
       .delete(`/api/agents/${agentId}/memories/${memoryId}`)
-      .query({ ownerKey })
+      .set('X-Memory-Owner-Token', ownerToken)
       .expect(204);
     await request(app.getHttpServer())
       .get(`/api/agents/${agentId}/memories`)
-      .query({ ownerKey })
+      .set('X-Memory-Owner-Token', ownerToken)
       .expect(200, []);
 
     await request(app.getHttpServer())
       .delete(`/api/agents/${agentId}/memories`)
-      .query({ ownerKey })
+      .set('X-Memory-Owner-Token', ownerToken)
       .expect(204);
   });
 
@@ -227,7 +252,7 @@ describe('Agent memory', () => {
       .set('Content-Length', String(image.length))
       .set('X-Agent-Id', agentId)
       .set('X-File-Name', encodeURIComponent('park-dog.png'))
-      .set('X-Memory-Owner-Key', ownerKey)
+      .set('X-Memory-Owner-Token', ownerToken)
       .send(image)
       .expect(201);
     const attachment: unknown = upload.body;
@@ -236,7 +261,7 @@ describe('Agent memory', () => {
       .post(`/api/agents/${agentId}/chat`)
       .send({
         conversationId: 'conversation-image-a',
-        memoryOwnerKey: ownerKey,
+        memoryOwnerToken: ownerToken,
         messages: [
           {
             attachments: [attachment],
@@ -253,7 +278,7 @@ describe('Agent memory', () => {
     for (let attempt = 0; attempt < 40; attempt += 1) {
       const response = await request(app.getHttpServer())
         .get(`/api/agents/${agentId}/memories`)
-        .query({ ownerKey })
+        .set('X-Memory-Owner-Token', ownerToken)
         .expect(200);
 
       if (Array.isArray(response.body)) {
@@ -312,21 +337,21 @@ describe('Agent memory', () => {
       .get(
         `/api/agents/${agentId}/memories/${episodeId}/artifacts/${artifactId}`,
       )
-      .query({ ownerKey })
+      .set('X-Memory-Owner-Token', ownerToken)
       .expect('Content-Type', /image\/png/)
       .expect(200);
     await request(app.getHttpServer())
       .get(
         `/api/agents/${agentId}/memories/${episodeId}/artifacts/${artifactId}`,
       )
-      .query({ ownerKey: 'another-owner' })
+      .set('X-Memory-Owner-Token', otherOwnerToken)
       .expect(404);
 
     await request(app.getHttpServer())
       .post(`/api/agents/${agentId}/chat`)
       .send({
         conversationId: 'conversation-image-b',
-        memoryOwnerKey: ownerKey,
+        memoryOwnerToken: ownerToken,
         messages: [
           {
             content: '上次那只狗是什么品种？',
@@ -356,7 +381,7 @@ describe('Agent memory', () => {
       .post(`/api/agents/${agentId}/chat`)
       .send({
         conversationId: 'conversation-owner-attack',
-        memoryOwnerKey: 'another-owner',
+        memoryOwnerToken: otherOwnerToken,
         messages: [
           {
             attachments: [attachment],
@@ -371,7 +396,7 @@ describe('Agent memory', () => {
     await request(app.getHttpServer())
       .post(`/api/agents/${otherAgentId}/chat`)
       .send({
-        memoryOwnerKey: ownerKey,
+        memoryOwnerToken: ownerToken,
         messages: [
           {
             attachments: [attachment],
@@ -385,13 +410,13 @@ describe('Agent memory', () => {
 
     await request(app.getHttpServer())
       .delete(`/api/agents/${agentId}/memories/${episodeId}`)
-      .query({ ownerKey })
+      .set('X-Memory-Owner-Token', ownerToken)
       .expect(204);
     await request(app.getHttpServer())
       .get(
         `/api/agents/${agentId}/memories/${episodeId}/artifacts/${artifactId}`,
       )
-      .query({ ownerKey })
+      .set('X-Memory-Owner-Token', ownerToken)
       .expect(404);
   });
 
@@ -405,7 +430,7 @@ describe('Agent memory', () => {
       .set('Content-Length', String(image.length))
       .set('X-Agent-Id', agentId)
       .set('X-File-Name', encodeURIComponent('pending.png'))
-      .set('X-Memory-Owner-Key', ownerKey)
+      .set('X-Memory-Owner-Token', ownerToken)
       .send(image)
       .expect(201);
 
@@ -413,7 +438,7 @@ describe('Agent memory', () => {
       .post(`/api/agents/${agentId}/chat`)
       .send({
         conversationId: 'conversation-image-pending',
-        memoryOwnerKey: ownerKey,
+        memoryOwnerToken: ownerToken,
         messages: [
           {
             attachments: [upload.body],
@@ -430,7 +455,7 @@ describe('Agent memory', () => {
     for (let attempt = 0; attempt < 40; attempt += 1) {
       const response = await request(app.getHttpServer())
         .get(`/api/agents/${agentId}/memories`)
-        .query({ ownerKey })
+        .set('X-Memory-Owner-Token', ownerToken)
         .expect(200);
 
       pendingMemory = Array.isArray(response.body)

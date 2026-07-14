@@ -11,6 +11,7 @@ import type { ApplicationConfig } from '../../../config/application.config';
 
 type RedisClient = ReturnType<typeof createClient>;
 
+/** Redis 单连接适配器，仅提供 readiness 和原子固定窗口能力。 */
 @Injectable()
 export class RedisConnection
   implements OnApplicationBootstrap, OnApplicationShutdown
@@ -35,10 +36,12 @@ export class RedisConnection
     }
   }
 
+  /** 判断 Redis 是否配置，不代表当前连接健康。 */
   isConfigured(): boolean {
     return Boolean(this.client);
   }
 
+  /** 通过 Lua 原子递增计数并在首次请求设置窗口 TTL。 */
   async consumeWindow(
     key: string,
     windowMs: number,
@@ -92,6 +95,7 @@ export class RedisConnection
     }
   }
 
+  /** 未配置返回 disabled；已配置时执行真实 PING。 */
   async ping(): Promise<'disabled' | 'ok'> {
     if (!this.client) {
       return 'disabled';
@@ -103,6 +107,7 @@ export class RedisConnection
     return 'ok';
   }
 
+  /** 禁用离线队列和自动重连，故障由上层明确处理。 */
   private async ensureConnected(): Promise<void> {
     if (this.client && !this.client.isOpen) {
       await this.client.connect();

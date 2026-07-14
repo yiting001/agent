@@ -21,11 +21,13 @@ import type {
   UpdateSkillInput,
 } from '../domain/admin-workspace';
 
+/** 管理工作台访问后端能力的应用层端口。 */
 export abstract class AdminWorkspaceGateway {
+  /** 消费 SSE 文本增量，并在结束后返回引用和会话元数据。 */
   abstract chat(
     agentId: string,
     conversationId: string,
-    memoryOwnerKey: string,
+    memoryOwnerToken: string,
     messages: ConversationMessage[],
     onDelta: (content: string) => void,
   ): Promise<AgentChatResponse>;
@@ -47,6 +49,9 @@ export abstract class AdminWorkspaceGateway {
   abstract createKnowledgeModule(
     input: CreateKnowledgeModuleInput,
   ): Promise<KnowledgeModuleSummary>;
+
+  /** 向服务端申请不可伪造的匿名记忆主体凭证。 */
+  abstract createMemoryOwnerToken(): Promise<string>;
 
   abstract deleteAgent(agentId: string): Promise<void>;
 
@@ -103,10 +108,11 @@ export abstract class AdminWorkspaceGateway {
 
   abstract uploadChatAttachment(
     agentId: string,
-    ownerKey: string,
+    ownerToken: string,
     file: File,
   ): Promise<ChatAttachmentSummary>;
 
+  /** 分片上传知识文件，并通过回调报告 0-100 进度。 */
   abstract uploadKnowledgeFile(
     moduleId: string,
     file: File,

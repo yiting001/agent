@@ -8,6 +8,7 @@ import { ApplicationError } from '../../../shared/application/application-error'
 import type { SkillTool } from '../domain/skill';
 import { McpClient, type McpConnection } from '../application/mcp-client';
 
+/** 只接受 MCP content 中明确的 text 片段，忽略未知结构。 */
 function readTextContent(content: unknown): string {
   if (!Array.isArray(content)) {
     return '';
@@ -39,6 +40,7 @@ export class StreamableHttpMcpClient extends McpClient {
     this.clientName = config.mcpClientName;
   }
 
+  /** 将服务端错误转换为应用错误，不主动拼接敏感连接头。 */
   async callTool(
     connection: McpConnection,
     name: string,
@@ -70,6 +72,7 @@ export class StreamableHttpMcpClient extends McpClient {
     });
   }
 
+  /** 每次操作独立建连并在 finally 关闭，避免跨请求复用鉴权上下文。 */
   private async withClient<T>(
     connection: McpConnection,
     operation: (client: Client) => Promise<T>,

@@ -4,6 +4,7 @@ import type { Server } from 'node:http';
 import { resolve } from 'node:path';
 import request from 'supertest';
 
+import { KnowledgeUploadRepository } from '../src/modules/knowledge/application/knowledge-upload.repository';
 import type { ChatCompletionInput } from '../src/modules/model-providers/application/model-gateway';
 import {
   createKnowledgeTestApp,
@@ -101,6 +102,59 @@ describe('Knowledge platform', () => {
       .patch(`/api/agents/${agentId}/status`)
       .send({ status: 'published' })
       .expect(200);
+    const draftResponse = await request(app.getHttpServer())
+      .post('/api/agents')
+      .send({
+        description: '仅供后台调试',
+        moduleIds: [],
+        name: '草稿智能体',
+        providerId,
+        systemPrompt: '草稿提示词',
+        temperature: 0.2,
+      })
+      .expect(201);
+    const draftAgentId = readString(parseRecord(draftResponse.text), 'id');
+    const publicAgents = await request(app.getHttpServer())
+      .get('/api/public/agents')
+      .expect(200);
+
+    expect(publicAgents.text).toContain(agentId);
+    expect(publicAgents.text).not.toContain(draftAgentId);
+    const draftChatResponse = await request(app.getHttpServer())
+      .post(`/api/public/agents/${draftAgentId}/chat`)
+      .send({
+        messages: [{ content: '不应公开访问', role: 'user' }],
+        stream: false,
+      })
+      .expect(422);
+    expect(draftChatResponse.body).toEqual(
+      expect.objectContaining({
+        message: '智能体尚未发布，暂时无法公开对话。',
+      }),
+    );
+    await request(app.getHttpServer())
+      .post(`/api/agents/${draftAgentId}/chat`)
+      .send({
+        messages: [{ content: '后台仍可调试', role: 'user' }],
+        stream: false,
+      })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/api/agents/${draftAgentId}/status`)
+      .send({ status: 'disabled' })
+      .expect(200);
+    const disabledChatResponse = await request(app.getHttpServer())
+      .post(`/api/public/agents/${draftAgentId}/chat`)
+      .send({
+        messages: [{ content: '停用后不应公开访问', role: 'user' }],
+        stream: false,
+      })
+      .expect(422);
+    expect(disabledChatResponse.body).toEqual(
+      expect.objectContaining({
+        message: '智能体已停用，暂时无法公开对话。',
+      }),
+    );
 
     const applicationResponse = await request(app.getHttpServer())
       .post('/api/api-applications')
@@ -270,12 +324,100 @@ describe('Knowledge platform', () => {
         expect(readString(parseRecord(text), 'status')).toBe('open');
       });
 
-    await request(app.getHttpServer())
+    const completedUpload = await request(app.getHttpServer())
       .post(`/api/uploads/${uploadId}/complete`)
       .send({})
       .expect(201)
       .expect(({ text }) => {
         expect(readString(parseRecord(text), 'status')).toBe('queued');
+      });
+    const documentId = readString(parseRecord(completedUpload.text), 'id');
+    const uploads = app.get(KnowledgeUploadRepository);
+    const claimTime = new Date();
+    const claims = await Promise.all([
+      uploads.claimNextJob({ lockOwner: 'worker-a', now: claimTime }),
+      uploads.claimNextJob({ lockOwner: 'worker-b', now: claimTime }),
+    ]);
+    const claimed = claims.find((job) => job !== undefined);
+
+    expect(claimed).toEqual(
+      expect.objectContaining({
+        attempts: 1,
+        documentId,
+        status: 'processing',
+      }),
+    );
+    expect(claims.filter((job) => job !== undefined)).toHaveLength(1);
+
+    if (!claimed) {
+      throw new Error('Expected an ingestion job lease.');
+    }
+
+    const documentRecord = await uploads.findDocument(documentId);
+
+    if (!documentRecord) {
+      throw new Error('Expected the uploaded document.');
+    }
+
+    expect(
+      await uploads.completeJob(
+        { ...claimed, lockOwner: 'stale-worker' },
+        { ...documentRecord, status: 'ready' },
+      ),
+    ).toBe(false);
+    expect(
+      await uploads.reclaimExpired({
+        lockTimeoutMs: 1,
+        now: new Date(claimTime.getTime() + 10),
+      }),
+    ).toBe(1);
+    expect((await uploads.findDocument(documentId))?.status).toBe('queued');
+
+    const retried = await uploads.claimNextJob({
+      lockOwner: 'worker-c',
+      now: new Date(claimTime.getTime() + 11),
+    });
+
+    expect(retried?.attempts).toBe(2);
+
+    if (!retried) {
+      throw new Error('Expected the reclaimed ingestion job.');
+    }
+
+    expect(
+      await uploads.failJob({
+        dead: false,
+        document: documentRecord,
+        errorMessage: 'temporary embedding failure',
+        job: retried,
+        nextRunAt: new Date(claimTime.getTime() + 12),
+        now: new Date(claimTime.getTime() + 12),
+      }),
+    ).toBe(true);
+    expect((await uploads.findDocument(documentId))?.status).toBe('queued');
+
+    const finalAttempt = await uploads.claimNextJob({
+      lockOwner: 'worker-d',
+      now: new Date(claimTime.getTime() + 13),
+    });
+
+    expect(finalAttempt?.attempts).toBe(3);
+
+    if (!finalAttempt) {
+      throw new Error('Expected the final ingestion attempt.');
+    }
+
+    expect(
+      await uploads.reclaimExpired({
+        lockTimeoutMs: 1,
+        now: new Date(claimTime.getTime() + 24),
+      }),
+    ).toBe(1);
+    await request(app.getHttpServer())
+      .get(`/api/knowledge-modules/${sharedModuleId}/documents`)
+      .expect(200)
+      .expect(({ text }) => {
+        expect(text).toContain('"status":"failed"');
       });
   });
 });

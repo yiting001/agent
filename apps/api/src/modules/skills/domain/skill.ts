@@ -1,3 +1,4 @@
+/** prompt 为静态指令，mcp 为远程工具服务。 */
 export type SkillType = 'mcp' | 'prompt';
 
 /** MCP Server 声明的单个工具（OpenAI function calling 兼容的 JSON Schema 参数）。 */
@@ -7,6 +8,7 @@ export interface SkillTool {
   name: string;
 }
 
+/** 技能聚合；MCP 鉴权头只存在于内部持久化模型。 */
 export interface Skill {
   /** prompt 技能的指令内容；mcp 技能为空。 */
   content: string;
@@ -25,6 +27,7 @@ export interface Skill {
   updatedAt: Date;
 }
 
+/** 不包含 MCP 鉴权头的管理端技能视图。 */
 export interface SkillSummary {
   content: string;
   createdAt: string;
@@ -38,6 +41,7 @@ export interface SkillSummary {
   updatedAt: string;
 }
 
+/** 将技能转换为不暴露 headers 的管理端视图。 */
 export function toSkillSummary(skill: Skill): SkillSummary {
   return {
     content: skill.content,

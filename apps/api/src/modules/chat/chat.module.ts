@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { AgentsModule } from '../agents/agents.module';
 import { AgentMemoryModule } from '../agent-memory/agent-memory.module';
+import { MemoryOwnerIdentityModule } from '../agent-memory/memory-owner-identity.module';
 import { ApiAccessModule } from '../api-access/api-access.module';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { ModelProvidersModule } from '../model-providers/model-providers.module';
@@ -22,6 +23,7 @@ import { PublicChatWithAgentController } from './presentation/http/public-chat-w
   imports: [
     AgentsModule,
     AgentMemoryModule,
+    MemoryOwnerIdentityModule,
     ApiAccessModule,
     ChatAttachmentModule,
     KnowledgeModule,

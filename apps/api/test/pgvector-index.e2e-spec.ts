@@ -60,6 +60,28 @@ describe('PostgreSQL pgvector indexes', () => {
       updatedAt: now,
     };
 
+    await dataSource.query(
+      `
+        INSERT INTO "knowledge_documents" (
+          "id",
+          "moduleId",
+          "fileName",
+          "mimeType",
+          "sizeBytes",
+          "sha256",
+          "storageKey",
+          "status",
+          "chunkCount",
+          "createdAt",
+          "updatedAt"
+        )
+        VALUES
+          ('document-one', 'module-one', 'one.txt', 'text/plain', 1, 'hash-one', 'one', 'ready', 1, $1, $1),
+          ('document-two', 'module-two', 'two.txt', 'text/plain', 1, 'hash-two', 'two', 'processing', 1, $1, $1)
+        ON CONFLICT ("id") DO UPDATE SET "status" = EXCLUDED."status"
+      `,
+      [now],
+    );
     await vectorIndex.upsert(knowledgeBase, [
       {
         chunkIndex: 0,
@@ -90,6 +112,9 @@ describe('PostgreSQL pgvector indexes', () => {
         moduleId: 'module-one',
       }),
     ]);
+    await expect(
+      vectorIndex.search(knowledgeBase, ['module-two'], [0, 1, 0], 5),
+    ).resolves.toEqual([]);
 
     await vectorIndex.deleteDocuments(knowledgeBase, ['document-one']);
     await expect(
@@ -99,6 +124,9 @@ describe('PostgreSQL pgvector indexes', () => {
     await expect(
       vectorIndex.search(knowledgeBase, ['module-two'], [0, 1, 0], 5),
     ).resolves.toEqual([]);
+    await dataSource.query(
+      `DELETE FROM "knowledge_documents" WHERE "id" IN ('document-one', 'document-two')`,
+    );
   });
 
   it('keeps agent memory vectors isolated by agent and owner', async () => {

@@ -185,7 +185,10 @@ Redis 限流状态无需恢复。恢复后先运行 schema 和 pgvector extensio
 
 ## 商用安全前置
 
-数据库迁移不等于完成多租户 SaaS。上线外部租户前还必须实现 workspace/member/API key 身份上下文、资源 workspace 外键、权限矩阵、审计和 PostgreSQL RLS。当前 `ownerKey` 只隔离记忆，不能作为 tenantId。
+数据库迁移不等于完成多租户 SaaS。浏览器 owner 已改为服务端签名匿名 bearer token，
+能够阻止客户端直接伪造其他 ownerKey，但 token 被窃取后仍可重放。上线外部租户前还必须
+实现 workspace/member/API key 身份上下文、资源 workspace 外键、权限矩阵、审计和
+PostgreSQL RLS；匿名 owner token 不能作为 tenantId。
 
 ## 发布检查
 

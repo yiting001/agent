@@ -1,4 +1,5 @@
-import type { ECharts, EChartsOption } from 'echarts';
+import type { EChartsOption } from 'echarts';
+import type { ECharts } from 'echarts/core';
 
 import { createRandomId } from '@/shared/identity/random-id';
 
@@ -54,10 +55,12 @@ async function renderECharts(
   element: HTMLElement,
   source: string,
 ): Promise<ECharts> {
-  const echarts = await import('echarts');
+  const option = readJson(source);
+  const { prepareECharts } = await import('./echarts-runtime');
+  const echarts = await prepareECharts(option);
   const chart = echarts.init(element);
 
-  chart.setOption(readJson(source) as EChartsOption);
+  chart.setOption(option as EChartsOption);
 
   return chart;
 }

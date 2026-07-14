@@ -25,6 +25,7 @@ const MIME_TYPE_EXTENSIONS: Record<string, string> = {
   'image/x-icon': 'ico',
 };
 
+/** 校验图标魔数，不能只信任客户端 MIME。 */
 function matchesMimeTypeSignature(mimeType: string, header: Buffer): boolean {
   if (mimeType === 'image/png') {
     return header
@@ -46,6 +47,7 @@ function matchesMimeTypeSignature(mimeType: string, header: Buffer): boolean {
   return header.subarray(0, 4).equals(Buffer.from([0, 0, 1, 0]));
 }
 
+/** 使用随机内部 key 保存经过大小和文件签名校验的品牌图标。 */
 @Injectable()
 export class LocalBrandIconStorage extends BrandIconStorage {
   private readonly rootPath: string;
@@ -73,6 +75,7 @@ export class LocalBrandIconStorage extends BrandIconStorage {
     return createReadStream(path);
   }
 
+  /** 流式写入并限制大小，失败或签名不符时删除部分文件。 */
   async write(
     mimeType: string,
     source: AsyncIterable<Uint8Array>,
@@ -142,6 +145,7 @@ export class LocalBrandIconStorage extends BrandIconStorage {
     return { sizeBytes, storageKey };
   }
 
+  /** 解析后确认最终路径仍位于配置根目录内，阻止目录穿越。 */
   private resolveKey(storageKey: string): string {
     const path = resolve(this.rootPath, storageKey);
     const rootPrefix = `${this.rootPath}${sep}`;

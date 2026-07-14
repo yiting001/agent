@@ -1,6 +1,9 @@
+/** 前端展示的告警等级。 */
 export type ObservabilityAlertSeverity = 'critical' | 'warning';
+/** 前端展示的操作最终状态。 */
 export type ObservabilityStatus = 'cancelled' | 'error' | 'ok';
 
+/** 指定时间窗口内的黄金指标、追踪、成本和运行时快照。 */
 export interface ObservabilityDashboard {
   alerts: Array<{
     message: string;
