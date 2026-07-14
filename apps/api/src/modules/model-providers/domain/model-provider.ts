@@ -6,11 +6,14 @@ export interface EncryptedCredential {
 
 export interface ModelProvider {
   baseUrl: string;
+  chatInputCostPerMillionTokens?: number;
   chatModel?: string;
+  chatOutputCostPerMillionTokens?: number;
   createdAt: Date;
   credential: EncryptedCredential;
   description: string;
   embeddingDimensions?: number;
+  embeddingInputCostPerMillionTokens?: number;
   embeddingModel?: string;
   enabled: boolean;
   id: string;
@@ -21,10 +24,13 @@ export interface ModelProvider {
 
 export interface ModelProviderSummary {
   baseUrl: string;
+  chatInputCostPerMillionTokens?: number;
   chatModel?: string;
+  chatOutputCostPerMillionTokens?: number;
   configured: boolean;
   description: string;
   embeddingDimensions?: number;
+  embeddingInputCostPerMillionTokens?: number;
   embeddingModel?: string;
   enabled: boolean;
   id: string;
@@ -36,8 +42,11 @@ export interface ModelProviderSummary {
 export interface RuntimeModelProvider {
   apiKey: string;
   baseUrl: string;
+  chatInputCostPerMillionTokens?: number;
   chatModel?: string;
+  chatOutputCostPerMillionTokens?: number;
   embeddingDimensions?: number;
+  embeddingInputCostPerMillionTokens?: number;
   embeddingModel?: string;
   id: string;
 }

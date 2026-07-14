@@ -1,6 +1,8 @@
 <script setup lang="ts">
 defineProps<{
   name:
+    | 'activity'
+    | 'alert'
     | 'api'
     | 'back'
     | 'bell'
@@ -8,16 +10,20 @@ defineProps<{
     | 'chat'
     | 'check'
     | 'chevron'
+    | 'clock'
     | 'close'
     | 'copy'
+    | 'cost'
     | 'database'
     | 'document'
     | 'edit'
     | 'home'
     | 'menu'
+    | 'memory'
     | 'model'
     | 'more'
     | 'plus'
+    | 'refresh'
     | 'search'
     | 'settings'
     | 'skill'
@@ -38,7 +44,14 @@ defineProps<{
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <template v-if="name === 'back'">
+    <template v-if="name === 'activity'">
+      <path d="M3 12h4l2.5-7 5 14 2.5-7h4" />
+    </template>
+    <template v-else-if="name === 'alert'">
+      <path d="M12 3 2.8 20h18.4L12 3Z" />
+      <path d="M12 9v5M12 17h.01" />
+    </template>
+    <template v-else-if="name === 'back'">
       <path d="M19 12H5" />
       <path d="m11 6-6 6 6 6" />
     </template>
@@ -87,6 +100,10 @@ defineProps<{
     <template v-else-if="name === 'check'">
       <path d="m5 12 4 4L19 6" />
     </template>
+    <template v-else-if="name === 'clock'">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </template>
     <template v-else-if="name === 'document'">
       <path d="M6 3h8l4 4v14H6V3Z" />
       <path d="M14 3v5h5M9 12h6M9 16h6" />
@@ -115,10 +132,26 @@ defineProps<{
       <rect x="8" y="8" width="12" height="12" rx="2" />
       <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
     </template>
+    <template v-else-if="name === 'cost'">
+      <circle cx="12" cy="12" r="9" />
+      <path
+        d="M15.5 8.5c-.8-.7-1.9-1-3.1-1-1.8 0-3.2.9-3.2 2.2 0 3.4 6.6 1.6 6.6 5 0 1.3-1.4 2.3-3.4 2.3-1.5 0-2.8-.5-3.7-1.3M12 5.5v13"
+      />
+    </template>
     <template v-else-if="name === 'more'">
       <circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" />
       <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
       <circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" />
+    </template>
+    <template v-else-if="name === 'memory'">
+      <rect x="6" y="7" width="12" height="10" rx="2" />
+      <path
+        d="M9 10h6v4H9zM9 3v4M15 3v4M9 17v4M15 17v4M3 10h3M18 10h3M3 14h3M18 14h3"
+      />
+    </template>
+    <template v-else-if="name === 'refresh'">
+      <path d="M20 7v5h-5M4 17v-5h5" />
+      <path d="M6.1 8a7 7 0 0 1 11.7-1L20 12M4 12l2.2 5a7 7 0 0 0 11.7-1" />
     </template>
     <template v-else-if="name === 'user'">
       <circle cx="12" cy="8" r="4" />

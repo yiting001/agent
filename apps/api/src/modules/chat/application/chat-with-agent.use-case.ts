@@ -12,6 +12,7 @@ import {
 import { ModelProviderRuntimeService } from '../../model-providers/application/model-provider-runtime.service';
 import { SkillRuntimeService } from '../../skills/application/skill-runtime.service';
 import type { Skill } from '../../skills/domain/skill';
+import { ObservabilityContext } from '../../observability/infrastructure/observability-context';
 import type { AgentChatResponse, ConversationMessage } from '../domain/chat';
 import { ChatAttachmentStorage } from './chat-attachment.storage';
 import { SkillToolLoopService } from './skill-tool-loop.service';
@@ -84,6 +85,7 @@ export class ChatWithAgentUseCase {
     private readonly attachmentStorage: ChatAttachmentStorage,
     private readonly skillRuntime: SkillRuntimeService,
     private readonly toolLoop: SkillToolLoopService,
+    private readonly observabilityContext: ObservabilityContext,
   ) {}
 
   async execute(command: ChatWithAgentCommand): Promise<AgentChatResponse> {
@@ -104,6 +106,10 @@ export class ChatWithAgentUseCase {
   async executeStream(
     command: ChatWithAgentCommand,
   ): Promise<StreamingAgentChatResponse> {
+    this.observabilityContext.enrich({
+      agentId: command.agentId,
+      source: command.access,
+    });
     const agent = await this.agents.get(command.agentId);
 
     if (command.access === 'api' && agent.status !== 'published') {
@@ -161,8 +167,12 @@ ${buildKnowledgeContext(knowledge)}${buildSkillInstructions(skillSet.instruction
     const request = {
       apiKey: provider.apiKey,
       baseUrl: provider.baseUrl,
+      inputCostPerMillionTokens: provider.chatInputCostPerMillionTokens,
       messages: [systemMessage, ...conversationMessages],
       model: provider.chatModel,
+      operation: 'chat.generate',
+      outputCostPerMillionTokens: provider.chatOutputCostPerMillionTokens,
+      providerId: provider.id,
       temperature: agent.temperature,
     };
     const hasMultimodalContent = conversationMessages.some(
@@ -253,8 +263,12 @@ ${buildKnowledgeContext(knowledge)}${buildSkillInstructions(skillSet.instruction
       {
         apiKey: request.apiKey,
         baseUrl: request.baseUrl,
+        inputCostPerMillionTokens: request.inputCostPerMillionTokens,
         messages: request.messages,
         model: request.model,
+        operation: 'chat.tool_round',
+        outputCostPerMillionTokens: request.outputCostPerMillionTokens,
+        providerId: request.providerId,
         temperature: request.temperature,
       },
       toolProviders,

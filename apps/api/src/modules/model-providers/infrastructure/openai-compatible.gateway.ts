@@ -11,6 +11,12 @@ import {
   type ToolChatInput,
   type ToolChatResult,
 } from '../application/model-gateway';
+import {
+  estimateChatInputTokens,
+  estimateEmbeddingInputTokens,
+  ModelCallObserver,
+  type ModelUsage,
+} from './model-call-observer';
 
 interface JsonRecord {
   [key: string]: unknown;
@@ -115,6 +121,29 @@ function readEmbeddings(value: unknown): number[][] | undefined {
   return embeddings;
 }
 
+function readUsage(value: unknown): ModelUsage | undefined {
+  if (!isRecord(value) || !isRecord(value.usage)) {
+    return undefined;
+  }
+
+  const inputTokens =
+    typeof value.usage.prompt_tokens === 'number'
+      ? value.usage.prompt_tokens
+      : value.usage.input_tokens;
+  const outputTokens =
+    typeof value.usage.completion_tokens === 'number'
+      ? value.usage.completion_tokens
+      : typeof value.usage.output_tokens === 'number'
+        ? value.usage.output_tokens
+        : 0;
+
+  if (typeof inputTokens !== 'number' || typeof outputTokens !== 'number') {
+    return undefined;
+  }
+
+  return { inputTokens, outputTokens };
+}
+
 async function parseResponse(response: Response): Promise<unknown> {
   const body: unknown = await response.json().catch(() => undefined);
 
@@ -136,7 +165,10 @@ async function parseResponse(response: Response): Promise<unknown> {
 export class OpenAiCompatibleGateway extends ModelGateway {
   private readonly requestTimeoutMs: number;
 
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    private readonly modelCalls: ModelCallObserver,
+  ) {
     super();
     const config = configService.getOrThrow<ApplicationConfig>('application');
 
@@ -161,113 +193,197 @@ export class OpenAiCompatibleGateway extends ModelGateway {
   }
 
   async *streamChat(input: ChatCompletionInput): AsyncIterable<string> {
-    const response = await this.request(`${input.baseUrl}/chat/completions`, {
-      body: JSON.stringify({
-        messages: input.messages,
-        model: input.model,
-        stream: true,
-        temperature: input.temperature,
-      }),
-      headers: this.headers(input.apiKey),
-      method: 'POST',
+    const observation = this.modelCalls.start({
+      estimatedInputTokens: estimateChatInputTokens(input.messages),
+      inputCostPerMillionTokens: input.inputCostPerMillionTokens,
+      model: input.model,
+      operation: input.operation ?? 'chat.stream',
+      outputCostPerMillionTokens: input.outputCostPerMillionTokens,
+      providerId: input.providerId,
     });
+    let outcome: 'active' | 'completed' | 'failed' = 'active';
 
-    if (!response.ok) {
-      await parseResponse(response);
-      return;
-    }
+    try {
+      const response = await this.request(`${input.baseUrl}/chat/completions`, {
+        body: JSON.stringify({
+          messages: input.messages,
+          model: input.model,
+          stream: true,
+          stream_options: { include_usage: true },
+          temperature: input.temperature,
+        }),
+        headers: this.headers(input.apiKey),
+        method: 'POST',
+      });
 
-    if (response.headers.get('content-type')?.includes('application/json')) {
-      const content = readChatContent(await response.json());
-
-      if (content) {
-        yield content;
+      if (!response.ok) {
+        await parseResponse(response);
+        return;
       }
 
-      return;
-    }
+      if (response.headers.get('content-type')?.includes('application/json')) {
+        const body: unknown = await response.json();
+        const content = readChatContent(body);
 
-    if (!response.body) {
-      throw new ApplicationError(
-        'service_unavailable',
-        '模型服务未返回可读取的流。',
-      );
-    }
+        observation.captureUsage(readUsage(body));
 
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    for await (const chunk of response.body) {
-      buffer += decoder.decode(chunk, { stream: true });
-      const lines = buffer.split(/\r?\n/);
-
-      buffer = lines.pop() ?? '';
-
-      for (const line of lines) {
-        const data = line.startsWith('data:') ? line.slice(5).trim() : '';
-
-        if (!data || data === '[DONE]') {
-          continue;
+        if (content) {
+          observation.addOutput(content);
+          yield content;
         }
 
-        const delta = readChatDelta(JSON.parse(data) as unknown);
+        outcome = 'completed';
+        return;
+      }
 
-        if (delta) {
-          yield delta;
+      if (!response.body) {
+        throw new ApplicationError(
+          'service_unavailable',
+          '模型服务未返回可读取的流。',
+        );
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      for await (const chunk of response.body) {
+        buffer += decoder.decode(chunk, { stream: true });
+        const lines = buffer.split(/\r?\n/);
+
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          const data = line.startsWith('data:') ? line.slice(5).trim() : '';
+
+          if (!data || data === '[DONE]') {
+            continue;
+          }
+
+          const payload: unknown = JSON.parse(data);
+          const delta = readChatDelta(payload);
+
+          observation.captureUsage(readUsage(payload));
+
+          if (delta) {
+            observation.addOutput(delta);
+            yield delta;
+          }
         }
+      }
+
+      outcome = 'completed';
+    } catch (error) {
+      outcome = 'failed';
+      await observation.fail(error);
+      throw error;
+    } finally {
+      if (outcome === 'completed') {
+        await observation.complete();
+      } else if (outcome === 'active') {
+        await observation.cancel();
       }
     }
   }
 
   async chatWithTools(input: ToolChatInput): Promise<ToolChatResult> {
-    const response = await this.request(`${input.baseUrl}/chat/completions`, {
-      body: JSON.stringify({
-        messages: input.messages,
-        model: input.model,
-        temperature: input.temperature,
-        tools: input.tools,
-      }),
-      headers: this.headers(input.apiKey),
-      method: 'POST',
+    const observation = this.modelCalls.start({
+      estimatedInputTokens: estimateChatInputTokens(
+        input.messages,
+        input.tools,
+      ),
+      inputCostPerMillionTokens: input.inputCostPerMillionTokens,
+      model: input.model,
+      operation: input.operation ?? 'chat.tools',
+      outputCostPerMillionTokens: input.outputCostPerMillionTokens,
+      providerId: input.providerId,
     });
-    const body = await parseResponse(response);
 
-    return {
-      content: readChatContent(body) ?? '',
-      toolCalls: readToolCalls(body),
-    };
+    try {
+      const response = await this.request(`${input.baseUrl}/chat/completions`, {
+        body: JSON.stringify({
+          messages: input.messages,
+          model: input.model,
+          temperature: input.temperature,
+          tools: input.tools,
+        }),
+        headers: this.headers(input.apiKey),
+        method: 'POST',
+      });
+      const body = await parseResponse(response);
+      const content = readChatContent(body) ?? '';
+
+      observation.addOutput(content);
+      observation.captureUsage(readUsage(body));
+      await observation.complete();
+
+      return {
+        content,
+        toolCalls: readToolCalls(body),
+      };
+    } catch (error) {
+      await observation.fail(error);
+      throw error;
+    }
   }
 
   async embed(input: EmbeddingInput): Promise<number[][]> {
-    const response = await this.request(`${input.baseUrl}/embeddings`, {
-      body: JSON.stringify({
-        encoding_format: 'float',
-        input: input.input,
-        model: input.model,
-        ...(input.dimensions ? { dimensions: input.dimensions } : {}),
-      }),
-      headers: this.headers(input.apiKey),
-      method: 'POST',
+    const observation = this.modelCalls.start({
+      estimatedInputTokens: estimateEmbeddingInputTokens(input.input),
+      inputCostPerMillionTokens: input.inputCostPerMillionTokens,
+      model: input.model,
+      operation: input.operation ?? 'embedding.generate',
+      providerId: input.providerId,
     });
-    const body = await parseResponse(response);
-    const embeddings = readEmbeddings(body);
 
-    if (!embeddings || embeddings.length !== input.input.length) {
-      throw new ApplicationError(
-        'service_unavailable',
-        '模型服务未返回完整向量。',
-      );
+    try {
+      const response = await this.request(`${input.baseUrl}/embeddings`, {
+        body: JSON.stringify({
+          encoding_format: 'float',
+          input: input.input,
+          model: input.model,
+          ...(input.dimensions ? { dimensions: input.dimensions } : {}),
+        }),
+        headers: this.headers(input.apiKey),
+        method: 'POST',
+      });
+      const body = await parseResponse(response);
+      const embeddings = readEmbeddings(body);
+
+      if (!embeddings || embeddings.length !== input.input.length) {
+        throw new ApplicationError(
+          'service_unavailable',
+          '模型服务未返回完整向量。',
+        );
+      }
+
+      observation.captureUsage(readUsage(body));
+      await observation.complete();
+
+      return embeddings;
+    } catch (error) {
+      await observation.fail(error);
+      throw error;
     }
-
-    return embeddings;
   }
 
   async verify(baseUrl: string, apiKey: string): Promise<void> {
-    const response = await this.request(`${baseUrl}/models`, {
-      headers: this.headers(apiKey),
+    const observation = this.modelCalls.start({
+      estimatedInputTokens: 0,
+      model: 'model-catalog',
+      operation: 'model.verify',
     });
 
-    await parseResponse(response);
+    try {
+      const response = await this.request(`${baseUrl}/models`, {
+        headers: this.headers(apiKey),
+      });
+
+      await parseResponse(response);
+      await observation.complete();
+    } catch (error) {
+      await observation.fail(error);
+      throw error;
+    }
   }
 
   private headers(apiKey: string): Record<string, string> {

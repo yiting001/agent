@@ -1,0 +1,314 @@
+.observability-page {
+  display: grid;
+  gap: 22px;
+}
+
+.observability-header,
+.observability-actions,
+.observability-window,
+.observability-metrics article,
+.observability-legend,
+.observability-alert-list article,
+.observability-all-clear {
+  display: flex;
+  align-items: center;
+}
+
+.observability-header {
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.observability-header h2 {
+  margin: 6px 0;
+  font-size: 28px;
+}
+
+.observability-header p {
+  margin: 0;
+  color: var(--admin-muted);
+}
+
+.observability-actions {
+  gap: 12px;
+}
+
+.observability-window {
+  padding: 4px;
+  border: 1px solid var(--admin-line);
+  border-radius: 12px;
+  background: var(--admin-surface);
+}
+
+.observability-window button {
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--admin-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.observability-window button.is-active {
+  color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+}
+
+.observability-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.observability-metrics article {
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--admin-line);
+  border-radius: 16px;
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow);
+}
+
+.observability-metrics article > span {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  place-items: center;
+  border-radius: 13px;
+  color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+}
+
+.observability-metrics p,
+.observability-metrics small {
+  margin: 0;
+  color: var(--admin-muted);
+}
+
+.observability-metrics strong {
+  display: block;
+  margin: 3px 0;
+  font-size: 22px;
+}
+
+.observability-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.8fr);
+  gap: 20px;
+}
+
+.observability-legend {
+  gap: 7px;
+  color: var(--admin-muted);
+  font-size: 12px;
+}
+
+.observability-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.observability-legend .is-request,
+.observability-chart__bar.is-request {
+  background: #7367f0;
+}
+
+.observability-legend .is-model,
+.observability-chart__bar.is-model {
+  background: #28c76f;
+}
+
+.observability-legend .is-error {
+  background: #ea5455;
+}
+
+.observability-chart {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(4px, 1fr));
+  align-items: end;
+  height: 230px;
+  gap: 5px;
+  padding-top: 20px;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.observability-chart__column {
+  position: relative;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  gap: 2px;
+  height: 100%;
+}
+
+.observability-chart__bar {
+  width: 42%;
+  min-height: 2px;
+  border-radius: 5px 5px 0 0;
+  opacity: 0.85;
+}
+
+.observability-chart__error {
+  position: absolute;
+  top: -8px;
+  width: 7px;
+  height: 7px;
+  border: 2px solid var(--admin-surface);
+  border-radius: 50%;
+  background: #ea5455;
+}
+
+.observability-alert-list {
+  display: grid;
+  gap: 10px;
+  max-height: 270px;
+  overflow: auto;
+}
+
+.observability-alert-list article,
+.observability-all-clear {
+  align-items: flex-start;
+  gap: 11px;
+  padding: 13px;
+  border-radius: 12px;
+  background: var(--admin-background);
+}
+
+.observability-alert-list article.is-critical {
+  color: #b42318;
+  background: #fff1f0;
+}
+
+.observability-alert-list article.is-warning {
+  color: #9a6700;
+  background: #fff8e6;
+}
+
+.observability-alert-list article > span,
+.observability-all-clear > .base-icon {
+  width: 20px;
+  flex: 0 0 20px;
+}
+
+.observability-alert-list p,
+.observability-alert-list small,
+.observability-all-clear p {
+  margin: 4px 0 0;
+  color: currentColor;
+  opacity: 0.8;
+}
+
+.observability-alert-list small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.observability-all-clear {
+  color: #168a4a;
+  background: #edf9f2;
+}
+
+.observability-table {
+  min-width: 850px;
+}
+
+.observability-traces {
+  overflow-x: auto;
+}
+
+.observability-table__head,
+.observability-table__row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.5fr) 90px 90px 120px 100px 150px;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 4px;
+}
+
+.observability-table__head {
+  color: var(--admin-muted);
+  border-bottom: 1px solid var(--admin-line);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.observability-table__row {
+  border-bottom: 1px solid var(--admin-line);
+  font-size: 13px;
+}
+
+.observability-table__row:last-child {
+  border-bottom: 0;
+}
+
+.observability-table__row > span:first-child strong,
+.observability-table__row > span:first-child small {
+  display: block;
+}
+
+.observability-table__row small {
+  margin-top: 3px;
+  color: var(--admin-muted);
+}
+
+.status-badge--ok {
+  color: #168a4a;
+  background: #edf9f2;
+}
+
+.status-badge--error {
+  color: #b42318;
+  background: #fff1f0;
+}
+
+.status-badge--cancelled {
+  color: #7a5a00;
+  background: #fff8e6;
+}
+
+.admin-form__split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 1100px) {
+  .observability-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .observability-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .observability-header,
+  .observability-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .observability-window {
+    overflow-x: auto;
+  }
+
+  .observability-window button {
+    flex: 0 0 auto;
+  }
+
+  .observability-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .observability-chart {
+    gap: 2px;
+  }
+
+  .admin-form__split {
+    grid-template-columns: 1fr;
+  }
+}

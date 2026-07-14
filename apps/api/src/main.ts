@@ -14,6 +14,7 @@ async function bootstrap(): Promise<void> {
 
   app.enableCors({
     allowedHeaders: ['Authorization', 'Content-Type', 'X-File-Name'],
+    exposedHeaders: ['X-Trace-Id'],
     maxAge: 86_400,
     methods: ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT'],
     origin: config.corsOrigin,

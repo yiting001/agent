@@ -16,9 +16,13 @@ export class ConfigureModelProviderController {
     return this.useCase.execute({
       apiKey: body.apiKey,
       baseUrl: body.baseUrl,
+      chatInputCostPerMillionTokens: body.chatInputCostPerMillionTokens,
       chatModel: body.chatModel,
+      chatOutputCostPerMillionTokens: body.chatOutputCostPerMillionTokens,
       description: body.description,
       embeddingDimensions: body.embeddingDimensions,
+      embeddingInputCostPerMillionTokens:
+        body.embeddingInputCostPerMillionTokens,
       embeddingModel: body.embeddingModel,
       key,
       name: body.name,

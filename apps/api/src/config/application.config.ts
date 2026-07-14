@@ -22,6 +22,10 @@ const DEFAULT_KNOWLEDGE_CHUNK_CHARACTERS = 1_200;
 const DEFAULT_KNOWLEDGE_CHUNK_OVERLAP = 180;
 const DEFAULT_EMBEDDING_BATCH_SIZE = 24;
 const DEFAULT_MCP_CLIENT_NAME = 'agent-api';
+const DEFAULT_OBSERVABILITY_HIGH_COST_USD = 0.1;
+const DEFAULT_OBSERVABILITY_RETENTION_DAYS = 30;
+const DEFAULT_OBSERVABILITY_SLOW_MODEL_MS = 30_000;
+const DEFAULT_OBSERVABILITY_SLOW_REQUEST_MS = 2_000;
 const DEFAULT_SKILL_TOOL_MAX_ROUNDS = 5;
 
 /** Runtime values owned by the API process. */
@@ -47,6 +51,10 @@ export interface ApplicationConfig {
   knowledgeUploadChunkBytes: number;
   mcpClientName: string;
   modelRequestTimeoutMs: number;
+  observabilityHighCostUsd: number;
+  observabilityRetentionDays: number;
+  observabilitySlowModelMs: number;
+  observabilitySlowRequestMs: number;
   skillToolMaxRounds: number;
   port: number;
   serviceName: string;
@@ -80,6 +88,20 @@ function parsePositiveInteger(
 
   if (!Number.isSafeInteger(parsed) || parsed < 1) {
     throw new Error(`${name} must be a positive integer.`);
+  }
+
+  return parsed;
+}
+
+function parseNonNegativeNumber(
+  name: string,
+  value: string | undefined,
+  fallback: number,
+): number {
+  const parsed = Number(value ?? fallback);
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`${name} must be a non-negative number.`);
   }
 
   return parsed;
@@ -204,6 +226,26 @@ export const applicationConfig = registerAs(
         'MODEL_REQUEST_TIMEOUT_MS',
         process.env.MODEL_REQUEST_TIMEOUT_MS,
         120_000,
+      ),
+      observabilityHighCostUsd: parseNonNegativeNumber(
+        'OBSERVABILITY_HIGH_COST_USD',
+        process.env.OBSERVABILITY_HIGH_COST_USD,
+        DEFAULT_OBSERVABILITY_HIGH_COST_USD,
+      ),
+      observabilityRetentionDays: parsePositiveInteger(
+        'OBSERVABILITY_RETENTION_DAYS',
+        process.env.OBSERVABILITY_RETENTION_DAYS,
+        DEFAULT_OBSERVABILITY_RETENTION_DAYS,
+      ),
+      observabilitySlowModelMs: parsePositiveInteger(
+        'OBSERVABILITY_SLOW_MODEL_MS',
+        process.env.OBSERVABILITY_SLOW_MODEL_MS,
+        DEFAULT_OBSERVABILITY_SLOW_MODEL_MS,
+      ),
+      observabilitySlowRequestMs: parsePositiveInteger(
+        'OBSERVABILITY_SLOW_REQUEST_MS',
+        process.env.OBSERVABILITY_SLOW_REQUEST_MS,
+        DEFAULT_OBSERVABILITY_SLOW_REQUEST_MS,
       ),
       port: parsePort(process.env.API_PORT),
       skillToolMaxRounds: parsePositiveInteger(

@@ -22,8 +22,12 @@ export class ModelProviderRuntimeService {
     return {
       apiKey: this.cipher.decrypt(provider.credential),
       baseUrl: provider.baseUrl,
+      chatInputCostPerMillionTokens: provider.chatInputCostPerMillionTokens,
       chatModel: provider.chatModel,
+      chatOutputCostPerMillionTokens: provider.chatOutputCostPerMillionTokens,
       embeddingDimensions: provider.embeddingDimensions,
+      embeddingInputCostPerMillionTokens:
+        provider.embeddingInputCostPerMillionTokens,
       embeddingModel: provider.embeddingModel,
       id: provider.id,
     };

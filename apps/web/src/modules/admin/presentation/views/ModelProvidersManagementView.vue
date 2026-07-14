@@ -13,9 +13,12 @@ const selectedProvider = ref<ModelProviderSummary>();
 const form = reactive({
   apiKey: '',
   baseUrl: '',
+  chatInputCostPerMillionTokens: '' as number | '',
   chatModel: '',
+  chatOutputCostPerMillionTokens: '' as number | '',
   description: '',
   embeddingDimensions: '' as number | '',
+  embeddingInputCostPerMillionTokens: '' as number | '',
   embeddingModel: '',
   key: '',
   name: '',
@@ -51,9 +54,15 @@ function openConfiguration(provider?: ModelProviderSummary): void {
   selectedProvider.value = provider;
   form.apiKey = '';
   form.baseUrl = provider?.baseUrl ?? '';
+  form.chatInputCostPerMillionTokens =
+    provider?.chatInputCostPerMillionTokens ?? '';
   form.chatModel = provider?.chatModel ?? '';
+  form.chatOutputCostPerMillionTokens =
+    provider?.chatOutputCostPerMillionTokens ?? '';
   form.description = provider?.description ?? '';
   form.embeddingDimensions = provider?.embeddingDimensions ?? '';
+  form.embeddingInputCostPerMillionTokens =
+    provider?.embeddingInputCostPerMillionTokens ?? '';
   form.embeddingModel = provider?.embeddingModel ?? '';
   form.key = provider?.key ?? '';
   form.name = provider?.name ?? '';
@@ -76,13 +85,25 @@ async function saveConfiguration(): Promise<void> {
     await workspaceStore.configureProvider({
       apiKey: form.apiKey.trim(),
       baseUrl: form.baseUrl.trim(),
+      chatInputCostPerMillionTokens:
+        typeof form.chatInputCostPerMillionTokens === 'number'
+          ? form.chatInputCostPerMillionTokens
+          : undefined,
       chatModel: form.chatModel.trim() || undefined,
+      chatOutputCostPerMillionTokens:
+        typeof form.chatOutputCostPerMillionTokens === 'number'
+          ? form.chatOutputCostPerMillionTokens
+          : undefined,
       description: form.description.trim(),
       embeddingDimensions:
         form.embeddingModel.trim() &&
         typeof form.embeddingDimensions === 'number' &&
         form.embeddingDimensions > 0
           ? form.embeddingDimensions
+          : undefined,
+      embeddingInputCostPerMillionTokens:
+        typeof form.embeddingInputCostPerMillionTokens === 'number'
+          ? form.embeddingInputCostPerMillionTokens
           : undefined,
       embeddingModel: form.embeddingModel.trim() || undefined,
       key: form.key.trim().toLowerCase(),
@@ -153,6 +174,15 @@ async function saveConfiguration(): Promise<void> {
           <div>
             <dt>服务地址</dt>
             <dd>{{ provider.baseUrl }}</dd>
+          </div>
+          <div>
+            <dt>成本单价</dt>
+            <dd>
+              对话输入
+              {{ provider.chatInputCostPerMillionTokens ?? '未配置' }} / 输出
+              {{ provider.chatOutputCostPerMillionTokens ?? '未配置' }}
+              美元/百万 Token
+            </dd>
           </div>
         </dl>
         <button
@@ -251,6 +281,28 @@ async function saveConfiguration(): Promise<void> {
           <span>对话模型（可选）</span>
           <input v-model="form.chatModel" placeholder="例如 deepseek-chat" />
         </label>
+        <div v-if="form.chatModel" class="admin-form__split">
+          <label>
+            <span>输入单价（美元/百万 Token）</span>
+            <input
+              v-model.number="form.chatInputCostPerMillionTokens"
+              type="number"
+              min="0"
+              step="0.000001"
+              placeholder="按服务商账单填写"
+            />
+          </label>
+          <label>
+            <span>输出单价（美元/百万 Token）</span>
+            <input
+              v-model.number="form.chatOutputCostPerMillionTokens"
+              type="number"
+              min="0"
+              step="0.000001"
+              placeholder="按服务商账单填写"
+            />
+          </label>
+        </div>
         <label>
           <span>嵌入模型（知识库需要）</span>
           <input
@@ -269,6 +321,17 @@ async function saveConfiguration(): Promise<void> {
             placeholder="留空由后端自动检测"
           />
           <small>保存时会调用嵌入接口并记录模型实际返回的维度。</small>
+        </label>
+        <label v-if="form.embeddingModel">
+          <span>嵌入单价（美元/百万 Token）</span>
+          <input
+            v-model.number="form.embeddingInputCostPerMillionTokens"
+            type="number"
+            min="0"
+            step="0.000001"
+            placeholder="按服务商账单填写"
+          />
+          <small>用于本地成本估算，不配置时仍会统计 Token 用量。</small>
         </label>
         <label>
           <span>访问密钥</span>

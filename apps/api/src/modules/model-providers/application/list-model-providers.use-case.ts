@@ -12,10 +12,14 @@ export class ListModelProvidersUseCase {
 
     return providers.map((provider) => ({
       baseUrl: provider.baseUrl,
+      chatInputCostPerMillionTokens: provider.chatInputCostPerMillionTokens,
       chatModel: provider.chatModel,
+      chatOutputCostPerMillionTokens: provider.chatOutputCostPerMillionTokens,
       configured: true,
       description: provider.description,
       embeddingDimensions: provider.embeddingDimensions,
+      embeddingInputCostPerMillionTokens:
+        provider.embeddingInputCostPerMillionTokens,
       embeddingModel: provider.embeddingModel,
       enabled: provider.enabled,
       id: provider.id,

@@ -10,9 +10,12 @@ import { ModelProviderRepository } from './model-provider.repository';
 export interface ConfigureModelProviderCommand {
   apiKey: string;
   baseUrl: string;
+  chatInputCostPerMillionTokens?: number;
   chatModel?: string;
+  chatOutputCostPerMillionTokens?: number;
   description: string;
   embeddingDimensions?: number;
+  embeddingInputCostPerMillionTokens?: number;
   embeddingModel?: string;
   key: string;
   name: string;
@@ -41,6 +44,7 @@ export class ConfigureModelProviderUseCase {
           apiKey: command.apiKey,
           baseUrl,
           dimensions: command.embeddingDimensions,
+          inputCostPerMillionTokens: command.embeddingInputCostPerMillionTokens,
           model: command.embeddingModel,
         })
       : undefined;
@@ -49,11 +53,15 @@ export class ConfigureModelProviderUseCase {
     const now = new Date();
     const provider = {
       baseUrl,
+      chatInputCostPerMillionTokens: command.chatInputCostPerMillionTokens,
       chatModel: command.chatModel,
+      chatOutputCostPerMillionTokens: command.chatOutputCostPerMillionTokens,
       createdAt: existing?.createdAt ?? now,
       credential: this.cipher.encrypt(command.apiKey),
       description: command.description,
       embeddingDimensions,
+      embeddingInputCostPerMillionTokens:
+        command.embeddingInputCostPerMillionTokens,
       embeddingModel: command.embeddingModel,
       enabled: true,
       id: existing?.id ?? randomUUID(),
@@ -66,10 +74,14 @@ export class ConfigureModelProviderUseCase {
 
     return {
       baseUrl: provider.baseUrl,
+      chatInputCostPerMillionTokens: provider.chatInputCostPerMillionTokens,
       chatModel: provider.chatModel,
+      chatOutputCostPerMillionTokens: provider.chatOutputCostPerMillionTokens,
       configured: true,
       description: provider.description,
       embeddingDimensions: provider.embeddingDimensions,
+      embeddingInputCostPerMillionTokens:
+        provider.embeddingInputCostPerMillionTokens,
       embeddingModel: provider.embeddingModel,
       enabled: provider.enabled,
       id: provider.id,
@@ -83,11 +95,13 @@ export class ConfigureModelProviderUseCase {
     apiKey: string;
     baseUrl: string;
     dimensions?: number;
+    inputCostPerMillionTokens?: number;
     model: string;
   }): Promise<number> {
     const [embedding] = await this.gateway.embed({
       ...input,
       input: ['知识库嵌入模型连接测试'],
+      operation: 'embedding.configuration_probe',
     });
 
     if (!embedding?.length) {

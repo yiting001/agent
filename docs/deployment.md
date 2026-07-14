@@ -85,6 +85,10 @@ BRAND_STORAGE_PATH=/srv/agent-data/brand-storage
 CHAT_ATTACHMENT_STORAGE_PATH=/srv/agent-data/chat-attachments
 KNOWLEDGE_STORAGE_PATH=/srv/agent-data/knowledge-storage
 ZVEC_DATA_PATH=/srv/agent-data/zvec-data
+OBSERVABILITY_RETENTION_DAYS=30
+OBSERVABILITY_SLOW_REQUEST_MS=2000
+OBSERVABILITY_SLOW_MODEL_MS=30000
+OBSERVABILITY_HIGH_COST_USD=0.1
 ```
 
 创建并授权持久化目录：
@@ -96,6 +100,10 @@ sudo chown -R agent:agent /srv/agent-data
 
 `CREDENTIAL_ENCRYPTION_KEY` 用于加密模型密钥。首次投入使用后必须稳定保存；更换该值会使
 已保存的模型密钥无法解密。SQLite、Zvec 和三个文件目录必须一起备份。
+
+观测事件保存在同一个 SQLite 数据库中，默认保留 30 天。慢请求、慢模型调用和
+单次高成本阈值均从环境变量读取；生产环境应按服务等级目标和模型预算调整。模型
+单价在“模型配置”页面按美元/百万 Token 维护，不在代码中硬编码。
 
 ## systemd 启动 API
 

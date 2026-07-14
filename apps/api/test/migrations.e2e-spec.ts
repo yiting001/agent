@@ -51,5 +51,13 @@ describe('Database migrations', () => {
           }),
         );
       });
+    await request(app.getHttpServer())
+      .get('/api/observability/dashboard?hours=24')
+      .expect(200)
+      .expect((response) => {
+        expect(response.text).toContain('"goldenSignals"');
+        expect(response.text).toContain('"recentTraces"');
+        expect(response.text).toContain('"usage"');
+      });
   });
 });

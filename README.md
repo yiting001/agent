@@ -32,7 +32,7 @@ apps/
 └── web/                         # Vue 3 Web
 docs/
 ├── architecture.md             # 架构边界和设计原则
-└── modules/                    # 功能模块说明
+└── modules/                    # 功能模块说明（含观测与监控）
 templates/
 └── eyoucms/                    # EyouCMS 展示模板与独立预览页
 ```
@@ -70,6 +70,10 @@ openssl rand -hex 32
 
 管理后台模块结构与后端边界见
 [中文智能体管理后台文档](docs/modules/admin-web.md)。
+
+“观测与监控”页面提供请求日志、执行链路、黄金指标、模型 Token、估算成本和
+异常告警。设计与配置见
+[观测与监控文档](docs/modules/observability.md)。
 
 对话默认流式输出，支持 Markdown、数学公式、ECharts/D3 图表、Mermaid
 流程图/思维导图，以及图片和音频输入。格式与接口见

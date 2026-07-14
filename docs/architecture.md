@@ -12,6 +12,8 @@ flowchart RL
   Infrastructure[Infrastructure] --> Application
   Application --> Domain[Domain]
   Presentation -. 依赖注入 .-> Infrastructure
+  Observability[Observability] -. 记录边界事件 .-> Presentation
+  Observability -. 记录外部调用 .-> Infrastructure
 ```
 
 - `domain`：业务概念、值对象和不变量，不依赖框架。
@@ -20,6 +22,10 @@ flowchart RL
 - `presentation`：HTTP 路由、DTO 和协议转换。
 
 领域层与应用层不得导入 NestJS、TypeORM、Express 或前端代码。
+
+`observability` 是横切基础设施，但仍通过应用服务暴露记录能力。业务模块只提交
+操作名称、状态、耗时和用量，不依赖 SQLite 实体，也不记录提示词、回复正文、
+密钥或附件内容。
 
 ## 前端模块规则
 

@@ -37,8 +37,11 @@ export class CreateKnowledgeBaseUseCase {
       apiKey: provider.apiKey,
       baseUrl: provider.baseUrl,
       dimensions: provider.embeddingDimensions,
+      inputCostPerMillionTokens: provider.embeddingInputCostPerMillionTokens,
       input: ['知识库创建校验'],
       model: provider.embeddingModel,
+      operation: 'embedding.knowledge_base_probe',
+      providerId: provider.id,
     });
 
     if (probe?.length !== provider.embeddingDimensions) {
