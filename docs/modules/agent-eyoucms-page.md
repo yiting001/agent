@@ -126,7 +126,7 @@ flowchart TD
 
 ## 如何进入测试页面
 
-先启动 API，并在后台创建至少一个智能体。启动 API 前必须准备 PostgreSQL + pgvector 与 Redis；本地可运行 `docker compose up -d postgres redis`。
+先启动 API，并在后台创建、配置并发布至少一个智能体。启动 API 前必须准备 PostgreSQL + pgvector 与 Redis；本地可运行 `docker compose up -d postgres redis`。
 然后在仓库根目录启动静态服务：
 
 在仓库根目录运行：
@@ -143,11 +143,18 @@ http://localhost:4173/preview/agent-platform.html
 
 这种方式更接近网站部署后的资源加载方式。
 
-预览页必须指定智能体：
+模板默认通过同源 `/api` 访问后端，Python 静态服务本身不会代理 API。联调真实 API 时，
+应使用 Nginx 等反向代理把 `/api` 转发到 `http://localhost:3000`；也可仅在本地临时把
+`AGENT_BACKEND_BASE_URL` 改为 `http://localhost:3000/api`，并确保 API 的
+`CORS_ORIGIN` 包含 `http://localhost:4173`。
+
+预览页可直接指定已发布智能体：
 
 ```text
 http://localhost:4173/preview/agent-platform.html?agentId=<智能体ID>
 ```
+
+不指定 `agentId` 时，页面会显示已发布智能体选择器。
 
 页面与 NestJS 后台通信的基础地址统一保存在
 `skin/js/agent-platform.js` 顶部的 `AGENT_BACKEND_BASE_URL` 常量中。

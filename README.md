@@ -107,6 +107,10 @@ python3 -m http.server 4173 -d templates/eyoucms
 
 访问
 `http://localhost:4173/preview/agent-platform.html?agentId=<智能体ID>`。
+模板默认通过同源 `/api` 访问后端，因此该静态命令只负责预览资源；联调真实 API 时，
+应由 Nginx 等反向代理把 `/api` 转发到 `http://localhost:3000`，或把
+`templates/eyoucms/skin/js/agent-platform.js` 的后台地址临时改为完整 API 地址并将
+`http://localhost:4173` 加入 `CORS_ORIGIN`。
 页面后台地址由 `templates/eyoucms/skin/js/agent-platform.js` 顶部常量配置。
 EyouCMS 接入方式见
 [中文智能体对话页文档](docs/modules/agent-eyoucms-page.md)。

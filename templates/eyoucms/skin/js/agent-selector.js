@@ -47,7 +47,7 @@
     const agents = await options.loadAgents();
 
     if (!Array.isArray(agents) || agents.length === 0) {
-      throw new Error('当前没有可对话的智能体，请先在后台创建智能体。');
+      throw new Error('当前没有可对话的已发布智能体，请先在后台发布智能体。');
     }
 
     return new Promise((resolve) => {
