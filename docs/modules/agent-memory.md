@@ -238,3 +238,5 @@ DELETE /api/agents/:agentId/memories?ownerKey=<memoryOwnerKey>
 
 - 若需要后台人工维护，可在现有列表、删除和清空接口上增加记忆编辑页。
 - 第二阶段可增加任务队列、失败重试、人工纠正和保留期清理；第三阶段再评估实体图谱和跨模态专用 embedding。
+- 完整的未实现项、优先级和推荐实施顺序见
+  [图片情景记忆后续路线](agent-memory-roadmap.md)。
