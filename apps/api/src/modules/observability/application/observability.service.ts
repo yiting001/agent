@@ -104,17 +104,15 @@ export class ObservabilityService {
       traceId: input.traceId ?? current?.traceId ?? this.createTraceId(),
     };
 
+    this.writeStructuredLog(event);
+
     try {
       await this.repository.save(event);
-      this.writeStructuredLog(event);
       await this.cleanupIfDue();
     } catch (error) {
       this.logger.error(
         JSON.stringify({
-          error:
-            error instanceof Error
-              ? error.message
-              : 'unknown observability persistence error',
+          error: error instanceof Error ? error.message : String(error),
           operation: event.operation,
           traceId: event.traceId,
         }),

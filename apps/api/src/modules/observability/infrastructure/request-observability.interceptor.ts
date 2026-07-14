@@ -10,6 +10,8 @@ import type { Observable, Subscription } from 'rxjs';
 import { Observable as RxObservable } from 'rxjs';
 import { performance } from 'node:perf_hooks';
 
+import { ApplicationError } from '../../../shared/application/application-error';
+import { getApplicationErrorHttpStatus } from '../../../shared/presentation/application-error-http-status';
 import { ObservabilityService } from '../application/observability.service';
 import { ObservabilityContext } from './observability-context';
 
@@ -23,9 +25,15 @@ function readTraceId(request: Request, fallback: string): string {
 }
 
 function errorStatus(error: unknown, response: Response): number {
-  return error instanceof HttpException
-    ? error.getStatus()
-    : response.statusCode;
+  if (error instanceof HttpException) {
+    return error.getStatus();
+  }
+
+  if (error instanceof ApplicationError) {
+    return getApplicationErrorHttpStatus(error);
+  }
+
+  return response.headersSent ? response.statusCode : 500;
 }
 
 function normalizeRoute(path: string): string {
