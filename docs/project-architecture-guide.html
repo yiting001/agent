@@ -1,0 +1,3767 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Agent 项目代码级架构手册：模块职责、DDD 分层、数据模型、核心流程、时序图、安全边界与商业化路线。"
+    />
+    <title>Agent 项目架构深度指南</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4f7fb;
+        --card: #ffffff;
+        --ink: #142033;
+        --muted: #5d6b80;
+        --line: #dfe6ef;
+        --navy: #12233f;
+        --blue: #2563eb;
+        --cyan: #0891b2;
+        --green: #15803d;
+        --amber: #b45309;
+        --red: #b91c1c;
+        --violet: #7c3aed;
+        --soft-blue: #eff6ff;
+        --soft-green: #f0fdf4;
+        --soft-amber: #fffbeb;
+        --soft-red: #fef2f2;
+        --soft-violet: #f5f3ff;
+        --shadow: 0 12px 35px rgba(20, 32, 51, 0.08);
+        --radius: 18px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at 85% 0%, #dbeafe 0, transparent 30rem),
+          var(--bg);
+        color: var(--ink);
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          'PingFang SC',
+          'Microsoft YaHei',
+          sans-serif;
+        line-height: 1.72;
+      }
+
+      a {
+        color: var(--blue);
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      code,
+      pre {
+        font-family:
+          'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      }
+
+      code {
+        border-radius: 6px;
+        background: #eef2f7;
+        padding: 0.14rem 0.38rem;
+        color: #1e3a5f;
+        font-size: 0.9em;
+      }
+
+      pre {
+        overflow: auto;
+        margin: 0;
+        border: 1px solid #243550;
+        border-radius: 14px;
+        background: #101c30;
+        padding: 1rem 1.1rem;
+        color: #dbeafe;
+        font-size: 0.84rem;
+        line-height: 1.65;
+      }
+
+      pre code {
+        background: transparent;
+        padding: 0;
+        color: inherit;
+      }
+
+      .page {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--navy);
+        padding: 1.5rem 1.1rem;
+        color: #dbeafe;
+      }
+
+      .brand {
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 0.3rem 0.6rem 1.25rem;
+      }
+
+      .brand strong {
+        display: block;
+        color: #ffffff;
+        font-size: 1.16rem;
+      }
+
+      .brand span {
+        color: #9fb0ca;
+        font-size: 0.78rem;
+      }
+
+      .sidebar nav {
+        display: grid;
+        gap: 0.24rem;
+      }
+
+      .sidebar nav a {
+        border-radius: 9px;
+        padding: 0.48rem 0.65rem;
+        color: #bdcbe0;
+        font-size: 0.84rem;
+      }
+
+      .sidebar nav a:hover,
+      .sidebar nav a.active {
+        background: rgba(96, 165, 250, 0.15);
+        color: #ffffff;
+        text-decoration: none;
+      }
+
+      .content {
+        min-width: 0;
+        padding: 2rem clamp(1.2rem, 4vw, 4rem) 5rem;
+      }
+
+      .hero {
+        position: relative;
+        overflow: hidden;
+        border-radius: 26px;
+        background:
+          linear-gradient(120deg, rgba(37, 99, 235, 0.95), #12233f 72%),
+          var(--navy);
+        padding: clamp(2rem, 5vw, 4.2rem);
+        color: #ffffff;
+        box-shadow: var(--shadow);
+      }
+
+      .hero::after {
+        position: absolute;
+        right: -80px;
+        bottom: -120px;
+        width: 360px;
+        height: 360px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 50%;
+        box-shadow:
+          0 0 0 55px rgba(255, 255, 255, 0.04),
+          0 0 0 110px rgba(255, 255, 255, 0.03);
+        content: '';
+      }
+
+      .eyebrow {
+        margin: 0 0 0.6rem;
+        color: #bfdbfe;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .hero h1 {
+        max-width: 760px;
+        margin: 0;
+        font-size: clamp(2rem, 5vw, 4rem);
+        line-height: 1.12;
+      }
+
+      .hero .lead {
+        max-width: 820px;
+        margin: 1.2rem 0 0;
+        color: #dbeafe;
+        font-size: clamp(1rem, 2vw, 1.2rem);
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.7rem;
+        margin-top: 1.5rem;
+      }
+
+      .meta span {
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 0.38rem 0.72rem;
+        color: #eff6ff;
+        font-size: 0.78rem;
+      }
+
+      section {
+        scroll-margin-top: 1rem;
+        margin-top: 2rem;
+      }
+
+      .section-card {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--card);
+        padding: clamp(1.2rem, 3vw, 2.2rem);
+        box-shadow: var(--shadow);
+      }
+
+      .section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 0 0 0.35rem;
+        font-size: clamp(1.45rem, 3vw, 2rem);
+        line-height: 1.3;
+      }
+
+      .section-title .number {
+        display: grid;
+        width: 2.2rem;
+        height: 2.2rem;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 10px;
+        background: var(--navy);
+        color: #ffffff;
+        font-size: 0.86rem;
+      }
+
+      .section-intro {
+        max-width: 900px;
+        margin: 0 0 1.5rem;
+        color: var(--muted);
+      }
+
+      h3 {
+        margin: 1.8rem 0 0.8rem;
+        color: #183153;
+        font-size: 1.18rem;
+      }
+
+      h4 {
+        margin: 1.15rem 0 0.45rem;
+        color: #25456d;
+      }
+
+      p {
+        margin: 0.6rem 0;
+      }
+
+      ul,
+      ol {
+        padding-left: 1.35rem;
+      }
+
+      li + li {
+        margin-top: 0.3rem;
+      }
+
+      .grid {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .grid-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .mini-card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #fbfdff;
+        padding: 1rem;
+      }
+
+      .mini-card h3,
+      .mini-card h4 {
+        margin-top: 0;
+      }
+
+      .metric {
+        border-top: 4px solid var(--blue);
+      }
+
+      .metric strong {
+        display: block;
+        color: #1e3a5f;
+        font-size: 1.2rem;
+      }
+
+      .metric span {
+        color: var(--muted);
+        font-size: 0.86rem;
+      }
+
+      .callout {
+        margin: 1rem 0;
+        border-left: 4px solid var(--blue);
+        border-radius: 0 12px 12px 0;
+        background: var(--soft-blue);
+        padding: 0.9rem 1rem;
+      }
+
+      .callout.warning {
+        border-color: var(--amber);
+        background: var(--soft-amber);
+      }
+
+      .callout.danger {
+        border-color: var(--red);
+        background: var(--soft-red);
+      }
+
+      .callout.success {
+        border-color: var(--green);
+        background: var(--soft-green);
+      }
+
+      .callout strong {
+        display: block;
+        margin-bottom: 0.18rem;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 0.2rem 0.58rem;
+        font-size: 0.73rem;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .badge.blue {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+
+      .badge.green {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .badge.amber {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .badge.red {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      .badge.violet {
+        background: #ede9fe;
+        color: #6d28d9;
+      }
+
+      .diagram {
+        overflow-x: auto;
+        margin: 1.1rem 0 1.5rem;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background:
+          linear-gradient(#f8fafc 1px, transparent 1px),
+          linear-gradient(90deg, #f8fafc 1px, transparent 1px), #ffffff;
+        background-size: 24px 24px;
+        padding: 1rem;
+      }
+
+      .diagram svg {
+        display: block;
+        min-width: 850px;
+        max-width: 100%;
+        height: auto;
+        margin: auto;
+      }
+
+      .flow {
+        display: flex;
+        min-width: 760px;
+        align-items: stretch;
+        justify-content: center;
+        gap: 0.5rem;
+      }
+
+      .flow.vertical {
+        min-width: 0;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .flow-node {
+        display: grid;
+        min-width: 120px;
+        max-width: 190px;
+        flex: 1;
+        place-items: center;
+        border: 1px solid #bfd1e8;
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 0.72rem;
+        color: #183153;
+        text-align: center;
+        font-size: 0.82rem;
+        font-weight: 700;
+        box-shadow: 0 6px 16px rgba(30, 58, 95, 0.06);
+      }
+
+      .flow-node.primary {
+        border-color: #93c5fd;
+        background: #eff6ff;
+      }
+
+      .flow-node.data {
+        border-color: #86efac;
+        background: #f0fdf4;
+      }
+
+      .flow-node.external {
+        border-color: #c4b5fd;
+        background: #f5f3ff;
+      }
+
+      .arrow {
+        display: grid;
+        flex: 0 0 24px;
+        place-items: center;
+        color: #6b7d95;
+        font-weight: 800;
+      }
+
+      .flow.vertical .arrow {
+        height: 24px;
+        transform: rotate(90deg);
+      }
+
+      .layer-stack {
+        display: grid;
+        gap: 0.65rem;
+        max-width: 780px;
+        margin: auto;
+      }
+
+      .layer {
+        display: grid;
+        grid-template-columns: 160px 1fr;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+      }
+
+      .layer strong {
+        display: grid;
+        place-items: center;
+        background: var(--navy);
+        padding: 0.9rem;
+        color: #ffffff;
+      }
+
+      .layer span {
+        background: #ffffff;
+        padding: 0.9rem 1rem;
+        color: var(--muted);
+      }
+
+      .sequence {
+        min-width: 850px;
+      }
+
+      .sequence-head,
+      .sequence-row {
+        display: grid;
+        grid-template-columns: repeat(var(--actors), minmax(110px, 1fr));
+      }
+
+      .sequence-head > div {
+        position: relative;
+        z-index: 1;
+        margin: 0 0.22rem;
+        border-radius: 9px;
+        background: var(--navy);
+        padding: 0.48rem 0.35rem;
+        color: #ffffff;
+        text-align: center;
+        font-size: 0.76rem;
+        font-weight: 700;
+      }
+
+      .sequence-row {
+        position: relative;
+        min-height: 54px;
+        align-items: center;
+      }
+
+      .sequence-row::before {
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(
+          90deg,
+          transparent 0,
+          transparent calc((100% / var(--actors)) - 1px),
+          #d8e1ed calc((100% / var(--actors)) - 1px),
+          #d8e1ed calc(100% / var(--actors))
+        );
+        content: '';
+      }
+
+      .message {
+        position: relative;
+        z-index: 2;
+        grid-column: var(--from) / var(--to);
+        margin: 0 0.4rem;
+        border-top: 2px solid var(--blue);
+        color: #1e3a5f;
+        text-align: center;
+        font-size: 0.73rem;
+      }
+
+      .message::after {
+        position: absolute;
+        top: -5px;
+        right: -1px;
+        border-top: 4px solid transparent;
+        border-bottom: 4px solid transparent;
+        border-left: 7px solid var(--blue);
+        content: '';
+      }
+
+      .message.return {
+        border-top-style: dashed;
+        border-color: var(--green);
+        color: #166534;
+      }
+
+      .message.return::after {
+        border-left-color: var(--green);
+      }
+
+      .message.alert {
+        border-color: var(--amber);
+        color: #92400e;
+      }
+
+      .message.alert::after {
+        border-left-color: var(--amber);
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #ffffff;
+        font-size: 0.86rem;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 0.7rem 0.8rem;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: #f1f5f9;
+        color: #243b5a;
+        font-size: 0.78rem;
+        letter-spacing: 0.02em;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      details {
+        margin-top: 0.8rem;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        background: #ffffff;
+      }
+
+      summary {
+        cursor: pointer;
+        padding: 0.85rem 1rem;
+        color: #183153;
+        font-weight: 750;
+      }
+
+      details > div {
+        border-top: 1px solid var(--line);
+        padding: 0.3rem 1rem 1rem;
+      }
+
+      .module-card {
+        border-top: 4px solid var(--blue);
+      }
+
+      .module-card:nth-child(3n + 2) {
+        border-top-color: var(--violet);
+      }
+
+      .module-card:nth-child(3n) {
+        border-top-color: var(--green);
+      }
+
+      .path {
+        display: block;
+        overflow-x: auto;
+        margin-top: 0.6rem;
+        border-radius: 8px;
+        background: #101c30;
+        padding: 0.5rem 0.65rem;
+        color: #bfdbfe;
+        font-size: 0.74rem;
+        white-space: nowrap;
+      }
+
+      .state-machine {
+        display: flex;
+        min-width: 740px;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem;
+      }
+
+      .state {
+        min-width: 112px;
+        border: 2px solid #93c5fd;
+        border-radius: 999px;
+        background: var(--soft-blue);
+        padding: 0.62rem 0.8rem;
+        color: #1d4ed8;
+        text-align: center;
+        font-weight: 750;
+      }
+
+      .state.terminal {
+        border-color: #86efac;
+        background: var(--soft-green);
+        color: #166534;
+      }
+
+      .state.dead {
+        border-color: #fca5a5;
+        background: var(--soft-red);
+        color: #991b1b;
+      }
+
+      .state-note {
+        color: var(--muted);
+        font-size: 0.76rem;
+        text-align: center;
+      }
+
+      .matrix-good {
+        color: var(--green);
+        font-weight: 700;
+      }
+
+      .matrix-risk {
+        color: var(--red);
+        font-weight: 700;
+      }
+
+      .matrix-partial {
+        color: var(--amber);
+        font-weight: 700;
+      }
+
+      .footer {
+        margin-top: 2rem;
+        border-radius: 16px;
+        background: var(--navy);
+        padding: 1.4rem;
+        color: #b8c8dd;
+        text-align: center;
+        font-size: 0.82rem;
+      }
+
+      .mobile-nav {
+        display: none;
+      }
+
+      @media (max-width: 1100px) {
+        .grid-4 {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .grid-3 {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 820px) {
+        .page {
+          display: block;
+        }
+
+        .sidebar {
+          display: none;
+        }
+
+        .mobile-nav {
+          position: sticky;
+          z-index: 20;
+          top: 0;
+          display: block;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--navy);
+          padding: 0.7rem 1rem;
+          color: #ffffff;
+        }
+
+        .mobile-nav select {
+          width: 100%;
+          border: 1px solid #415678;
+          border-radius: 8px;
+          background: #1a3152;
+          padding: 0.48rem;
+          color: #ffffff;
+        }
+
+        .content {
+          padding: 1rem 0.8rem 3rem;
+        }
+
+        .hero {
+          border-radius: 18px;
+        }
+
+        .grid-2,
+        .grid-3,
+        .grid-4 {
+          grid-template-columns: 1fr;
+        }
+
+        .layer {
+          grid-template-columns: 1fr;
+        }
+
+        .layer strong {
+          justify-content: start;
+        }
+      }
+
+      @media print {
+        body {
+          background: #ffffff;
+        }
+
+        .page {
+          display: block;
+        }
+
+        .sidebar,
+        .mobile-nav {
+          display: none;
+        }
+
+        .content {
+          padding: 0;
+        }
+
+        .hero,
+        .section-card {
+          box-shadow: none;
+          break-inside: avoid;
+        }
+
+        details {
+          break-inside: avoid;
+        }
+
+        details > div {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="mobile-nav">
+      <select aria-label="章节导航" id="mobile-section-nav">
+        <option value="">跳转到章节…</option>
+        <option value="#overview">1. 快速结论</option>
+        <option value="#system-architecture">2. 总体架构</option>
+        <option value="#ddd">3. DDD 分层</option>
+        <option value="#backend">4. 后端模块</option>
+        <option value="#frontend">5. 前端与模板</option>
+        <option value="#data">6. 数据与基础设施</option>
+        <option value="#flows">7. 核心流程与时序</option>
+        <option value="#api">8. HTTP API</option>
+        <option value="#operations">9. 配置、部署与观测</option>
+        <option value="#security">10. 安全与商用差距</option>
+        <option value="#roadmap">11. 演进路线</option>
+        <option value="#navigation">12. 代码阅读路线</option>
+      </select>
+    </div>
+
+    <div class="page">
+      <aside class="sidebar">
+        <div class="brand">
+          <strong>Agent 架构指南</strong>
+          <span>基于真实代码的快速掌握手册</span>
+        </div>
+        <nav aria-label="文档目录">
+          <a href="#overview">01 · 快速结论</a>
+          <a href="#system-architecture">02 · 总体架构</a>
+          <a href="#ddd">03 · DDD 分层</a>
+          <a href="#backend">04 · 后端模块</a>
+          <a href="#frontend">05 · 前端与模板</a>
+          <a href="#data">06 · 数据与基础设施</a>
+          <a href="#flows">07 · 核心流程与时序</a>
+          <a href="#api">08 · HTTP API</a>
+          <a href="#operations">09 · 配置、部署与观测</a>
+          <a href="#security">10 · 安全与商用差距</a>
+          <a href="#roadmap">11 · 演进路线</a>
+          <a href="#navigation">12 · 代码阅读路线</a>
+        </nav>
+      </aside>
+
+      <main class="content">
+        <header class="hero">
+          <p class="eyebrow">Code-level Architecture Guide</p>
+          <h1>Agent 项目架构深度指南</h1>
+          <p class="lead">
+            从系统边界、DDD
+            分层、业务模块、数据模型、核心时序、运行基础设施和安全现状出发，
+            用一份可离线打开的 HTML 文档快速建立对整个项目的正确心智模型。
+          </p>
+          <div class="meta">
+            <span>代码基线：main / 03aa529</span>
+            <span>后端：NestJS 11 + TypeORM</span>
+            <span>数据：PostgreSQL 16 + pgvector</span>
+            <span>协调：Redis 7.4</span>
+            <span>前端：Vue 3 + Pinia + Vite</span>
+            <span>文档日期：2026-07-14</span>
+          </div>
+        </header>
+
+        <section class="section-card" id="overview">
+          <h2 class="section-title">
+            <span class="number">01</span>
+            快速结论：先建立正确心智模型
+          </h2>
+          <p class="section-intro">
+            当前项目不是“多个微服务”，而是一个以 NestJS
+            模块组织的模块化单体，加上 Vue 管理后台和独立 EyouCMS
+            对话模板。系统已经具备智能体、RAG、模型适配、技能、记忆、API
+            接入和可观测性，但多租户身份与数据库级隔离尚未完成。
+          </p>
+
+          <div class="grid grid-4">
+            <div class="mini-card metric">
+              <strong>模块化单体</strong>
+              <span>一个 NestJS 进程内组合业务模块与调度器</span>
+            </div>
+            <div class="mini-card metric">
+              <strong>PostgreSQL 权威</strong>
+              <span>业务事实、任务、观测数据与向量 registry</span>
+            </div>
+            <div class="mini-card metric">
+              <strong>pgvector 双索引</strong>
+              <span>知识片段与图片情景记忆共享基础设施</span>
+            </div>
+            <div class="mini-card metric">
+              <strong>Redis 非权威</strong>
+              <span>只负责短 TTL 限流与 readiness 探测</span>
+            </div>
+          </div>
+
+          <div class="grid grid-2" style="margin-top: 1rem">
+            <div class="callout success">
+              <strong>已经形成的产品闭环</strong>
+              管理员配置模型 → 建知识库并上传文档 → 创建并发布 Agent →
+              管理后台、公开页面或 OpenAI 兼容 API 发起对话 →
+              RAG、记忆和技能共同增强回答 → 观测面板统计请求、模型
+              Token、成本和告警。
+            </div>
+            <div class="callout danger">
+              <strong>不能宣称“完整商用多租户 SaaS”</strong>
+              当前没有 workspace/member/authenticated
+              principal、统一资源租户外键和 PostgreSQL RLS；多数管理 API
+              没有身份鉴权，公开聊天的
+              <code>memoryOwnerKey</code> 仍由客户端提供。
+            </div>
+          </div>
+
+          <h3>按业务重要性理解系统</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>能力层</th>
+                  <th>核心模块</th>
+                  <th>解决的问题</th>
+                  <th>当前成熟度</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>配置与编排</td>
+                  <td>agents、model-providers、skills</td>
+                  <td>定义 Agent 的模型、提示词、知识和工具能力</td>
+                  <td><span class="matrix-good">已实现</span></td>
+                </tr>
+                <tr>
+                  <td>知识增强</td>
+                  <td>knowledge、pgvector</td>
+                  <td>文档分片上传、解析、切片、嵌入和检索</td>
+                  <td><span class="matrix-good">已实现</span></td>
+                </tr>
+                <tr>
+                  <td>对话运行时</td>
+                  <td>chat、agent-memory、skills</td>
+                  <td>统一编排记忆、RAG、多模态、MCP 和模型流式回答</td>
+                  <td><span class="matrix-good">已实现</span></td>
+                </tr>
+                <tr>
+                  <td>渠道接入</td>
+                  <td>admin web、public chat、OpenAI API、EyouCMS</td>
+                  <td>覆盖后台测试、公开网页和应用 API</td>
+                  <td><span class="matrix-good">已实现</span></td>
+                </tr>
+                <tr>
+                  <td>运行治理</td>
+                  <td>observability、health、Redis rate limit</td>
+                  <td>链路、成本、告警、存活和依赖就绪检查</td>
+                  <td><span class="matrix-partial">基础可用</span></td>
+                </tr>
+                <tr>
+                  <td>商用租户安全</td>
+                  <td>workspace、membership、RLS、audit</td>
+                  <td>租户身份、授权、数据隔离、审计与计费边界</td>
+                  <td><span class="matrix-risk">尚未实现</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section-card" id="system-architecture">
+          <h2 class="section-title">
+            <span class="number">02</span>
+            总体架构与运行边界
+          </h2>
+          <p class="section-intro">
+            外部请求从 Vue 管理后台、EyouCMS 页面或第三方应用进入同一个 NestJS
+            API。API 内部由应用服务编排数据库、向量、文件、模型和
+            MCP；后台任务也运行在同一进程。
+          </p>
+
+          <h3>系统上下文架构图</h3>
+          <div class="diagram">
+            <svg
+              viewBox="0 0 1120 650"
+              role="img"
+              aria-label="Agent 系统上下文架构图"
+            >
+              <defs>
+                <marker
+                  id="arrow-blue"
+                  markerHeight="8"
+                  markerWidth="8"
+                  orient="auto"
+                  refX="7"
+                  refY="4"
+                >
+                  <path d="M0,0 L8,4 L0,8 Z" fill="#2563eb" />
+                </marker>
+                <marker
+                  id="arrow-green"
+                  markerHeight="8"
+                  markerWidth="8"
+                  orient="auto"
+                  refX="7"
+                  refY="4"
+                >
+                  <path d="M0,0 L8,4 L0,8 Z" fill="#15803d" />
+                </marker>
+                <filter id="shadow">
+                  <feDropShadow
+                    dx="0"
+                    dy="5"
+                    flood-color="#142033"
+                    flood-opacity=".12"
+                    stdDeviation="6"
+                  />
+                </filter>
+              </defs>
+
+              <rect
+                x="20"
+                y="30"
+                width="200"
+                height="86"
+                rx="16"
+                fill="#eff6ff"
+                stroke="#60a5fa"
+                filter="url(#shadow)"
+              />
+              <text x="120" y="66" text-anchor="middle" font-weight="700">
+                Vue 3 管理后台
+              </text>
+              <text
+                x="120"
+                y="92"
+                text-anchor="middle"
+                fill="#5d6b80"
+                font-size="14"
+              >
+                Pinia / Router / SSE
+              </text>
+
+              <rect
+                x="20"
+                y="145"
+                width="200"
+                height="86"
+                rx="16"
+                fill="#f5f3ff"
+                stroke="#a78bfa"
+                filter="url(#shadow)"
+              />
+              <text x="120" y="181" text-anchor="middle" font-weight="700">
+                EyouCMS 对话页
+              </text>
+              <text
+                x="120"
+                y="207"
+                text-anchor="middle"
+                fill="#5d6b80"
+                font-size="14"
+              >
+                独立 HTML / Public API
+              </text>
+
+              <rect
+                x="20"
+                y="260"
+                width="200"
+                height="86"
+                rx="16"
+                fill="#fffbeb"
+                stroke="#f59e0b"
+                filter="url(#shadow)"
+              />
+              <text x="120" y="296" text-anchor="middle" font-weight="700">
+                第三方业务应用
+              </text>
+              <text
+                x="120"
+                y="322"
+                text-anchor="middle"
+                fill="#5d6b80"
+                font-size="14"
+              >
+                OpenAI-compatible API
+              </text>
+
+              <rect
+                x="300"
+                y="70"
+                width="390"
+                height="355"
+                rx="22"
+                fill="#12233f"
+                filter="url(#shadow)"
+              />
+              <text
+                x="495"
+                y="112"
+                text-anchor="middle"
+                fill="#ffffff"
+                font-size="23"
+                font-weight="700"
+              >
+                NestJS 模块化单体
+              </text>
+              <text
+                x="495"
+                y="139"
+                text-anchor="middle"
+                fill="#9fb0ca"
+                font-size="14"
+              >
+                HTTP / SSE / DTO / Validation / Application orchestration
+              </text>
+
+              <g fill="#ffffff" stroke="#567092">
+                <rect x="330" y="170" width="145" height="55" rx="10" />
+                <rect x="500" y="170" width="160" height="55" rx="10" />
+                <rect x="330" y="245" width="145" height="55" rx="10" />
+                <rect x="500" y="245" width="160" height="55" rx="10" />
+                <rect x="330" y="320" width="145" height="55" rx="10" />
+                <rect x="500" y="320" width="160" height="55" rx="10" />
+              </g>
+              <g
+                text-anchor="middle"
+                fill="#183153"
+                font-size="14"
+                font-weight="700"
+              >
+                <text x="402" y="204">Agents / Chat</text>
+                <text x="580" y="204">Knowledge / Memory</text>
+                <text x="402" y="279">Models / Skills</text>
+                <text x="580" y="279">API Access / Brand</text>
+                <text x="402" y="354">Observability</text>
+                <text x="580" y="354">In-process Schedulers</text>
+              </g>
+              <text
+                x="495"
+                y="402"
+                text-anchor="middle"
+                fill="#9fb0ca"
+                font-size="13"
+              >
+                Composition root: AppModule + dependency injection
+              </text>
+
+              <rect
+                x="770"
+                y="35"
+                width="300"
+                height="100"
+                rx="16"
+                fill="#f0fdf4"
+                stroke="#4ade80"
+                filter="url(#shadow)"
+              />
+              <text x="920" y="72" text-anchor="middle" font-weight="700">
+                PostgreSQL 16 + pgvector
+              </text>
+              <text
+                x="920"
+                y="98"
+                text-anchor="middle"
+                fill="#5d6b80"
+                font-size="14"
+              >
+                业务事实 / 任务 / 观测 / HNSW 向量
+              </text>
+
+              <rect
+                x="770"
+                y="160"
+                width="300"
+                height="82"
+                rx="16"
+                fill="#fef2f2"
+                stroke="#f87171"
+                filter="url(#shadow)"
+              />
+              <text x="920" y="194" text-anchor="middle" font-weight="700">
+                Redis 7.4
+              </text>
+              <text
+                x="920"
+                y="220"
+                text-anchor="middle"
+                fill="#5d6b80"
+                font-size="14"
+              >
+                固定窗口限流 / readiness
+              </text>
+
+              <rect
+                x="770"
+                y="267"
+                width="300"
+                height="82"
+                rx="16"
+                fill="#eff6ff"
+                stroke="#60a5fa"
+                filter="url(#shadow)"
+              />
+              <text x="920" y="301" text-anchor="middle" font-weight="700">
+                本地文件存储
+              </text>
+              <text
+                x="920"
+                y="327"
+                text-anchor="middle"
+                fill="#5d6b80"
+                font-size="14"
+              >
+                知识文档 / 对话附件 / 品牌图标
+              </text>
+
+              <rect
+                x="770"
+                y="375"
+                width="300"
+                height="82"
+                rx="16"
+                fill="#f5f3ff"
+                stroke="#a78bfa"
+                filter="url(#shadow)"
+              />
+              <text x="920" y="409" text-anchor="middle" font-weight="700">
+                OpenAI-compatible 模型服务
+              </text>
+              <text
+                x="920"
+                y="435"
+                text-anchor="middle"
+                fill="#5d6b80"
+                font-size="14"
+              >
+                Chat / Embedding / Function calling
+              </text>
+
+              <rect
+                x="770"
+                y="483"
+                width="300"
+                height="82"
+                rx="16"
+                fill="#fffbeb"
+                stroke="#f59e0b"
+                filter="url(#shadow)"
+              />
+              <text x="920" y="517" text-anchor="middle" font-weight="700">
+                MCP Streamable HTTP Server
+              </text>
+              <text
+                x="920"
+                y="543"
+                text-anchor="middle"
+                fill="#5d6b80"
+                font-size="14"
+              >
+                initialize / tools/list / tools/call
+              </text>
+
+              <g
+                fill="none"
+                stroke="#2563eb"
+                stroke-width="2.2"
+                marker-end="url(#arrow-blue)"
+              >
+                <path d="M220 73 H300" />
+                <path d="M220 188 H275 V190 H300" />
+                <path d="M220 303 H270 V300 H300" />
+                <path d="M690 115 H770" />
+                <path d="M690 198 H770" />
+                <path d="M690 285 H770" />
+                <path d="M690 340 H730 V416 H770" />
+                <path d="M690 375 H715 V524 H770" />
+              </g>
+
+              <rect
+                x="300"
+                y="500"
+                width="390"
+                height="95"
+                rx="16"
+                fill="#fff7ed"
+                stroke="#fb923c"
+              />
+              <text
+                x="495"
+                y="535"
+                text-anchor="middle"
+                font-weight="700"
+                fill="#9a3412"
+              >
+                当前未接入 RocketMQ
+              </text>
+              <text
+                x="495"
+                y="562"
+                text-anchor="middle"
+                fill="#7c2d12"
+                font-size="14"
+              >
+                PostgreSQL 任务表足以支撑当前单体可靠异步
+              </text>
+              <text
+                x="495"
+                y="582"
+                text-anchor="middle"
+                fill="#7c2d12"
+                font-size="13"
+              >
+                独立 Worker / 跨服务削峰 / 多订阅方出现后再引入
+              </text>
+            </svg>
+          </div>
+
+          <h3>关键运行特征</h3>
+          <div class="grid grid-3">
+            <div class="mini-card">
+              <h4>同步请求路径</h4>
+              <p>
+                Controller 将 HTTP DTO 转为命令，Application
+                用例编排领域与端口，Infrastructure 适配器访问
+                PostgreSQL、Redis、文件和外部服务。
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>异步任务路径</h4>
+              <p>
+                Knowledge ingestion 和 Agent Memory task 都由进程内 scheduler
+                轮询 PostgreSQL
+                任务表；实例横向扩展时依靠数据库领取语义避免重复消费。
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>部署路径</h4>
+              <p>
+                推荐由 Nginx/HTTPS 提供 Vue 静态文件并反向代理 NestJS；API 连接
+                PostgreSQL、Redis、本地持久卷和外部模型服务。
+              </p>
+            </div>
+          </div>
+
+          <div class="callout warning">
+            <strong>架构上的核心取舍</strong>
+            将 pgvector 放在 PostgreSQL
+            中，牺牲一部分专业向量数据库的独立扩缩能力，换取当前阶段更低的一致性、运维和迁移复杂度；
+            Redis 不承担事实存储，RocketMQ
+            也不在单体阶段重复实现已有的任务可靠性。
+          </div>
+        </section>
+
+        <section class="section-card" id="ddd">
+          <h2 class="section-title">
+            <span class="number">03</span>
+            DDD 分层、依赖方向与模块组合
+          </h2>
+          <p class="section-intro">
+            后端按业务模块切分，每个模块内部使用
+            Domain、Application、Infrastructure、Presentation 四层。抽象端口位于
+            Application，适配器位于 Infrastructure，并在 NestJS Module
+            中完成绑定。
+          </p>
+
+          <div class="diagram">
+            <div class="layer-stack">
+              <div class="layer">
+                <strong>Presentation</strong>
+                <span
+                  >Controller、DTO、Validation、HTTP/SSE/OpenAI
+                  协议转换；不得承载业务规则。</span
+                >
+              </div>
+              <div class="state-note">↓ 调用用例 / 应用服务</div>
+              <div class="layer">
+                <strong>Application</strong>
+                <span
+                  >Use Case、编排服务、Repository / Gateway / Storage / Index
+                  抽象端口；只依赖 Domain 与抽象。</span
+                >
+              </div>
+              <div class="state-note">
+                ↓ 使用领域模型；Infrastructure 反向实现端口
+              </div>
+              <div class="layer">
+                <strong>Domain</strong>
+                <span
+                  >实体、值类型、状态、纯函数和业务不变量；不依赖
+                  NestJS、TypeORM、HTTP 或外部 SDK。</span
+                >
+              </div>
+              <div class="state-note">↑ 由依赖注入装配具体实现</div>
+              <div class="layer">
+                <strong>Infrastructure</strong>
+                <span
+                  >TypeORM、PostgreSQL、pgvector、Redis、本地文件、OpenAI
+                  Gateway、MCP Client、Scheduler、Interceptor。</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <h3>真实代码中的端口与适配器</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>应用端口</th>
+                  <th>当前实现</th>
+                  <th>价值</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>AgentRepository</code></td>
+                  <td><code>TypeOrmAgentRepository</code></td>
+                  <td>Agent 用例不直接依赖 TypeORM Entity</td>
+                </tr>
+                <tr>
+                  <td><code>VectorIndex</code></td>
+                  <td><code>PgvectorVectorIndex</code></td>
+                  <td>知识检索不绑定具体向量产品</td>
+                </tr>
+                <tr>
+                  <td><code>AgentMemoryIndex</code></td>
+                  <td><code>PgvectorAgentMemoryIndex</code></td>
+                  <td>图片情景召回可迁移到其他索引</td>
+                </tr>
+                <tr>
+                  <td><code>ModelGateway</code></td>
+                  <td><code>OpenAiCompatibleGateway</code></td>
+                  <td>统一 chat、stream、embedding、tool calling</td>
+                </tr>
+                <tr>
+                  <td><code>KnowledgeObjectStorage</code></td>
+                  <td><code>LocalKnowledgeObjectStorage</code></td>
+                  <td>未来可替换 S3/OSS，而不改 ingestion 用例</td>
+                </tr>
+                <tr>
+                  <td><code>ChatAttachmentStorage</code></td>
+                  <td><code>LocalChatAttachmentStorage</code></td>
+                  <td>附件安全校验与存储实现隔离</td>
+                </tr>
+                <tr>
+                  <td><code>McpClient</code></td>
+                  <td><code>StreamableHttpMcpClient</code></td>
+                  <td>Skill Runtime 不依赖 MCP HTTP 细节</td>
+                </tr>
+                <tr>
+                  <td><code>ApiRateLimiter</code></td>
+                  <td><code>RedisApiRateLimiter</code></td>
+                  <td>限流策略与 Redis 脚本分离</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>模块依赖图</h3>
+          <div class="diagram">
+            <svg
+              viewBox="0 0 1060 620"
+              role="img"
+              aria-label="NestJS 业务模块依赖图"
+            >
+              <defs>
+                <marker
+                  id="dep-arrow"
+                  markerHeight="7"
+                  markerWidth="7"
+                  orient="auto"
+                  refX="6"
+                  refY="3.5"
+                >
+                  <path d="M0,0 L7,3.5 L0,7 Z" fill="#6b7d95" />
+                </marker>
+              </defs>
+              <g
+                fill="none"
+                stroke="#7c8da5"
+                stroke-width="1.8"
+                marker-end="url(#dep-arrow)"
+              >
+                <path d="M515 120 L250 230" />
+                <path d="M515 120 L430 230" />
+                <path d="M515 120 L610 230" />
+                <path d="M515 120 L790 230" />
+                <path d="M515 120 L930 230" />
+                <path d="M250 290 L345 390" />
+                <path d="M430 290 L345 390" />
+                <path d="M610 290 L520 390" />
+                <path d="M610 290 L710 390" />
+                <path d="M790 290 L710 390" />
+                <path d="M930 290 L880 390" />
+                <path d="M345 450 L520 520" />
+                <path d="M520 450 L520 520" />
+                <path d="M710 450 L520 520" />
+                <path d="M880 450 L710 520" />
+              </g>
+              <g stroke-width="2">
+                <rect
+                  x="410"
+                  y="55"
+                  width="210"
+                  height="65"
+                  rx="14"
+                  fill="#12233f"
+                  stroke="#12233f"
+                />
+                <text
+                  x="515"
+                  y="94"
+                  text-anchor="middle"
+                  fill="#fff"
+                  font-weight="700"
+                >
+                  ChatModule · 运行时编排中心
+                </text>
+
+                <rect
+                  x="165"
+                  y="230"
+                  width="170"
+                  height="60"
+                  rx="12"
+                  fill="#eff6ff"
+                  stroke="#60a5fa"
+                />
+                <rect
+                  x="345"
+                  y="230"
+                  width="170"
+                  height="60"
+                  rx="12"
+                  fill="#f5f3ff"
+                  stroke="#a78bfa"
+                />
+                <rect
+                  x="525"
+                  y="230"
+                  width="170"
+                  height="60"
+                  rx="12"
+                  fill="#f0fdf4"
+                  stroke="#4ade80"
+                />
+                <rect
+                  x="705"
+                  y="230"
+                  width="170"
+                  height="60"
+                  rx="12"
+                  fill="#fffbeb"
+                  stroke="#f59e0b"
+                />
+                <rect
+                  x="885"
+                  y="230"
+                  width="150"
+                  height="60"
+                  rx="12"
+                  fill="#fef2f2"
+                  stroke="#f87171"
+                />
+                <g text-anchor="middle" font-weight="700" fill="#183153">
+                  <text x="250" y="266">AgentsModule</text>
+                  <text x="430" y="266">AgentMemoryModule</text>
+                  <text x="610" y="266">KnowledgeModule</text>
+                  <text x="790" y="266">SkillsModule</text>
+                  <text x="960" y="266">ApiAccessModule</text>
+                </g>
+
+                <rect
+                  x="260"
+                  y="390"
+                  width="170"
+                  height="60"
+                  rx="12"
+                  fill="#f5f3ff"
+                  stroke="#a78bfa"
+                />
+                <rect
+                  x="435"
+                  y="390"
+                  width="170"
+                  height="60"
+                  rx="12"
+                  fill="#eff6ff"
+                  stroke="#60a5fa"
+                />
+                <rect
+                  x="625"
+                  y="390"
+                  width="170"
+                  height="60"
+                  rx="12"
+                  fill="#f0fdf4"
+                  stroke="#4ade80"
+                />
+                <rect
+                  x="805"
+                  y="390"
+                  width="150"
+                  height="60"
+                  rx="12"
+                  fill="#fffbeb"
+                  stroke="#f59e0b"
+                />
+                <g text-anchor="middle" font-weight="700" fill="#183153">
+                  <text x="345" y="426">ModelProviders</text>
+                  <text x="520" y="426">ChatAttachment</text>
+                  <text x="710" y="426">TypeORM / pgvector</text>
+                  <text x="880" y="426">RedisModule</text>
+                </g>
+
+                <rect
+                  x="425"
+                  y="520"
+                  width="190"
+                  height="60"
+                  rx="12"
+                  fill="#12233f"
+                  stroke="#12233f"
+                />
+                <rect
+                  x="625"
+                  y="520"
+                  width="170"
+                  height="60"
+                  rx="12"
+                  fill="#12233f"
+                  stroke="#12233f"
+                />
+                <g text-anchor="middle" fill="#fff" font-weight="700">
+                  <text x="520" y="556">PostgreSQL / Files / Model</text>
+                  <text x="710" y="556">Observability / Health</text>
+                </g>
+              </g>
+            </svg>
+          </div>
+
+          <div class="callout warning">
+            <strong>需要留意的现实耦合</strong>
+            模块边界总体清晰，但关联实体
+            <code>AgentKnowledgeModuleEntity</code>、<code
+              >AgentSkillEntity</code
+            >
+            会被相关模块共同注册；Chat
+            用例作为业务编排中心直接依赖多个模块的公开服务。
+            这在模块化单体阶段合理，但未来拆服务时应改为稳定的应用契约或事件，而不是复制当前进程内依赖。
+          </div>
+        </section>
+
+        <section class="section-card" id="backend">
+          <h2 class="section-title">
+            <span class="number">04</span>
+            后端业务模块深度分析
+          </h2>
+          <p class="section-intro">
+            <code>apps/api/src/modules</code>
+            下每个目录代表一个业务能力。Chat 是运行时编排中心，Agents
+            是配置聚合根入口，Knowledge、Memory、Skills 和 Model Providers
+            提供增强能力。
+          </p>
+
+          <div class="grid grid-3">
+            <article class="mini-card module-card">
+              <h3>agents</h3>
+              <p>
+                管理 Agent 的名称、描述、system
+                prompt、模型供应商、temperature、状态，以及知识模块和技能绑定。
+              </p>
+              <span class="badge blue">核心配置域</span>
+              <span class="path">apps/api/src/modules/agents</span>
+            </article>
+            <article class="mini-card module-card">
+              <h3>chat</h3>
+              <p>
+                统一承接后台、公开页面和 OpenAI 兼容 API；编排
+                RAG、记忆、多模态、技能工具环和流式输出。
+              </p>
+              <span class="badge violet">运行时中心</span>
+              <span class="path">apps/api/src/modules/chat</span>
+            </article>
+            <article class="mini-card module-card">
+              <h3>knowledge</h3>
+              <p>
+                管理知识库、模块、分片上传、文档解析、切片、embedding、pgvector
+                索引和检索。
+              </p>
+              <span class="badge green">RAG 数据域</span>
+              <span class="path">apps/api/src/modules/knowledge</span>
+            </article>
+            <article class="mini-card module-card">
+              <h3>agent-memory</h3>
+              <p>
+                管理短期线程、稳定事实/偏好、图片情景、artifact、可靠任务、召回与一致性修复。
+              </p>
+              <span class="badge blue">连续性能力</span>
+              <span class="path">apps/api/src/modules/agent-memory</span>
+            </article>
+            <article class="mini-card module-card">
+              <h3>model-providers</h3>
+              <p>
+                加密保存 OpenAI-compatible 模型配置，统一
+                chat、stream、embedding、tool calling 和调用观测。
+              </p>
+              <span class="badge violet">外部模型边界</span>
+              <span class="path">apps/api/src/modules/model-providers</span>
+            </article>
+            <article class="mini-card module-card">
+              <h3>skills</h3>
+              <p>
+                管理 prompt 与 MCP 技能，安装时发现工具，对话时注入提示词或执行
+                function calling 工具环。
+              </p>
+              <span class="badge green">能力扩展域</span>
+              <span class="path">apps/api/src/modules/skills</span>
+            </article>
+            <article class="mini-card module-card">
+              <h3>api-access</h3>
+              <p>
+                为已发布 Agent 创建一次性 API key，完成 Bearer 鉴权、请求计数和
+                Redis 固定窗口限流。
+              </p>
+              <span class="badge blue">外部接入域</span>
+              <span class="path">apps/api/src/modules/api-access</span>
+            </article>
+            <article class="mini-card module-card">
+              <h3>observability</h3>
+              <p>
+                全局 HTTP 拦截、AsyncLocalStorage
+                trace、模型/工具事件、Token、成本、黄金指标与告警。
+              </p>
+              <span class="badge violet">横切能力</span>
+              <span class="path">apps/api/src/modules/observability</span>
+            </article>
+            <article class="mini-card module-card">
+              <h3>branding / health</h3>
+              <p>
+                Branding 管理全局名称和图标；Health 提供无依赖 liveness 与
+                PostgreSQL/pgvector/Redis readiness。
+              </p>
+              <span class="badge green">平台支撑</span>
+              <span class="path">apps/api/src/modules/{branding,health}</span>
+            </article>
+          </div>
+
+          <details open>
+            <summary>Agents：配置聚合与发布状态</summary>
+            <div>
+              <div class="grid grid-2">
+                <div>
+                  <h4>核心职责</h4>
+                  <ul>
+                    <li>创建、列表、更新、删除 Agent。</li>
+                    <li>
+                      维护 <code>draft / published / disabled</code> 状态。
+                    </li>
+                    <li>校验模型供应商、知识模块和技能是否存在。</li>
+                    <li>通过多对多关系复用 Knowledge Module 和 Skill。</li>
+                    <li>公开目录只返回 id、name、description。</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4>关键代码</h4>
+                  <ul>
+                    <li><code>domain/agent.ts</code>：状态与领域数据结构。</li>
+                    <li>
+                      <code>application/agent-catalog.service.ts</code
+                      >：跨模块查询入口。
+                    </li>
+                    <li>
+                      <code>application/*agent*.use-case.ts</code>：命令用例。
+                    </li>
+                    <li>
+                      <code>infrastructure/typeorm-agent.repository.ts</code
+                      >：持久化。
+                    </li>
+                    <li>
+                      <code>presentation/http/*</code>：单路由单 Controller。
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div class="callout warning">
+                <strong>状态语义中的真实差异</strong>
+                正式 API 明确只允许
+                <code>published</code>；公开目录和公开聊天当前都只排除
+                <code>disabled</code>，因此 <code>draft</code> Agent
+                也会被公开列出并可直接访问。这是“可运行状态”而不是完整发布授权边界。
+              </div>
+            </div>
+          </details>
+
+          <details open>
+            <summary>Chat：整个系统的运行时编排中心</summary>
+            <div>
+              <h4><code>ChatWithAgentUseCase</code> 的执行顺序</h4>
+              <ol>
+                <li>将 agentId、conversationId、source 写入观测上下文。</li>
+                <li>读取 Agent，并按 admin/api/public 校验可用状态。</li>
+                <li>
+                  并行读取模型配置、知识检索、技能集合、短期/长期记忆和图片情景记忆。
+                </li>
+                <li>
+                  拼装 system prompt、知识片段、长期记忆和“不可信图片证据”约束。
+                </li>
+                <li>
+                  读取当前附件；图片转 <code>image_url</code>，音频转
+                  <code>input_audio</code>。
+                </li>
+                <li>有 MCP 工具时进入工具环；否则调用流式模型。</li>
+                <li>多模态模型在首个输出前失败时，降级为纯文本请求。</li>
+                <li>
+                  流成功结束后更新对话数，并尽力记录普通记忆和图片情景任务。
+                </li>
+              </ol>
+              <div class="grid grid-2">
+                <div class="callout success">
+                  <strong>故障隔离</strong>
+                  普通记忆与图片情景记忆写入被独立 try/catch
+                  包裹，失败只记录告警，不回滚已经成功返回给用户的聊天。
+                </div>
+                <div class="callout">
+                  <strong>三个协议入口</strong>
+                  <code>POST /api/agents/:id/chat</code>、<code
+                    >POST /api/public/agents/:agentId/chat</code
+                  >、<code>POST /api/v1/chat/completions</code>
+                  最终复用同一用例。
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Knowledge：上传、处理与检索</summary>
+            <div>
+              <div class="grid grid-2">
+                <div>
+                  <h4>写入链路</h4>
+                  <p>
+                    浏览器创建 Upload Session，逐片流式写入本地存储；Complete
+                    校验分片数量、总字节数和可选
+                    SHA-256，合并文件，并在数据库事务中创建 Document 与
+                    Ingestion Job。
+                  </p>
+                </div>
+                <div>
+                  <h4>查询链路</h4>
+                  <p>
+                    按 Agent 绑定的 moduleId 分组到 Knowledge Base，使用每个
+                    Base 的 embedding 模型生成查询向量，每库取 4 条，跨库按
+                    score 排序后最多返回 8 条。
+                  </p>
+                </div>
+              </div>
+              <ul>
+                <li>
+                  Document 状态：<code
+                    >queued → processing → ready | failed</code
+                  >。
+                </li>
+                <li>
+                  解析器通过
+                  <code>DocumentTextExtractor</code> 端口组合具体格式实现。
+                </li>
+                <li>TextChunker 负责将文本切分为稳定的 chunk。</li>
+                <li>批量 embedding 与向量 upsert 大小由配置控制。</li>
+                <li>删除文档/模块/知识库时同步清理文件、任务、关系和向量。</li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary>Agent Memory：三类记忆与可靠图片情景任务</summary>
+            <div>
+              <div class="grid grid-3">
+                <div class="mini-card">
+                  <h4>短期线程</h4>
+                  <p>
+                    按 conversationId + ownerKey
+                    存储最近消息，恢复同一会话上下文并进行重叠去重。
+                  </p>
+                </div>
+                <div class="mini-card">
+                  <h4>稳定事实 / 偏好</h4>
+                  <p>
+                    从“记住”、姓名、喜欢、不喜欢、希望等明确文本规则提取
+                    semantic/preference 记忆。
+                  </p>
+                </div>
+                <div class="mini-card">
+                  <h4>图片情景</h4>
+                  <p>
+                    保存图片 artifact 引用，异步调用多模态模型提取结构化描述，再
+                    embedding 并写 pgvector。
+                  </p>
+                </div>
+              </div>
+              <h4>可靠性机制</h4>
+              <ul>
+                <li>
+                  幂等键由 agentId、ownerKey、conversationId、排序后的
+                  attachmentId 和用户文本哈希构成。
+                </li>
+                <li>
+                  每个 memory + kind 存在唯一任务；任务分
+                  <code>extract</code> 与 <code>index</code>。
+                </li>
+                <li>
+                  PostgreSQL 使用 <code>FOR UPDATE SKIP LOCKED</code> 并发领取。
+                </li>
+                <li>
+                  任务有 lockOwner、lockedAt、attempts、maxAttempts、nextRunAt。
+                </li>
+                <li>失败使用封顶指数退避；达到最大次数进入 dead。</li>
+                <li>
+                  embedding
+                  先保存到任务，再写向量，减少索引失败后的重复模型调用。
+                </li>
+                <li>
+                  启动和周期 tick 回收超时 lease，并巡检
+                  memory、task、artifact、媒体和索引一致性。
+                </li>
+                <li>所有管理、读取、重试、修复都要求 agentId + ownerKey。</li>
+              </ul>
+              <div class="callout warning">
+                <strong>隔离不等于认证</strong>
+                ownerKey 已贯穿数据库、文件和向量查询，但 admin/public
+                场景中它来自客户端；在账号体系建立前，它只能作为隔离键，不能作为可信租户身份。
+              </div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Model Providers：密钥、兼容网关与成本观测</summary>
+            <div>
+              <ul>
+                <li>配置时先请求供应商 <code>/models</code> 验证连通性。</li>
+                <li>
+                  密钥使用 AES-256-GCM 保存，根密钥来自
+                  <code>CREDENTIAL_ENCRYPTION_KEY</code>。
+                </li>
+                <li>
+                  Runtime Service 只在服务端解密，API 返回摘要而不返回原始密钥。
+                </li>
+                <li>
+                  Gateway 支持流式 chat、非流式 chat、embedding 和 function
+                  calling。
+                </li>
+                <li>请求由 <code>AbortSignal.timeout</code> 限制超时。</li>
+                <li>优先读取模型 usage；没有 usage 时按文本估算 token。</li>
+                <li>
+                  成本按“每百万 Token 单价”换算为 <code>costUsdMicros</code>。
+                </li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary>Skills：Prompt 指令与 MCP 工具</summary>
+            <div>
+              <ul>
+                <li><code>prompt</code> 技能的 content 拼入 system prompt。</li>
+                <li>
+                  <code>mcp</code> 技能保存 endpoint、私密 headers
+                  和工具定义缓存。
+                </li>
+                <li>
+                  安装/刷新时执行 MCP <code>initialize</code> 和
+                  <code>tools/list</code>。
+                </li>
+                <li>
+                  对话中模型返回 tool_calls 后，由 MCP
+                  <code>tools/call</code> 执行并回填结果。
+                </li>
+                <li>同名工具以先绑定技能为准；停用技能不参与运行时。</li>
+                <li>工具参数只接受 JSON object；解析失败时使用空对象。</li>
+                <li>
+                  最大工具轮数来自
+                  <code>SKILL_TOOL_MAX_ROUNDS</code>，默认设计值为 5。
+                </li>
+                <li>当前只支持 Streamable HTTP，不支持 stdio MCP Server。</li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary>API Access、Observability、Branding 与 Health</summary>
+            <div>
+              <div class="grid grid-2">
+                <div>
+                  <h4>API Access</h4>
+                  <ul>
+                    <li>只有 published Agent 可创建应用。</li>
+                    <li>原始 <code>ag_live_...</code> 密钥只返回一次。</li>
+                    <li>数据库只保存 SHA-256 hash 与 maskedKey。</li>
+                    <li>正式 API 使用 application.id 作为 memoryOwnerKey。</li>
+                    <li>Redis key 中 identifier 先做 SHA-256。</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4>Observability</h4>
+                  <ul>
+                    <li>
+                      HTTP 请求注入 traceId/spanId，并返回
+                      <code>X-Trace-Id</code>。
+                    </li>
+                    <li>记录 HTTP、model、tool 三类事件。</li>
+                    <li>
+                      展示请求量、错误率、平均/P95 延迟、Token、成本和进程内存。
+                    </li>
+                    <li>慢请求、慢模型、高成本和错误产生告警。</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4>Branding</h4>
+                  <ul>
+                    <li>全局单例 brand settings。</li>
+                    <li>软件名称保存在 PostgreSQL。</li>
+                    <li>图标由本地存储适配器管理。</li>
+                    <li>Vue 和 EyouCMS 页面读取同一公开品牌接口。</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4>Health</h4>
+                  <ul>
+                    <li>
+                      <code>/api/health</code> 只做 liveness，不访问依赖。
+                    </li>
+                    <li>
+                      readiness 检查 PostgreSQL、vector extension 和 Redis。
+                    </li>
+                    <li>未配置 Redis 返回 disabled，仍可 ready。</li>
+                    <li>配置但不可用则返回 not_ready / 503。</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <section class="section-card" id="frontend">
+          <h2 class="section-title">
+            <span class="number">05</span>
+            前端管理后台、对话页与 EyouCMS 模板
+          </h2>
+          <p class="section-intro">
+            Vue 应用按业务功能组织模块。页面只负责交互和展示，Pinia
+            管理跨组件状态，Gateway 定义应用边界，FetchHttpClient 统一处理
+            JSON、文件和 SSE。 EyouCMS 则是独立部署的最终用户页面。
+          </p>
+
+          <h3>前端依赖方向</h3>
+          <div class="diagram">
+            <div class="flow">
+              <div class="flow-node primary">Vue View / Component</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">Pinia Store</div>
+              <div class="arrow">→</div>
+              <div class="flow-node external">Application Gateway Port</div>
+              <div class="arrow">←</div>
+              <div class="flow-node">HTTP Adapter</div>
+              <div class="arrow">→</div>
+              <div class="flow-node data">NestJS API</div>
+            </div>
+          </div>
+
+          <div class="grid grid-2">
+            <div class="mini-card">
+              <h3>Composition Root</h3>
+              <p>
+                <code>apps/web/src/app/dependencies.ts</code> 创建一个
+                <code>FetchHttpClient</code>，再装配 Admin、Brand、Health 和
+                Observability Gateway。Store 通过该对象获取依赖，不在组件中直接
+                new adapter。
+              </p>
+            </div>
+            <div class="mini-card">
+              <h3>根组件与品牌</h3>
+              <p>
+                <code>App.vue</code> 启动时初始化品牌 Store，根据路由 meta
+                和软件名设置 document title，并动态创建或移除 favicon，最后渲染
+                RouterView。
+              </p>
+            </div>
+          </div>
+
+          <h3>Vue 路由与页面责任</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>路由</th>
+                  <th>模块 / 页面</th>
+                  <th>职责</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>/</code></td>
+                  <td>AdminDashboardView</td>
+                  <td>资源摘要、服务状态、最近 Agent、快捷入口</td>
+                </tr>
+                <tr>
+                  <td><code>/agents</code></td>
+                  <td>AgentsManagementView</td>
+                  <td>Agent CRUD、状态、知识模块、技能绑定和测试入口</td>
+                </tr>
+                <tr>
+                  <td><code>/knowledge-bases</code></td>
+                  <td>KnowledgeBasesManagementView</td>
+                  <td>知识库/模块管理、文档分片上传和处理状态</td>
+                </tr>
+                <tr>
+                  <td><code>/skills</code></td>
+                  <td>SkillsManagementView</td>
+                  <td>Prompt/MCP Skill 安装、编辑、启停和删除</td>
+                </tr>
+                <tr>
+                  <td><code>/model-providers</code></td>
+                  <td>ModelProvidersManagementView</td>
+                  <td>模型、embedding、维度、单价和密钥配置</td>
+                </tr>
+                <tr>
+                  <td><code>/api-access</code></td>
+                  <td>ApiAccessManagementView</td>
+                  <td>为已发布 Agent 创建 API application 并展示一次性密钥</td>
+                </tr>
+                <tr>
+                  <td><code>/observability</code></td>
+                  <td>ObservabilityView</td>
+                  <td>黄金指标、趋势、调用链、Token、成本和告警</td>
+                </tr>
+                <tr>
+                  <td><code>/settings</code></td>
+                  <td>BrandSettingsView</td>
+                  <td>全局软件名称、图标上传和预览</td>
+                </tr>
+                <tr>
+                  <td><code>/chat/:agentId?</code></td>
+                  <td>AgentChatView</td>
+                  <td>公开式对话体验、附件、SSE 和富内容渲染</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>对话前端的数据流</h3>
+          <div class="diagram">
+            <div class="flow">
+              <div class="flow-node primary">输入文本 / 选择附件</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">上传 /api/chat-attachments</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">
+                提交附件 ID + conversationId + ownerKey
+              </div>
+              <div class="arrow">→</div>
+              <div class="flow-node external">
+                消费 SSE delta / metadata / done
+              </div>
+              <div class="arrow">→</div>
+              <div class="flow-node data">
+                Markdown / KaTeX / ECharts / Mermaid
+              </div>
+            </div>
+          </div>
+          <ul>
+            <li>
+              <code>memoryOwnerKey</code> 在浏览器本地生成并复用，<code
+                >conversationId</code
+              >
+              每次新对话生成。
+            </li>
+            <li>FetchHttpClient 统一处理 SSE 块，并按 event/data 交给上层。</li>
+            <li>
+              Markdown 原始 HTML 被禁用，富内容经过 DOMPurify 等安全处理。
+            </li>
+            <li>
+              前端支持 Markdown、表格、代码块、KaTeX、ECharts、D3 和 Mermaid。
+            </li>
+            <li>浏览器不直接持有第三方模型密钥。</li>
+          </ul>
+
+          <h3>EyouCMS 独立页面</h3>
+          <div class="grid grid-2">
+            <div class="mini-card">
+              <h4>部署形态</h4>
+              <p>
+                <code>templates/eyoucms/agent-platform.htm</code>
+                可嵌入 EyouCMS 站点；CSS 和 JavaScript 在
+                <code>templates/eyoucms/skin</code> 按功能拆分。
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>功能边界</h4>
+              <p>
+                只提供 Agent
+                选择、对话、附件、历史会话和富内容展示；不暴露模型、知识库、提示词、密钥或后台管理入口。
+              </p>
+            </div>
+          </div>
+          <div class="callout warning">
+            <strong>富内容依赖边界</strong>
+            Vue 应用依赖已锁定的 npm 包；EyouCMS
+            模板会按需加载前端渲染库，离线/内网部署应将公共 CDN
+            地址改为自托管资源。
+          </div>
+        </section>
+
+        <section class="section-card" id="data">
+          <h2 class="section-title">
+            <span class="number">06</span>
+            数据模型、Migration 与基础设施
+          </h2>
+          <p class="section-intro">
+            PostgreSQL 是系统唯一权威业务数据库。pgvector extension
+            与业务表共库，Redis 只存可丢失短 TTL
+            状态；知识原文、聊天附件和品牌图标当前落本地文件系统。
+          </p>
+
+          <h3>核心数据关系图</h3>
+          <div class="diagram">
+            <svg
+              viewBox="0 0 1120 760"
+              role="img"
+              aria-label="Agent 项目核心数据模型关系图"
+            >
+              <defs>
+                <marker
+                  id="er-arrow"
+                  markerHeight="7"
+                  markerWidth="7"
+                  orient="auto"
+                  refX="6"
+                  refY="3.5"
+                >
+                  <path d="M0,0 L7,3.5 L0,7 Z" fill="#64748b" />
+                </marker>
+              </defs>
+              <g
+                fill="none"
+                stroke="#94a3b8"
+                stroke-width="1.7"
+                marker-end="url(#er-arrow)"
+              >
+                <path d="M235 120 H360" />
+                <path d="M235 155 H360" />
+                <path d="M530 120 H650" />
+                <path d="M530 155 H650" />
+                <path d="M820 120 H930" />
+                <path d="M530 290 H650" />
+                <path d="M820 290 H930" />
+                <path d="M235 450 H360" />
+                <path d="M530 450 H650" />
+                <path d="M820 450 H930" />
+                <path d="M445 500 V590" />
+                <path d="M735 500 V590" />
+                <path d="M1015 500 V590" />
+                <path d="M235 650 H360" />
+                <path d="M530 650 H650" />
+              </g>
+
+              <g font-size="13">
+                <rect
+                  x="35"
+                  y="70"
+                  width="200"
+                  height="120"
+                  rx="12"
+                  fill="#eff6ff"
+                  stroke="#60a5fa"
+                />
+                <text x="55" y="99" font-weight="700">agents</text>
+                <text x="55" y="124">id · providerId · status</text>
+                <text x="55" y="148">systemPrompt · temperature</text>
+                <text x="55" y="172">conversationCount</text>
+
+                <rect
+                  x="360"
+                  y="70"
+                  width="170"
+                  height="120"
+                  rx="12"
+                  fill="#f5f3ff"
+                  stroke="#a78bfa"
+                />
+                <text x="380" y="99" font-weight="700">关联表</text>
+                <text x="380" y="124">agent_knowledge_modules</text>
+                <text x="380" y="148">agent_skills</text>
+                <text x="380" y="172">多对多绑定</text>
+
+                <rect
+                  x="650"
+                  y="70"
+                  width="170"
+                  height="120"
+                  rx="12"
+                  fill="#f0fdf4"
+                  stroke="#4ade80"
+                />
+                <text x="670" y="99" font-weight="700">knowledge_modules</text>
+                <text x="670" y="124">knowledgeBaseId</text>
+                <text x="670" y="148">name · description</text>
+
+                <rect
+                  x="930"
+                  y="70"
+                  width="170"
+                  height="120"
+                  rx="12"
+                  fill="#fffbeb"
+                  stroke="#f59e0b"
+                />
+                <text x="950" y="99" font-weight="700">knowledge_bases</text>
+                <text x="950" y="124">embeddingProviderId</text>
+                <text x="950" y="148">model · dimensions</text>
+
+                <rect
+                  x="360"
+                  y="240"
+                  width="170"
+                  height="100"
+                  rx="12"
+                  fill="#eff6ff"
+                  stroke="#60a5fa"
+                />
+                <text x="380" y="270" font-weight="700">model_providers</text>
+                <text x="380" y="295">encrypted credential</text>
+                <text x="380" y="319">chat / embedding / cost</text>
+
+                <rect
+                  x="650"
+                  y="240"
+                  width="170"
+                  height="100"
+                  rx="12"
+                  fill="#f0fdf4"
+                  stroke="#4ade80"
+                />
+                <text x="670" y="270" font-weight="700">
+                  knowledge_documents
+                </text>
+                <text x="670" y="295">moduleId · sha256 · status</text>
+                <text x="670" y="319">storageKey · chunkCount</text>
+
+                <rect
+                  x="930"
+                  y="240"
+                  width="170"
+                  height="100"
+                  rx="12"
+                  fill="#f0fdf4"
+                  stroke="#4ade80"
+                />
+                <text x="950" y="270" font-weight="700">上传 / 任务</text>
+                <text x="950" y="295">upload_sessions / parts</text>
+                <text x="950" y="319">ingestion_jobs</text>
+
+                <rect
+                  x="35"
+                  y="400"
+                  width="200"
+                  height="100"
+                  rx="12"
+                  fill="#eff6ff"
+                  stroke="#60a5fa"
+                />
+                <text x="55" y="430" font-weight="700">
+                  agent_memory_threads
+                </text>
+                <text x="55" y="455">agentId · ownerKey · source</text>
+                <text x="55" y="479">conversation thread</text>
+
+                <rect
+                  x="360"
+                  y="400"
+                  width="170"
+                  height="100"
+                  rx="12"
+                  fill="#f5f3ff"
+                  stroke="#a78bfa"
+                />
+                <text x="380" y="430" font-weight="700">
+                  agent_memory_messages
+                </text>
+                <text x="380" y="455">threadId + ownerKey</text>
+                <text x="380" y="479">role · content · position</text>
+
+                <rect
+                  x="650"
+                  y="400"
+                  width="170"
+                  height="100"
+                  rx="12"
+                  fill="#f5f3ff"
+                  stroke="#a78bfa"
+                />
+                <text x="670" y="430" font-weight="700">agent_memories</text>
+                <text x="670" y="455">semantic / preference / episodic</text>
+                <text x="670" y="479">status · idempotencyKey</text>
+
+                <rect
+                  x="930"
+                  y="400"
+                  width="170"
+                  height="100"
+                  rx="12"
+                  fill="#f5f3ff"
+                  stroke="#a78bfa"
+                />
+                <text x="950" y="430" font-weight="700">
+                  memory artifact / task
+                </text>
+                <text x="950" y="455">agent_memory_artifacts</text>
+                <text x="950" y="479">agent_memory_tasks</text>
+
+                <rect
+                  x="360"
+                  y="590"
+                  width="170"
+                  height="120"
+                  rx="12"
+                  fill="#fef2f2"
+                  stroke="#f87171"
+                />
+                <text x="380" y="620" font-weight="700">api_applications</text>
+                <text x="380" y="645">agentId · keyHash</text>
+                <text x="380" y="669">maskedKey · requestCount</text>
+
+                <rect
+                  x="650"
+                  y="590"
+                  width="170"
+                  height="120"
+                  rx="12"
+                  fill="#fffbeb"
+                  stroke="#f59e0b"
+                />
+                <text x="670" y="620" font-weight="700">
+                  observability_events
+                </text>
+                <text x="670" y="645">trace / span / operation</text>
+                <text x="670" y="669">tokens · cost · alert</text>
+
+                <rect
+                  x="930"
+                  y="590"
+                  width="170"
+                  height="120"
+                  rx="12"
+                  fill="#f0fdf4"
+                  stroke="#4ade80"
+                />
+                <text x="950" y="620" font-weight="700">动态向量表</text>
+                <text x="950" y="645">knowledge_vectors_d*</text>
+                <text x="950" y="669">agent_memory_vectors_d*</text>
+                <text x="950" y="693">registry: vector_collections</text>
+
+                <rect
+                  x="35"
+                  y="600"
+                  width="200"
+                  height="100"
+                  rx="12"
+                  fill="#eff6ff"
+                  stroke="#60a5fa"
+                />
+                <text x="55" y="630" font-weight="700">
+                  skills / brand_settings
+                </text>
+                <text x="55" y="655">MCP headers · tools</text>
+                <text x="55" y="679">global brand singleton</text>
+              </g>
+            </svg>
+          </div>
+
+          <h3>Migration 演进顺序</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Migration</th>
+                  <th>引入能力</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>1752150000000-initial-knowledge-platform</code></td>
+                  <td>
+                    模型、知识库、上传/ingestion、Agent、知识绑定、API
+                    application
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>1752151000000-add-brand-settings</code></td>
+                  <td>全局品牌设置</td>
+                </tr>
+                <tr>
+                  <td><code>1752152000000-add-agent-skills</code></td>
+                  <td>Skill 与 Agent-Skill 多对多关系</td>
+                </tr>
+                <tr>
+                  <td><code>1752153000000-add-observability</code></td>
+                  <td>链路、模型、工具与成本观测事件</td>
+                </tr>
+                <tr>
+                  <td><code>1752154000000-add-agent-memory</code></td>
+                  <td>线程、消息、长期记忆</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>1752155000000-add-episodic-memory-artifacts</code>
+                  </td>
+                  <td>图片情景 artifact 与 owner 隔离</td>
+                </tr>
+                <tr>
+                  <td><code>1752156000000-add-agent-memory-tasks</code></td>
+                  <td>可靠 extract/index 任务、唯一约束、领取和回收索引</td>
+                </tr>
+                <tr>
+                  <td><code>1752157000000-enable-pgvector</code></td>
+                  <td>
+                    vector extension、vector_collections registry、动态表管理
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="grid grid-2" style="margin-top: 1rem">
+            <div class="callout success">
+              <strong>数据库规则</strong>
+              生产必须 <code>DATABASE_SYNCHRONIZE=false</code>；结构只通过
+              migration 演进。测试使用独立 <code>agent_test</code> 数据库。
+            </div>
+            <div class="callout">
+              <strong>pgvector Migration 回滚</strong>
+              down 会按 registry 清理项目动态向量表并删除
+              <code>vector_collections</code>，但不会删除数据库共享的 vector
+              extension。
+            </div>
+          </div>
+
+          <h3>pgvector 的动态维度设计</h3>
+          <div class="diagram">
+            <div class="flow">
+              <div class="flow-node primary">读取 embeddingDimensions</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">1 - 2000 维：vector</div>
+              <div class="arrow">/</div>
+              <div class="flow-node external">2001 - 4000 维：halfvec</div>
+              <div class="arrow">→</div>
+              <div class="flow-node data">advisory lock + registry</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">HNSW cosine index</div>
+            </div>
+          </div>
+          <ul>
+            <li>超过 4000 维直接拒绝，避免创建不受 HNSW 支持的集合。</li>
+            <li>
+              知识表名：<code>knowledge_vectors_d&lt;dimensions&gt;</code>。
+            </li>
+            <li>
+              记忆表名：<code>agent_memory_vectors_d&lt;dimensions&gt;</code>。
+            </li>
+            <li>
+              创建集合前使用 PostgreSQL advisory transaction lock 防止并发建表。
+            </li>
+            <li>搜索事务中使用 <code>SET LOCAL hnsw.ef_search</code>。</li>
+            <li>
+              知识向量按 knowledgeBaseId + moduleId 过滤；记忆按 agentId +
+              ownerKey 过滤。
+            </li>
+          </ul>
+
+          <h3>Redis 与文件存储边界</h3>
+          <div class="grid grid-2">
+            <div class="mini-card">
+              <h4>Redis</h4>
+              <ul>
+                <li>Lua：<code>INCR</code> + 首次 <code>PEXPIRE</code>。</li>
+                <li>关闭 offline queue 与自动重连。</li>
+                <li>key 不含原始 API key、ownerKey 或 IP，而是 SHA-256。</li>
+                <li>配置 Redis 后故障时限流 fail-closed。</li>
+                <li>未配置时仅使用进程内窗口，生产配置校验要求 Redis。</li>
+              </ul>
+            </div>
+            <div class="mini-card">
+              <h4>本地文件</h4>
+              <ul>
+                <li>Knowledge storage 流式写入、合并并计算 SHA-256。</li>
+                <li>Chat attachment 校验 UUID、MIME、文件签名、大小和路径。</li>
+                <li>附件二进制与 JSON metadata 分开保存。</li>
+                <li>路径通过 root prefix 校验防止目录穿越。</li>
+                <li>生产横向扩容前应迁移到共享对象存储。</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section-card" id="flows">
+          <h2 class="section-title">
+            <span class="number">07</span>
+            核心业务流程、状态机与时序图
+          </h2>
+          <p class="section-intro">
+            本节从“创建 Agent、知识入库、RAG 对话、图片情景记忆、MCP
+            工具、限流和 readiness”七条主路径解释系统运行方式。
+          </p>
+
+          <h3>流程一：管理员创建 Agent</h3>
+          <div class="diagram">
+            <div class="flow">
+              <div class="flow-node primary">Vue View</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">Pinia Admin Store</div>
+              <div class="arrow">→</div>
+              <div class="flow-node external">AdminWorkspaceGateway</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">POST /api/agents</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">CreateAgentUseCase</div>
+              <div class="arrow">→</div>
+              <div class="flow-node data">PostgreSQL</div>
+            </div>
+          </div>
+          <p>
+            用例会验证模型供应商、知识模块与技能，然后保存 Agent
+            及关联表。前端刷新真实列表，不维护演示数据副本。
+          </p>
+
+          <h3>流程二：Knowledge 上传与 Ingestion 时序</h3>
+          <div class="diagram">
+            <div class="sequence" style="--actors: 7">
+              <div class="sequence-head">
+                <div>Browser</div>
+                <div>Upload API</div>
+                <div>File Storage</div>
+                <div>PostgreSQL</div>
+                <div>Scheduler</div>
+                <div>Model Gateway</div>
+                <div>pgvector</div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 1; --to: 2">
+                  创建上传会话
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 2; --to: 4">
+                  保存 session
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 1; --to: 3">
+                  逐片上传并流式写盘
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 2; --to: 4">
+                  登记 part + sha256
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 1; --to: 3">
+                  Complete：合并原文件
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 2; --to: 4">
+                  原子创建 document + job
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 4; --to: 5">
+                  领取 queued job
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 3; --to: 5">
+                  读取、解析、切片
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 5; --to: 6">
+                  分批生成 embeddings
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 6; --to: 7">
+                  批量 upsert HNSW 表
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message return" style="--from: 4; --to: 7">
+                  document=ready / job=completed
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <h4>Ingestion 状态机</h4>
+          <div class="diagram">
+            <div class="state-machine">
+              <div>
+                <div class="state">uploading</div>
+                <div class="state-note">创建上传会话</div>
+              </div>
+              <div class="arrow">→</div>
+              <div>
+                <div class="state">queued</div>
+                <div class="state-note">文件合并完成</div>
+              </div>
+              <div class="arrow">→</div>
+              <div>
+                <div class="state">processing</div>
+                <div class="state-note">解析 / embedding</div>
+              </div>
+              <div class="arrow">→</div>
+              <div>
+                <div class="state terminal">ready</div>
+                <div class="state-note">可被 RAG 检索</div>
+              </div>
+              <div class="arrow">或</div>
+              <div>
+                <div class="state dead">failed</div>
+                <div class="state-note">保存错误信息</div>
+              </div>
+            </div>
+          </div>
+
+          <h3>流程三：Chat + RAG + Memory 主时序</h3>
+          <div class="diagram">
+            <div class="sequence" style="--actors: 8">
+              <div class="sequence-head">
+                <div>Client</div>
+                <div>Controller</div>
+                <div>Chat UseCase</div>
+                <div>Memory</div>
+                <div>Knowledge</div>
+                <div>Skills</div>
+                <div>Model</div>
+                <div>PostgreSQL</div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 1; --to: 2">
+                  消息 + conversationId + ownerKey
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 2; --to: 3">
+                  转换 command / 校验入口
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 3; --to: 4">
+                  恢复线程 + 召回稳定/情景记忆
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 3; --to: 5">
+                  query embedding + 模块过滤检索
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 3; --to: 6">
+                  加载 prompt / MCP 工具
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 3; --to: 7">
+                  系统提示 + 知识 + 记忆 + 当前消息
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message return" style="--from: 1; --to: 7">
+                  SSE delta → metadata → done
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 3; --to: 8">
+                  成功后记录消息、事实与计数
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message alert" style="--from: 3; --to: 8">
+                  有图片则幂等创建情景任务
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="callout">
+            <strong>并行优化点</strong>
+            模型供应商、知识检索、技能、普通记忆和图片情景召回通过
+            <code>Promise.all</code> 并行执行，降低模型调用前的准备延迟。
+          </div>
+
+          <h3>流程四：图片情景记忆可靠异步</h3>
+          <div class="diagram">
+            <div class="sequence" style="--actors: 7">
+              <div class="sequence-head">
+                <div>Chat</div>
+                <div>Episode Service</div>
+                <div>PostgreSQL</div>
+                <div>Scheduler</div>
+                <div>Attachment</div>
+                <div>Model</div>
+                <div>pgvector</div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 1; --to: 2">
+                  聊天成功后 recordEpisode
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 2; --to: 3">
+                  原子写 memory + artifact + extract task
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 3; --to: 4">
+                  SKIP LOCKED 领取任务
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 4; --to: 5">
+                  按 agent + owner 回读原图
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 4; --to: 6">
+                  多模态提取 JSON
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 4; --to: 3">
+                  memory=ready + 创建 index task
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 4; --to: 6">
+                  生成 embedding 并持久化到 task
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message" style="--from: 4; --to: 7">
+                  按 memoryId 幂等 upsert
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message return" style="--from: 3; --to: 7">
+                  indexedAt + task=succeeded
+                </div>
+              </div>
+              <div class="sequence-row">
+                <div class="message alert" style="--from: 3; --to: 4">
+                  失败：退避重试 / max → dead
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <h4>图片情景任务状态机</h4>
+          <div class="diagram">
+            <div class="state-machine">
+              <div>
+                <div class="state">queued</div>
+                <div class="state-note">nextRunAt 到期</div>
+              </div>
+              <div class="arrow">→</div>
+              <div>
+                <div class="state">processing</div>
+                <div class="state-note">持有 lease</div>
+              </div>
+              <div class="arrow">→</div>
+              <div>
+                <div class="state terminal">succeeded</div>
+                <div class="state-note">提取或索引完成</div>
+              </div>
+              <div class="arrow">/</div>
+              <div>
+                <div class="state">queued</div>
+                <div class="state-note">指数退避后重试</div>
+              </div>
+              <div class="arrow">/</div>
+              <div>
+                <div class="state dead">dead</div>
+                <div class="state-note">达到最大次数</div>
+              </div>
+            </div>
+          </div>
+          <p>
+            超时 <code>processing</code> 会被 reclaim 回
+            <code>queued</code
+            >；管理接口可查看任务、单条重试或批量恢复。巡检会补缺失任务/索引、标记缺失媒体的记忆失败，并删除超时孤儿图片。
+          </p>
+
+          <h3>流程五：MCP 工具调用环</h3>
+          <div class="diagram">
+            <div class="flow">
+              <div class="flow-node primary">Model + tools definitions</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">返回 tool_calls</div>
+              <div class="arrow">→</div>
+              <div class="flow-node external">按工具名找到 Skill owner</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">MCP tools/call</div>
+              <div class="arrow">→</div>
+              <div class="flow-node data">结果作为 tool message 回填</div>
+              <div class="arrow">↺</div>
+            </div>
+          </div>
+          <p>
+            模型没有 tool call 时返回最终内容；超过最大轮数抛出
+            <code>service_unavailable</code
+            >。单次工具失败会转成文本回填模型，使模型有机会修正参数或解释失败。
+          </p>
+
+          <h3>流程六：Redis 固定窗口限流</h3>
+          <div class="diagram">
+            <div class="flow">
+              <div class="flow-node primary">Public Chat / API Request</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">agent+IP 或 application.id</div>
+              <div class="arrow">→</div>
+              <div class="flow-node external">SHA-256 identifier</div>
+              <div class="arrow">→</div>
+              <div class="flow-node data">Lua INCR + PEXPIRE</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">allowed / 429</div>
+            </div>
+          </div>
+
+          <h3>流程七：Readiness</h3>
+          <div class="diagram">
+            <div class="flow">
+              <div class="flow-node primary">GET /api/health/readiness</div>
+              <div class="arrow">→</div>
+              <div class="flow-node data">SELECT 1 PostgreSQL</div>
+              <div class="arrow">+</div>
+              <div class="flow-node external">检查 vector extension</div>
+              <div class="arrow">+</div>
+              <div class="flow-node">Redis PING / disabled</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">ready 200 / not_ready 503</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section-card" id="api">
+          <h2 class="section-title">
+            <span class="number">08</span>
+            HTTP API 总览
+          </h2>
+          <p class="section-intro">
+            API 全局前缀为 <code>/api</code>；Swagger 位于
+            <code>/docs</code>。全局 ValidationPipe 开启 whitelist、transform 和
+            forbidNonWhitelisted，ApplicationError 由统一 Filter 转换为
+            <code>{code, message}</code>。
+          </p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>域</th>
+                  <th>方法与路径</th>
+                  <th>用途</th>
+                  <th>当前访问边界</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Agents</td>
+                  <td>
+                    <code>GET/POST /api/agents</code><br />
+                    <code>PUT/DELETE /api/agents/:id</code><br />
+                    <code>PATCH /api/agents/:id/status</code>
+                  </td>
+                  <td>Agent 管理与状态变更</td>
+                  <td><span class="badge red">管理鉴权未完成</span></td>
+                </tr>
+                <tr>
+                  <td>Public Agents</td>
+                  <td><code>GET /api/public/agents</code></td>
+                  <td>公开 Agent 最小目录</td>
+                  <td><span class="badge green">公开</span></td>
+                </tr>
+                <tr>
+                  <td>Chat</td>
+                  <td>
+                    <code>POST /api/agents/:id/chat</code><br />
+                    <code>POST /api/public/agents/:agentId/chat</code><br />
+                    <code>POST /api/v1/chat/completions</code>
+                  </td>
+                  <td>后台、公开、OpenAI 兼容对话</td>
+                  <td>Admin 无鉴权；Public 限流；API Bearer</td>
+                </tr>
+                <tr>
+                  <td>Attachments</td>
+                  <td><code>POST /api/chat-attachments</code></td>
+                  <td>上传图片或音频并返回附件 ID</td>
+                  <td>可通过 headers 绑定 agent/owner</td>
+                </tr>
+                <tr>
+                  <td>Knowledge</td>
+                  <td>
+                    <code>GET/POST /api/knowledge-bases</code><br />
+                    <code>PUT/DELETE /api/knowledge-bases/:id</code><br />
+                    <code>POST /api/knowledge-bases/:id/modules</code><br />
+                    <code>GET/PUT/DELETE /api/knowledge-modules/:id...</code>
+                  </td>
+                  <td>知识库、模块、文档管理</td>
+                  <td><span class="badge red">管理鉴权未完成</span></td>
+                </tr>
+                <tr>
+                  <td>Upload</td>
+                  <td>
+                    <code>POST /api/knowledge-modules/:id/uploads</code><br />
+                    <code>PUT /api/uploads/:id/parts/:partNumber</code><br />
+                    <code>GET /api/uploads/:id</code><br />
+                    <code>POST /api/uploads/:id/complete</code>
+                  </td>
+                  <td>分片上传会话与完成合并</td>
+                  <td><span class="badge red">管理鉴权未完成</span></td>
+                </tr>
+                <tr>
+                  <td>Documents</td>
+                  <td>
+                    <code>GET /api/knowledge-documents/:id/content</code><br />
+                    <code>DELETE /api/knowledge-documents/:id</code>
+                  </td>
+                  <td>读取解析内容与删除文档</td>
+                  <td><span class="badge red">管理鉴权未完成</span></td>
+                </tr>
+                <tr>
+                  <td>Memory</td>
+                  <td>
+                    <code>GET/DELETE /api/agents/:agentId/memories</code><br />
+                    <code>DELETE /api/agents/:agentId/memories/:memoryId</code
+                    ><br />
+                    <code>GET .../artifacts/:artifactId</code>
+                  </td>
+                  <td>记忆列表、删除、清空、artifact 读取</td>
+                  <td>要求 ownerKey，但没有可信 principal</td>
+                </tr>
+                <tr>
+                  <td>Memory Ops</td>
+                  <td>
+                    <code>GET /api/agents/:agentId/memory-tasks</code><br />
+                    <code>POST .../memory-tasks/recover</code><br />
+                    <code>POST .../memories/:memoryId/retry</code><br />
+                    <code>GET .../memory-health</code>
+                  </td>
+                  <td>任务查看、恢复、重试与一致性健康</td>
+                  <td>要求 ownerKey，但没有管理角色授权</td>
+                </tr>
+                <tr>
+                  <td>Models</td>
+                  <td>
+                    <code>GET /api/model-providers</code><br />
+                    <code>PUT /api/model-providers/:key</code>
+                  </td>
+                  <td>模型配置与验证</td>
+                  <td><span class="badge red">高敏管理接口未鉴权</span></td>
+                </tr>
+                <tr>
+                  <td>Skills</td>
+                  <td>
+                    <code>GET/POST /api/skills</code><br />
+                    <code>PUT/DELETE /api/skills/:id</code>
+                  </td>
+                  <td>Prompt/MCP 技能管理</td>
+                  <td><span class="badge red">管理鉴权未完成</span></td>
+                </tr>
+                <tr>
+                  <td>API Apps</td>
+                  <td><code>GET/POST /api/api-applications</code></td>
+                  <td>应用与一次性 API key</td>
+                  <td><span class="badge red">密钥签发接口未鉴权</span></td>
+                </tr>
+                <tr>
+                  <td>Branding</td>
+                  <td>
+                    <code>GET/PUT /api/branding</code><br />
+                    <code>GET/PUT/DELETE /api/branding/icon</code>
+                  </td>
+                  <td>品牌读取与管理</td>
+                  <td>读写尚未分离授权</td>
+                </tr>
+                <tr>
+                  <td>Observability</td>
+                  <td><code>GET /api/observability/dashboard</code></td>
+                  <td>监控面板数据</td>
+                  <td><span class="badge red">可能含运营数据，未鉴权</span></td>
+                </tr>
+                <tr>
+                  <td>Health</td>
+                  <td>
+                    <code>GET /api/health</code><br />
+                    <code>GET /api/health/readiness</code>
+                  </td>
+                  <td>liveness 与 readiness</td>
+                  <td><span class="badge green">公开运维探针</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section-card" id="operations">
+          <h2 class="section-title">
+            <span class="number">09</span>
+            配置、部署、调度与可观测性
+          </h2>
+          <p class="section-intro">
+            配置集中于 <code>application.config.ts</code>，启动边界由
+            <code>main.ts</code> 和
+            <code>AppModule</code> 负责。应用内有两个重要 scheduler： Knowledge
+            ingestion 与 Agent Memory task。
+          </p>
+
+          <h3>关键配置分组</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>分组</th>
+                  <th>代表性环境变量</th>
+                  <th>控制内容</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Database</td>
+                  <td>
+                    <code>DATABASE_URL</code
+                    >、<code>DATABASE_POOL_MAX</code>、<code>DATABASE_STATEMENT_TIMEOUT_MS</code>、<code
+                      >DATABASE_MIGRATIONS_RUN</code
+                    >
+                  </td>
+                  <td>连接、连接池、语句超时和 migration</td>
+                </tr>
+                <tr>
+                  <td>Redis / Rate Limit</td>
+                  <td>
+                    <code>REDIS_URL</code>、<code>REDIS_KEY_PREFIX</code>、<code
+                      >RATE_LIMIT_WINDOW_MS</code
+                    >
+                  </td>
+                  <td>Redis 连接、key 空间、API/public chat 配额</td>
+                </tr>
+                <tr>
+                  <td>Model</td>
+                  <td>
+                    <code>CREDENTIAL_ENCRYPTION_KEY</code>、<code
+                      >MODEL_REQUEST_TIMEOUT_MS</code
+                    >
+                  </td>
+                  <td>密钥加密与外部调用超时</td>
+                </tr>
+                <tr>
+                  <td>Knowledge</td>
+                  <td>
+                    <code>KNOWLEDGE_STORAGE_PATH</code
+                    >、<code>INGESTION_POLL_INTERVAL_MS</code>、embedding
+                    batch/chunk 限制
+                  </td>
+                  <td>文件路径、调度频率、解析和批量策略</td>
+                </tr>
+                <tr>
+                  <td>Vector</td>
+                  <td>
+                    HNSW
+                    <code>M</code
+                    >、<code>EF_CONSTRUCTION</code>、<code>EF_SEARCH</code>、upsert
+                    batch
+                  </td>
+                  <td>召回质量、建索引成本和写入吞吐</td>
+                </tr>
+                <tr>
+                  <td>Memory</td>
+                  <td>
+                    task poll/lock/backoff/max attempts、recall limit、pending
+                    timeout
+                  </td>
+                  <td>任务可靠性、召回阈值和巡检频率</td>
+                </tr>
+                <tr>
+                  <td>Observability</td>
+                  <td>retention、slow request/model、high cost thresholds</td>
+                  <td>事件保留、慢调用与成本告警</td>
+                </tr>
+                <tr>
+                  <td>HTTP</td>
+                  <td>
+                    <code>PORT</code>、<code>CORS_ORIGIN</code>、<code
+                      >HTTP_TRUST_PROXY_HOPS</code
+                    >
+                  </td>
+                  <td>监听端口、跨域与反向代理 IP 解析</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>进程生命周期</h3>
+          <div class="diagram">
+            <div class="flow">
+              <div class="flow-node primary">NestFactory.create</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">Config + TypeORM + Redis</div>
+              <div class="arrow">→</div>
+              <div class="flow-node external">
+                CORS / Prefix / Validation / Filter
+              </div>
+              <div class="arrow">→</div>
+              <div class="flow-node">Swagger /docs</div>
+              <div class="arrow">→</div>
+              <div class="flow-node data">Scheduler bootstrap tick</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">Listen</div>
+            </div>
+          </div>
+          <p>
+            关闭时 Redis 尝试 quit；两个 scheduler 设置
+            <code>shuttingDown</code>、清理 interval，并等待当前
+            <code>activeTick</code>，避免数据库连接关闭后任务仍访问资源。
+          </p>
+
+          <h3>观测链路</h3>
+          <div class="grid grid-3">
+            <div class="mini-card">
+              <h4>HTTP</h4>
+              <p>
+                记录 route、method、status、duration、traceId、spanId；UUID
+                和数字路径被规范化。
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>Model</h4>
+              <p>
+                记录 provider、model、input/output tokens、token source、cost 和
+                operation。
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>Tool / Memory</h4>
+              <p>
+                MCP 工具与图片记忆任务/修复通过 tool 类别记录业务阶段与结果。
+              </p>
+            </div>
+          </div>
+          <div class="callout warning">
+            <strong>观测数据当前是全局视角</strong>
+            事件可以关联 agentId 和 trace，但尚无
+            workspaceId；成本、告警和仪表盘无法按租户可靠隔离。 Error message
+            目前主要做长度截断，新增外部错误源时仍需持续强化统一脱敏。
+          </div>
+
+          <h3>本地与 CI</h3>
+          <pre><code># 本地基础设施
+docker compose up -d postgres redis
+
+# 开发
+pnpm install
+pnpm dev
+
+# 质量门禁
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm build:server
+git diff --check</code></pre>
+          <p>
+            GitHub Actions 使用 <code>pgvector/pgvector:0.8.0-pg16</code> 和
+            <code>redis:7.4.2-alpine</code> 服务，运行
+            format、lint、typecheck、单元/E2E 测试和
+            build。测试覆盖配置、记忆、技能、加密、观测、migration、pgvector、Redis
+            限流与故障等关键路径。
+          </p>
+        </section>
+
+        <section class="section-card" id="security">
+          <h2 class="section-title">
+            <span class="number">10</span>
+            安全边界与商用 SaaS 差距
+          </h2>
+          <p class="section-intro">
+            当前系统已经实现若干重要的单体安全措施，但“资源隔离键”与“经过认证的租户身份”不是同一件事。
+            面向外部客户上线前，必须先完成 workspace、principal、授权和 RLS。
+          </p>
+
+          <h3>已实现的防护</h3>
+          <div class="grid grid-2">
+            <div class="callout success">
+              <strong>密钥</strong>
+              模型密钥使用 AES-256-GCM；API key 只保存 SHA-256；Redis key
+              不写原始 identifier；浏览器不持有模型密钥。
+            </div>
+            <div class="callout success">
+              <strong>输入与文件</strong>
+              DTO 白名单校验；附件限制 MIME、签名、大小和 UUID；文件 storage key
+              防止目录穿越。
+            </div>
+            <div class="callout success">
+              <strong>记忆</strong>
+              agentId + ownerKey
+              贯穿数据库、artifact、原图和向量；图片被明确标记为不可信外部证据。
+            </div>
+            <div class="callout success">
+              <strong>可靠性</strong>
+              PostgreSQL
+              权威任务、幂等键、唯一约束、lease、退避、dead、恢复和巡检减少重复与不一致。
+            </div>
+            <div class="callout success">
+              <strong>日志</strong>
+              结构化日志不写完整 prompt、回复、附件或 base64；任务错误专门脱敏
+              bearer、key 和路径。
+            </div>
+            <div class="callout success">
+              <strong>高成本入口</strong>
+              Public Chat 和 API application 有限流；Redis 配置后故障时
+              fail-closed。
+            </div>
+          </div>
+
+          <h3>必须正视的高优先级风险</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>风险</th>
+                  <th>当前事实</th>
+                  <th>可能后果</th>
+                  <th>建议优先级</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>管理 API 无认证</td>
+                  <td>
+                    Agent、模型、知识、Skill、API key、观测和品牌写接口没有统一
+                    Guard
+                  </td>
+                  <td>未受信网络可读取、修改配置或签发密钥</td>
+                  <td><span class="badge red">P0</span></td>
+                </tr>
+                <tr>
+                  <td>没有 workspace 根模型</td>
+                  <td>核心资源表没有统一 workspaceId</td>
+                  <td>无法形成客户级数据和计费边界</td>
+                  <td><span class="badge red">P0</span></td>
+                </tr>
+                <tr>
+                  <td>没有 PostgreSQL RLS</td>
+                  <td>隔离主要依赖应用查询条件</td>
+                  <td>遗漏条件即可跨租户读取或修改</td>
+                  <td><span class="badge red">P0</span></td>
+                </tr>
+                <tr>
+                  <td>ownerKey 客户端可控</td>
+                  <td>Public/Admin 对话由浏览器提供 memoryOwnerKey</td>
+                  <td>它不是经过认证的用户身份，泄露后可能读取同 scope 记忆</td>
+                  <td><span class="badge red">P0</span></td>
+                </tr>
+                <tr>
+                  <td>Public 可访问 draft</td>
+                  <td>公开聊天只拒绝 disabled，未要求 published</td>
+                  <td>未发布 Agent 会进入公开目录，并可被外部用户直接调用</td>
+                  <td><span class="badge amber">P1</span></td>
+                </tr>
+                <tr>
+                  <td>本地文件不适合横向扩容</td>
+                  <td>文档、附件、图标依赖单机路径或持久卷</td>
+                  <td>多副本间文件不可见、备份和迁移困难</td>
+                  <td><span class="badge amber">P1</span></td>
+                </tr>
+                <tr>
+                  <td>全局观测与成本</td>
+                  <td>无 workspace 成本归属、预算与配额</td>
+                  <td>无法计费、限制滥用或提供客户账单</td>
+                  <td><span class="badge amber">P1</span></td>
+                </tr>
+                <tr>
+                  <td>单根加密密钥</td>
+                  <td>模型凭证依赖单个环境变量密钥</td>
+                  <td>缺少 KMS、版本、轮换和逐租户 envelope encryption</td>
+                  <td><span class="badge amber">P1</span></td>
+                </tr>
+                <tr>
+                  <td>缺少审计与恢复演练</td>
+                  <td>没有不可抵赖管理审计、备份恢复验证</td>
+                  <td>难以满足企业治理和事故追溯要求</td>
+                  <td><span class="badge amber">P1</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout danger">
+            <strong>上线结论</strong>
+            当前版本适合受控内网、单组织部署或继续产品验证；在完成管理认证、workspace
+            绑定、可信 principal 和 PostgreSQL RLS
+            前，不应作为不受信任客户共享的多租户 SaaS 对外承诺安全隔离。
+          </div>
+
+          <h3>推荐的租户请求安全链</h3>
+          <div class="diagram">
+            <div class="flow">
+              <div class="flow-node primary">JWT / Session / API Key</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">Authenticated Principal</div>
+              <div class="arrow">→</div>
+              <div class="flow-node external">Workspace Membership + Role</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">Request Workspace Context</div>
+              <div class="arrow">→</div>
+              <div class="flow-node data">SET LOCAL tenant context</div>
+              <div class="arrow">→</div>
+              <div class="flow-node">PostgreSQL RLS</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section-card" id="roadmap">
+          <h2 class="section-title">
+            <span class="number">11</span>
+            建议演进路线与中间件触发条件
+          </h2>
+          <p class="section-intro">
+            演进应优先补“安全与商业闭环”，而不是堆叠更多基础设施。RocketMQ、专业向量数据库和微服务拆分都应由真实负载与组织边界触发。
+          </p>
+
+          <div class="grid grid-3">
+            <div class="mini-card" style="border-top: 4px solid var(--red)">
+              <h3>P0 · 多租户安全</h3>
+              <ol>
+                <li>Workspace / Member / Role 模型。</li>
+                <li>统一 authenticated principal。</li>
+                <li>管理、API、Public 三类身份边界。</li>
+                <li>所有核心资源增加 workspaceId。</li>
+                <li>API key → application → workspace 映射。</li>
+                <li>可信 public workspace/user resolution。</li>
+                <li>PostgreSQL RLS 与 transaction-local context。</li>
+                <li>默认 workspace 回填 migration。</li>
+                <li>非超级用户 RLS E2E。</li>
+              </ol>
+            </div>
+            <div class="mini-card" style="border-top: 4px solid var(--amber)">
+              <h3>P1 · 商业运营</h3>
+              <ol>
+                <li>对象存储替换本地文件。</li>
+                <li>workspace Token、成本、配额和预算。</li>
+                <li>审计日志与密钥轮换。</li>
+                <li>Retention / forgetting / recycle bin。</li>
+                <li>用户记忆纠错与管理 UI。</li>
+                <li>备份、恢复和灾备演练。</li>
+                <li>SQLite/Zvec 历史生产迁移工具。</li>
+              </ol>
+            </div>
+            <div class="mini-card" style="border-top: 4px solid var(--blue)">
+              <h3>P2 · 规模化</h3>
+              <ol>
+                <li>模型 Worker / 索引 Worker 独立部署。</li>
+                <li>PostgreSQL Outbox publisher。</li>
+                <li>RocketMQ 至少一次投递 + 幂等消费。</li>
+                <li>pgvector 反向孤儿扫描。</li>
+                <li>读写分离和多区域。</li>
+                <li>专业向量库迁移评估。</li>
+                <li>多模态 embedding 与召回评测。</li>
+              </ol>
+            </div>
+          </div>
+
+          <h3>何时引入 RocketMQ</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>判断条件</th>
+                  <th>当前状态</th>
+                  <th>结论</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>任务是否已经跨独立服务</td>
+                  <td>否，scheduler 和 API 同进程</td>
+                  <td>继续 PostgreSQL task table</td>
+                </tr>
+                <tr>
+                  <td>是否需要多个独立订阅者</td>
+                  <td>暂无</td>
+                  <td>无需消息总线</td>
+                </tr>
+                <tr>
+                  <td>是否需要跨服务削峰</td>
+                  <td>当前负载未证明</td>
+                  <td>先观测数据库任务吞吐</td>
+                </tr>
+                <tr>
+                  <td>是否需要独立延迟/死信治理</td>
+                  <td>数据库已有 nextRunAt / dead</td>
+                  <td>现有能力足够</td>
+                </tr>
+                <tr>
+                  <td>模型/索引 Worker 是否独立扩容</td>
+                  <td>未来可能</td>
+                  <td>达到此条件再引入</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout warning">
+            <strong>未来消息语义</strong>
+            即使接入 RocketMQ，也应由 PostgreSQL Outbox 发布版本化事件，携带
+            workspaceId、traceId 和 message key；采用至少一次投递与幂等消费者，
+            不能将 RocketMQ 事务消息表述为 exactly-once。
+          </div>
+
+          <h3>何时迁移专业向量数据库</h3>
+          <ul>
+            <li>向量规模或 QPS 明显超过 PostgreSQL 业务负载可接受范围。</li>
+            <li>需要跨区域向量复制、独立资源隔离或更复杂的混合检索。</li>
+            <li>向量团队需要独立发布、扩缩和 SLO。</li>
+            <li>经过基准测试证明迁移收益大于双写、回填、校验和运维成本。</li>
+          </ul>
+          <p>
+            现有 <code>VectorIndex</code> 与 <code>AgentMemoryIndex</code>
+            端口已为迁移保留边界；真正困难的是生产数据迁移、一致性校验和回滚，而不是替换类名。
+          </p>
+        </section>
+
+        <section class="section-card" id="navigation">
+          <h2 class="section-title">
+            <span class="number">12</span>
+            如何快速阅读和定位代码
+          </h2>
+          <p class="section-intro">
+            不建议从所有 Controller
+            顺序阅读。先从组合根和核心用例建立调用图，再进入具体端口、适配器和
+            migration。
+          </p>
+
+          <h3>推荐 60 分钟阅读路线</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>文件</th>
+                  <th>要回答的问题</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>0 - 10 分钟</td>
+                  <td>
+                    <code>README.md</code><br />
+                    <code>apps/api/src/app.module.ts</code><br />
+                    <code>apps/api/src/main.ts</code>
+                  </td>
+                  <td>系统怎么启动、有哪些模块、HTTP 公共策略是什么？</td>
+                </tr>
+                <tr>
+                  <td>10 - 25 分钟</td>
+                  <td>
+                    <code>chat/application/chat-with-agent.use-case.ts</code>
+                  </td>
+                  <td>一次对话如何串联 Agent、RAG、Memory、Skill 和 Model？</td>
+                </tr>
+                <tr>
+                  <td>25 - 35 分钟</td>
+                  <td>
+                    <code
+                      >knowledge/application/process-next-ingestion-job.use-case.ts</code
+                    ><br />
+                    <code
+                      >knowledge/application/knowledge-retriever.service.ts</code
+                    >
+                  </td>
+                  <td>文档如何变成向量，又如何回到 prompt？</td>
+                </tr>
+                <tr>
+                  <td>35 - 45 分钟</td>
+                  <td>
+                    <code
+                      >agent-memory/application/agent-episodic-memory.service.ts</code
+                    ><br />
+                    <code>process-next-agent-memory-task.use-case.ts</code>
+                  </td>
+                  <td>图片情景如何可靠提取、索引、重试和召回？</td>
+                </tr>
+                <tr>
+                  <td>45 - 52 分钟</td>
+                  <td>
+                    <code
+                      >model-providers/infrastructure/openai-compatible.gateway.ts</code
+                    ><br />
+                    <code>chat/application/skill-tool-loop.service.ts</code>
+                  </td>
+                  <td>外部模型和 MCP 工具的协议细节如何被封装？</td>
+                </tr>
+                <tr>
+                  <td>52 - 60 分钟</td>
+                  <td>
+                    <code>apps/web/src/app/dependencies.ts</code><br />
+                    <code>apps/web/src/app/router</code><br />
+                    <code>admin-workspace.store.ts</code>
+                  </td>
+                  <td>前端页面、状态与 HTTP 边界如何协作？</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>按问题定位模块</h3>
+          <div class="grid grid-3">
+            <div class="mini-card">
+              <h4>“Agent 为什么不能对话？”</h4>
+              <p>
+                查 Agent status、provider 配置、<code
+                  >ChatWithAgentUseCase</code
+                >
+                状态检查和 <code>OpenAiCompatibleGateway</code> 错误。
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>“文档为什么检索不到？”</h4>
+              <p>
+                查 document/job 状态、embedding 维度、vector_collections、绑定
+                moduleIds 和 KnowledgeRetriever 分组。
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>“图片记忆为什么没有生效？”</h4>
+              <p>
+                查 ownerKey、memory status、extract/index task、artifact
+                文件、indexedAt 和 memory health。
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>“为什么 API 返回 503？”</h4>
+              <p>
+                查 readiness、Redis 是否 configured/unavailable、模型调用超时和
+                pgvector adapter 的 service_unavailable。
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>“一次请求花了多少钱？”</h4>
+              <p>
+                查 traceId 下的 model events、actual/estimated token
+                source、provider 单价和 dashboard usage。
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>“能否拆成微服务？”</h4>
+              <p>
+                先识别 Chat 对各模块的进程内调用、共享表/关联实体和
+                scheduler，再设计稳定契约与 Outbox 事件。
+              </p>
+            </div>
+          </div>
+
+          <h3>目录速查</h3>
+          <pre><code>agent/
+├── apps/
+│   ├── api/
+│   │   ├── src/
+│   │   │   ├── config/                 # 环境变量解析与约束
+│   │   │   ├── database/migrations/    # PostgreSQL schema 演进
+│   │   │   ├── modules/                # 后端业务模块
+│   │   │   └── shared/                 # PostgreSQL/Redis/HTTP 共用基础设施
+│   │   └── test/                        # API E2E
+│   └── web/
+│       └── src/
+│           ├── app/                     # Router 与依赖装配
+│           ├── modules/                 # 前端业务模块
+│           └── shared/                  # HTTP 与通用工具
+├── templates/eyoucms/                   # 独立最终用户对话模板
+├── docs/
+│   ├── architecture.md
+│   ├── deployment.md
+│   ├── decisions/                       # ADR
+│   └── modules/                         # 模块级中文文档
+├── compose.yaml                         # PostgreSQL + pgvector + Redis
+└── .github/workflows/quality.yml        # CI 质量门禁</code></pre>
+
+          <div class="callout">
+            <strong>文档使用建议</strong>
+            第一次阅读先看
+            01、02、04、07、10；准备开发某模块时，再展开对应模块说明并结合
+            <code>docs/modules</code>
+            与真实代码。任何架构判断应以代码、migration 和测试为最终依据。
+          </div>
+        </section>
+
+        <footer class="footer">
+          本文档基于 main 分支提交 03aa529
+          的真实实现整理。架构会随代码演进，请在模块、数据库或安全边界变化时同步更新。
+        </footer>
+      </main>
+    </div>
+
+    <script>
+      const mobileNavigation = document.querySelector('#mobile-section-nav');
+      const navigationLinks = [...document.querySelectorAll('.sidebar nav a')];
+      const observedSections = navigationLinks
+        .map((link) => document.querySelector(link.getAttribute('href')))
+        .filter((section) => section instanceof HTMLElement);
+
+      mobileNavigation?.addEventListener('change', (event) => {
+        const target = event.target;
+
+        if (target instanceof HTMLSelectElement && target.value) {
+          document.querySelector(target.value)?.scrollIntoView();
+        }
+      });
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const visible = entries
+            .filter((entry) => entry.isIntersecting)
+            .sort(
+              (left, right) => right.intersectionRatio - left.intersectionRatio,
+            )[0];
+
+          if (!visible) {
+            return;
+          }
+
+          navigationLinks.forEach((link) => {
+            link.classList.toggle(
+              'active',
+              link.getAttribute('href') === `#${visible.target.id}`,
+            );
+          });
+        },
+        { rootMargin: '-15% 0px -70% 0px', threshold: [0, 0.1, 0.4] },
+      );
+
+      observedSections.forEach((section) => observer.observe(section));
+    </script>
+  </body>
+</html>
