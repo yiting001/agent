@@ -29,13 +29,19 @@ const DEFAULT_OBSERVABILITY_SLOW_REQUEST_MS = 2_000;
 const DEFAULT_SKILL_TOOL_MAX_ROUNDS = 5;
 const DEFAULT_AGENT_MEMORY_RECENT_MESSAGE_LIMIT = 12;
 const DEFAULT_AGENT_MEMORY_RECALL_LIMIT = 6;
+const DEFAULT_AGENT_MEMORY_EPISODE_RECALL_LIMIT = 3;
+const DEFAULT_AGENT_MEMORY_EPISODE_MIN_SCORE = 0.25;
+const DEFAULT_AGENT_MEMORY_ZVEC_COLLECTION_PREFIX = 'agent_memory';
 
 /** Runtime values owned by the API process. */
 export type ZvecIndexType = 'diskann' | 'hnsw';
 
 export interface ApplicationConfig {
+  agentMemoryEpisodeMinScore: number;
+  agentMemoryEpisodeRecallLimit: number;
   agentMemoryRecallLimit: number;
   agentMemoryRecentMessageLimit: number;
+  agentMemoryZvecCollectionPrefix: string;
   brandIconMaxBytes: number;
   brandStoragePath: string;
   chatAttachmentMaxBytes: number;
@@ -134,12 +140,16 @@ function parseZvecIndexType(value: string | undefined): ZvecIndexType {
   return indexType;
 }
 
-function parseZvecCollectionPrefix(value: string | undefined): string {
-  const prefix = value ?? DEFAULT_ZVEC_COLLECTION_PREFIX;
+function parseCollectionPrefix(
+  name: string,
+  value: string | undefined,
+  fallback: string,
+): string {
+  const prefix = value ?? fallback;
 
   if (!/^[a-zA-Z0-9_-]+$/.test(prefix)) {
     throw new Error(
-      'ZVEC_COLLECTION_PREFIX may only contain letters, numbers, underscores, and hyphens.',
+      `${name} may only contain letters, numbers, underscores, and hyphens.`,
     );
   }
 
@@ -168,6 +178,16 @@ export const applicationConfig = registerAs(
     }
 
     return {
+      agentMemoryEpisodeMinScore: parseNonNegativeNumber(
+        'AGENT_MEMORY_EPISODE_MIN_SCORE',
+        process.env.AGENT_MEMORY_EPISODE_MIN_SCORE,
+        DEFAULT_AGENT_MEMORY_EPISODE_MIN_SCORE,
+      ),
+      agentMemoryEpisodeRecallLimit: parsePositiveInteger(
+        'AGENT_MEMORY_EPISODE_RECALL_LIMIT',
+        process.env.AGENT_MEMORY_EPISODE_RECALL_LIMIT,
+        DEFAULT_AGENT_MEMORY_EPISODE_RECALL_LIMIT,
+      ),
       agentMemoryRecallLimit: parsePositiveInteger(
         'AGENT_MEMORY_RECALL_LIMIT',
         process.env.AGENT_MEMORY_RECALL_LIMIT,
@@ -177,6 +197,11 @@ export const applicationConfig = registerAs(
         'AGENT_MEMORY_RECENT_MESSAGE_LIMIT',
         process.env.AGENT_MEMORY_RECENT_MESSAGE_LIMIT,
         DEFAULT_AGENT_MEMORY_RECENT_MESSAGE_LIMIT,
+      ),
+      agentMemoryZvecCollectionPrefix: parseCollectionPrefix(
+        'AGENT_MEMORY_ZVEC_COLLECTION_PREFIX',
+        process.env.AGENT_MEMORY_ZVEC_COLLECTION_PREFIX,
+        DEFAULT_AGENT_MEMORY_ZVEC_COLLECTION_PREFIX,
       ),
       brandIconMaxBytes: parsePositiveInteger(
         'BRAND_ICON_MAX_BYTES',
@@ -268,8 +293,10 @@ export const applicationConfig = registerAs(
         DEFAULT_SKILL_TOOL_MAX_ROUNDS,
       ),
       serviceName: process.env.API_SERVICE_NAME ?? DEFAULT_SERVICE_NAME,
-      zvecCollectionPrefix: parseZvecCollectionPrefix(
+      zvecCollectionPrefix: parseCollectionPrefix(
+        'ZVEC_COLLECTION_PREFIX',
         process.env.ZVEC_COLLECTION_PREFIX,
+        DEFAULT_ZVEC_COLLECTION_PREFIX,
       ),
       zvecDataPath: process.env.ZVEC_DATA_PATH ?? DEFAULT_ZVEC_DATA_PATH,
       zvecIndexType: parseZvecIndexType(process.env.ZVEC_INDEX_TYPE),

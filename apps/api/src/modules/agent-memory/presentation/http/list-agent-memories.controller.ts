@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
-import { AgentMemoryService } from '../../application/agent-memory.service';
+import { AgentMemoryManagementService } from '../../application/agent-memory-management.service';
 import {
   type AgentMemorySummary,
   toAgentMemorySummary,
@@ -11,7 +11,7 @@ import { requireMemoryOwnerKey } from './memory-owner-key';
 @ApiTags('agent-memory')
 @Controller('agents/:agentId/memories')
 export class ListAgentMemoriesController {
-  constructor(private readonly memory: AgentMemoryService) {}
+  constructor(private readonly memory: AgentMemoryManagementService) {}
 
   @Get()
   @ApiOperation({ summary: '列出智能体长期记忆' })
@@ -19,11 +19,13 @@ export class ListAgentMemoriesController {
     @Param('agentId') agentId: string,
     @Query('ownerKey') ownerKey?: string,
   ): Promise<AgentMemorySummary[]> {
-    const memories = await this.memory.listAgentMemories(
+    const details = await this.memory.listAgentMemories(
       agentId,
       requireMemoryOwnerKey(ownerKey),
     );
 
-    return memories.map(toAgentMemorySummary);
+    return details.map((detail) =>
+      toAgentMemorySummary(detail.memory, detail.artifacts),
+    );
   }
 }

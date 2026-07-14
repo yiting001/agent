@@ -8,8 +8,16 @@ import {
 } from 'typeorm';
 
 import { AgentEntity } from '../../agents/infrastructure/agent.entity';
-import type { MemoryType } from '../domain/agent-memory';
+import type { MemoryStatus, MemoryType } from '../domain/agent-memory';
 
+@Index(
+  'IDX_agent_memories_stable_content',
+  ['agentId', 'ownerKey', 'content'],
+  {
+    unique: true,
+    where: `"type" <> 'episodic'`,
+  },
+)
 @Entity('agent_memories')
 export class AgentMemoryEntity {
   @PrimaryColumn('text')
@@ -35,6 +43,9 @@ export class AgentMemoryEntity {
 
   @Column('text', { nullable: true })
   sourceThreadId?: string;
+
+  @Column('text', { default: 'ready' })
+  status: MemoryStatus;
 
   @Column('integer')
   importance: number;

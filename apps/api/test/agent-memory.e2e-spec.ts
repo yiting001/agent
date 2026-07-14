@@ -5,6 +5,7 @@ import type { Server } from 'node:http';
 import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
+import { AgentMemoryIndex } from '../src/modules/agent-memory/application/agent-memory.index';
 import { IngestionScheduler } from '../src/modules/knowledge/infrastructure/indexing/ingestion.scheduler';
 import type {
   ChatCompletionInput,
@@ -12,23 +13,12 @@ import type {
 } from '../src/modules/model-providers/application/model-gateway';
 import { ModelGateway } from '../src/modules/model-providers/application/model-gateway';
 import { ApplicationErrorFilter } from '../src/shared/presentation/application-error.filter';
-
-function readStringProperty(value: unknown, property: string): string {
-  if (typeof value !== 'object' || value === null) {
-    throw new Error(`Expected ${property} to be a string.`);
-  }
-
-  const result = (value as Record<string, unknown>)[property];
-
-  if (typeof result !== 'string') {
-    throw new Error(`Expected ${property} to be a string.`);
-  }
-
-  return result;
-}
+import { createInMemoryAgentMemoryIndex } from './in-memory-agent-memory.index';
+import { readStringProperty } from './read-value';
 
 describe('Agent memory', () => {
   let agentId = '';
+  let otherAgentId = '';
   let app: INestApplication<Server>;
   const chatInputs: ChatCompletionInput[] = [];
   const ownerKey = 'owner-memory-e2e';
@@ -42,7 +32,24 @@ describe('Agent memory', () => {
     process.env.INGESTION_POLL_INTERVAL_MS = '60000';
 
     const modelGateway = {
-      chat: jest.fn().mockResolvedValue('记忆回答'),
+      chat: jest.fn().mockImplementation((input: ChatCompletionInput) => {
+        const messages = JSON.stringify(input.messages);
+
+        if (
+          messages.includes('触发视觉失败') &&
+          messages.includes('情景记忆提取器')
+        ) {
+          return Promise.reject(new Error('vision unavailable'));
+        }
+
+        return Promise.resolve(
+          JSON.stringify({
+            entities: ['狗', '柯基', '公园'],
+            importance: 3,
+            summary: '用户曾分享一张在公园拍到的柯基犬图片。',
+          }),
+        );
+      }),
       chatWithTools: jest.fn().mockResolvedValue({
         content: '记忆回答',
         toolCalls: [],
@@ -61,11 +68,14 @@ describe('Agent memory', () => {
       }),
       verify: jest.fn().mockResolvedValue(undefined),
     };
+    const memoryIndex = createInMemoryAgentMemoryIndex();
     const testingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(ModelGateway)
       .useValue(modelGateway)
+      .overrideProvider(AgentMemoryIndex)
+      .useValue(memoryIndex)
       .overrideProvider(IngestionScheduler)
       .useValue({
         onApplicationBootstrap: () => undefined,
@@ -117,6 +127,20 @@ describe('Agent memory', () => {
     const agentBody: unknown = agentResponse.body;
 
     agentId = readStringProperty(agentBody, 'id');
+    const otherAgentResponse = await request(app.getHttpServer())
+      .post('/api/agents')
+      .send({
+        description: '验证图片情景隔离',
+        moduleIds: [],
+        name: '另一记忆测试智能体',
+        providerId,
+        skillIds: [],
+        systemPrompt: '请依据上下文回答。',
+        temperature: 0.2,
+      })
+      .expect(201);
+
+    otherAgentId = readStringProperty(otherAgentResponse.body, 'id');
   });
 
   afterAll(async () => {
@@ -189,5 +213,247 @@ describe('Agent memory', () => {
       .delete(`/api/agents/${agentId}/memories`)
       .query({ ownerKey })
       .expect(204);
+  });
+
+  it('records and recalls owner-scoped image episodes with original evidence', async () => {
+    const image = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00,
+    ]);
+    const upload = await request(app.getHttpServer())
+      .post('/api/chat-attachments')
+      .set('Content-Type', 'image/png')
+      .set('Content-Length', String(image.length))
+      .set('X-Agent-Id', agentId)
+      .set('X-File-Name', encodeURIComponent('park-dog.png'))
+      .set('X-Memory-Owner-Key', ownerKey)
+      .send(image)
+      .expect(201);
+    const attachment: unknown = upload.body;
+
+    await request(app.getHttpServer())
+      .post(`/api/agents/${agentId}/chat`)
+      .send({
+        conversationId: 'conversation-image-a',
+        memoryOwnerKey: ownerKey,
+        messages: [
+          {
+            attachments: [attachment],
+            content: '这是我在公园看到的小狗。',
+            role: 'user',
+          },
+        ],
+        stream: false,
+      })
+      .expect(200);
+
+    let episodeBody: unknown[] = [];
+
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const response = await request(app.getHttpServer())
+        .get(`/api/agents/${agentId}/memories`)
+        .query({ ownerKey })
+        .expect(200);
+
+      if (Array.isArray(response.body)) {
+        episodeBody = response.body as unknown[];
+      }
+
+      if (
+        episodeBody.some(
+          (memory) =>
+            typeof memory === 'object' &&
+            memory !== null &&
+            'type' in memory &&
+            memory.type === 'episodic' &&
+            'artifacts' in memory &&
+            Array.isArray(memory.artifacts) &&
+            memory.artifacts.length === 1,
+        )
+      ) {
+        break;
+      }
+
+      await new Promise<void>((resolve) => setTimeout(resolve, 25));
+    }
+
+    const episode = episodeBody.find(
+      (memory) =>
+        typeof memory === 'object' &&
+        memory !== null &&
+        'type' in memory &&
+        memory.type === 'episodic',
+    );
+
+    if (typeof episode !== 'object' || episode === null) {
+      throw new Error('Expected an episodic memory.');
+    }
+
+    expect(readStringProperty(episode, 'content')).toContain('柯基');
+    expect(readStringProperty(episode, 'status')).toBe('ready');
+    expect(readStringProperty(episode, 'type')).toBe('episodic');
+
+    const episodeId = readStringProperty(episode, 'id');
+    const artifacts =
+      'artifacts' in episode && Array.isArray(episode.artifacts)
+        ? episode.artifacts
+        : [];
+
+    if (artifacts.length === 0) {
+      throw new Error('Expected an episodic memory artifact.');
+    }
+
+    const artifactId = readStringProperty(artifacts[0], 'id');
+
+    await request(app.getHttpServer())
+      .get(
+        `/api/agents/${agentId}/memories/${episodeId}/artifacts/${artifactId}`,
+      )
+      .query({ ownerKey })
+      .expect('Content-Type', /image\/png/)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get(
+        `/api/agents/${agentId}/memories/${episodeId}/artifacts/${artifactId}`,
+      )
+      .query({ ownerKey: 'another-owner' })
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .post(`/api/agents/${agentId}/chat`)
+      .send({
+        conversationId: 'conversation-image-b',
+        memoryOwnerKey: ownerKey,
+        messages: [
+          {
+            content: '上次那只狗是什么品种？',
+            role: 'user',
+          },
+        ],
+        stream: false,
+      })
+      .expect(200);
+
+    const recalledInput = chatInputs.at(-1);
+
+    expect(recalledInput?.messages[0]?.content).toContain('柯基');
+    expect(
+      recalledInput?.messages.some(
+        (message) =>
+          Array.isArray(message.content) &&
+          message.content.some(
+            (part) =>
+              part.type === 'image_url' &&
+              part.image_url.url.startsWith('data:image/png;base64,'),
+          ),
+      ),
+    ).toBe(true);
+
+    await request(app.getHttpServer())
+      .post(`/api/agents/${agentId}/chat`)
+      .send({
+        conversationId: 'conversation-owner-attack',
+        memoryOwnerKey: 'another-owner',
+        messages: [
+          {
+            attachments: [attachment],
+            content: '读取别人的图片',
+            role: 'user',
+          },
+        ],
+        stream: false,
+      })
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .post(`/api/agents/${otherAgentId}/chat`)
+      .send({
+        memoryOwnerKey: ownerKey,
+        messages: [
+          {
+            attachments: [attachment],
+            content: '跨智能体读取图片',
+            role: 'user',
+          },
+        ],
+        stream: false,
+      })
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .delete(`/api/agents/${agentId}/memories/${episodeId}`)
+      .query({ ownerKey })
+      .expect(204);
+    await request(app.getHttpServer())
+      .get(
+        `/api/agents/${agentId}/memories/${episodeId}/artifacts/${artifactId}`,
+      )
+      .query({ ownerKey })
+      .expect(404);
+  });
+
+  it('keeps a pending episode when visual extraction fails without blocking chat', async () => {
+    const image = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01,
+    ]);
+    const upload = await request(app.getHttpServer())
+      .post('/api/chat-attachments')
+      .set('Content-Type', 'image/png')
+      .set('Content-Length', String(image.length))
+      .set('X-Agent-Id', agentId)
+      .set('X-File-Name', encodeURIComponent('pending.png'))
+      .set('X-Memory-Owner-Key', ownerKey)
+      .send(image)
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/api/agents/${agentId}/chat`)
+      .send({
+        conversationId: 'conversation-image-pending',
+        memoryOwnerKey: ownerKey,
+        messages: [
+          {
+            attachments: [upload.body],
+            content: '触发视觉失败',
+            role: 'user',
+          },
+        ],
+        stream: false,
+      })
+      .expect(200);
+
+    let pendingMemory: unknown;
+
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const response = await request(app.getHttpServer())
+        .get(`/api/agents/${agentId}/memories`)
+        .query({ ownerKey })
+        .expect(200);
+
+      pendingMemory = Array.isArray(response.body)
+        ? response.body.find(
+            (memory: unknown) =>
+              typeof memory === 'object' &&
+              memory !== null &&
+              'status' in memory &&
+              memory.status === 'pending',
+          )
+        : undefined;
+
+      if (pendingMemory) {
+        break;
+      }
+
+      await new Promise<void>((resolve) => setTimeout(resolve, 25));
+    }
+
+    if (typeof pendingMemory !== 'object' || pendingMemory === null) {
+      throw new Error('Expected a pending episodic memory.');
+    }
+
+    expect(readStringProperty(pendingMemory, 'content')).toContain(
+      '待处理图片情景',
+    );
+    expect(readStringProperty(pendingMemory, 'status')).toBe('pending');
+    expect(readStringProperty(pendingMemory, 'type')).toBe('episodic');
   });
 });

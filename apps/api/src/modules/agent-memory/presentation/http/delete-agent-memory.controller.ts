@@ -1,13 +1,13 @@
 import { Controller, Delete, HttpCode, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
-import { AgentMemoryService } from '../../application/agent-memory.service';
+import { AgentMemoryManagementService } from '../../application/agent-memory-management.service';
 import { requireMemoryOwnerKey } from './memory-owner-key';
 
 @ApiTags('agent-memory')
 @Controller('agents/:agentId/memories/:memoryId')
 export class DeleteAgentMemoryController {
-  constructor(private readonly memory: AgentMemoryService) {}
+  constructor(private readonly memory: AgentMemoryManagementService) {}
 
   @Delete()
   @HttpCode(204)

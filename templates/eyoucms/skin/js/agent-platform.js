@@ -1,4 +1,3 @@
-/** Change this deployment value when the NestJS API uses another origin. */
 const AGENT_BACKEND_BASE_URL = '/api';
 
 /** 可选：固定访问某个智能体的 ID；留空则由访问者在页面上选择。 */
@@ -143,7 +142,9 @@ const AGENT_DEFAULT_AGENT_ID = '';
       body: file,
       headers: {
         'Content-Type': file.type,
+        'X-Agent-Id': agentId,
         'X-File-Name': encodeURIComponent(file.name),
+        'X-Memory-Owner-Key': memoryOwnerKey,
       },
       method: 'POST',
     });

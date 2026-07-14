@@ -116,7 +116,13 @@ async function sendMessage(content = message.value): Promise<void> {
   try {
     const pending = [...pendingAttachments.value];
     const uploaded = await Promise.all(
-      pending.map((item) => workspaceStore.uploadChatAttachment(item.file)),
+      pending.map((item) =>
+        workspaceStore.uploadChatAttachment(
+          agentId.value,
+          memoryOwnerKey,
+          item.file,
+        ),
+      ),
     );
     const attachments = uploaded.map(
       (attachment, index): DisplayAttachment => ({

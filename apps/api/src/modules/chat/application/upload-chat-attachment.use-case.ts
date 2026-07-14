@@ -4,7 +4,10 @@ import { ConfigService } from '@nestjs/config';
 import type { ApplicationConfig } from '../../../config/application.config';
 import { ApplicationError } from '../../../shared/application/application-error';
 import type { ChatAttachmentSummary } from '../domain/chat';
-import { ChatAttachmentStorage } from './chat-attachment.storage';
+import {
+  ChatAttachmentStorage,
+  type ChatAttachmentOwner,
+} from './chat-attachment.storage';
 
 const SUPPORTED_MIME_TYPES = new Set([
   'audio/mpeg',
@@ -33,6 +36,7 @@ export class UploadChatAttachmentUseCase {
     contentLength: number;
     fileName: string;
     mimeType: string;
+    owner?: ChatAttachmentOwner;
     source: AsyncIterable<Uint8Array>;
   }): Promise<ChatAttachmentSummary> {
     if (!SUPPORTED_MIME_TYPES.has(input.mimeType)) {
@@ -58,6 +62,7 @@ export class UploadChatAttachmentUseCase {
       input.mimeType,
       input.source,
       this.maxBytes,
+      input.owner,
     );
 
     if (attachment.sizeBytes !== input.contentLength) {
