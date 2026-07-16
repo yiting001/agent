@@ -81,6 +81,11 @@ describe('Database migrations', () => {
         'knowledge_ingestion_jobs',
       );
 
+      expect(await queryRunner.hasTable('evaluation_suites')).toBe(true);
+      expect(await queryRunner.hasTable('evaluation_metrics')).toBe(true);
+      expect(await queryRunner.hasTable('evaluation_cases')).toBe(true);
+      expect(await queryRunner.hasTable('evaluation_runs')).toBe(true);
+      expect(await queryRunner.hasTable('evaluation_case_results')).toBe(true);
       expect(taskTable).toBeDefined();
       expect(taskTable?.findColumnByName('embeddingJson')?.type).toBe('jsonb');
       expect(memoryTable?.findColumnByName('idempotencyKey')).toBeDefined();
@@ -91,6 +96,37 @@ describe('Database migrations', () => {
       expect(ingestionJobs?.findColumnByName('nextRunAt')).toBeDefined();
     } finally {
       await queryRunner.release();
+    }
+
+    await dataSource.undoLastMigration();
+    const evaluationRolledBack = dataSource.createQueryRunner();
+
+    try {
+      expect(await evaluationRolledBack.hasTable('evaluation_suites')).toBe(
+        false,
+      );
+      expect(await evaluationRolledBack.hasTable('evaluation_metrics')).toBe(
+        false,
+      );
+      expect(await evaluationRolledBack.hasTable('evaluation_cases')).toBe(
+        false,
+      );
+      expect(await evaluationRolledBack.hasTable('evaluation_runs')).toBe(
+        false,
+      );
+      expect(
+        await evaluationRolledBack.hasTable('evaluation_case_results'),
+      ).toBe(false);
+      const ingestionJobs = await evaluationRolledBack.getTable(
+        'knowledge_ingestion_jobs',
+      );
+
+      expect(ingestionJobs?.findColumnByName('lockOwner')).toBeDefined();
+      expect(await evaluationRolledBack.hasTable('vector_collections')).toBe(
+        true,
+      );
+    } finally {
+      await evaluationRolledBack.release();
     }
 
     await dataSource.undoLastMigration();
