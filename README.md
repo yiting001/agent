@@ -67,6 +67,7 @@ openssl rand -hex 32
 - `/knowledge-bases`：知识库创建、文档上传和处理状态。
 - `/model-providers`：DeepSeek、通义千问、豆包及兼容模型配置。
 - `/api-access`：智能体应用与 API 访问凭证管理。
+- `/evaluation`：评估指标、测试用例和基准运行管理。
 - `/chat/:agentId`：指定智能体的独立真实对话测试页。
 
 管理后台模块结构与后端边界见
@@ -75,6 +76,9 @@ openssl rand -hex 32
 “观测与监控”页面提供请求日志、执行链路、黄金指标、模型 Token、估算成本和
 异常告警。设计与配置见
 [观测与监控文档](docs/modules/observability.md)。
+
+“评估与测试”页面支持为智能体创建可重复执行的评估集，用关键词命中率形成基准运行结果。设计、接口、数据模型与边界见
+[Evaluation 评估与测试文档](docs/modules/evaluation.md)。
 
 智能体对话支持服务端短期会话、跨会话偏好/事实，以及带原始图片证据的自动情景记忆。设计、混合召回、安全边界、接口与配置见
 [智能体记忆系统文档](docs/modules/agent-memory.md)。

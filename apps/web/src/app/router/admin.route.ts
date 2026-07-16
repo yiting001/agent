@@ -85,6 +85,16 @@ export const adminRoute: RouteRecordRaw = {
     },
     {
       component: () =>
+        import('@/modules/evaluation/presentation/views/EvaluationView.vue'),
+      meta: {
+        description: '定义评估指标、测试用例和基准运行，持续验证智能体表现。',
+        title: '评估与测试',
+      },
+      name: 'evaluation',
+      path: 'evaluation',
+    },
+    {
+      component: () =>
         import('@/modules/admin/presentation/views/BrandSettingsView.vue'),
       meta: {
         description: '统一设置管理端与用户对话页面的软件名称和图标。',

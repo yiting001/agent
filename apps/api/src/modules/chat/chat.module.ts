@@ -20,6 +20,7 @@ import { PublicChatWithAgentController } from './presentation/http/public-chat-w
     OpenAiChatCompletionController,
     PublicChatWithAgentController,
   ],
+  exports: [ChatWithAgentUseCase],
   imports: [
     AgentsModule,
     AgentMemoryModule,
