@@ -68,7 +68,7 @@ describe('Database migrations', () => {
       });
   });
 
-  it('migrates and rolls back prompt policies, evaluation and infrastructure changes', async () => {
+  it('migrates and rolls back observability, prompt policies, evaluation and infrastructure changes', async () => {
     const dataSource = app.get(DataSource);
     const queryRunner = dataSource.createQueryRunner();
 
@@ -81,12 +81,34 @@ describe('Database migrations', () => {
         'knowledge_ingestion_jobs',
       );
       const promptPolicies = await queryRunner.getTable('prompt_policies');
+      const generations = await queryRunner.getTable(
+        'observability_generations',
+      );
+      const generationContents = await queryRunner.getTable(
+        'observability_generation_contents',
+      );
+      const feedback = await queryRunner.getTable('observability_feedback');
+      const observabilityEvents = await queryRunner.getTable(
+        'observability_events',
+      );
       const promptRows = (await queryRunner.query(
         'SELECT "key", "enabled", "revision" FROM "prompt_policies" WHERE "key" = $1',
         ['rich-content-output'],
       )) as Array<{ enabled: boolean; key: string; revision: number }>;
 
       expect(promptPolicies?.findColumnByName('revision')).toBeDefined();
+      expect(generations?.findColumnByName('responseModel')).toBeDefined();
+      expect(generationContents?.findColumnByName('expiresAt')).toBeDefined();
+      expect(feedback?.uniques).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'UQ_observability_feedback_actor_metric',
+          }),
+        ]),
+      );
+      expect(
+        observabilityEvents?.findColumnByName('requestedModel'),
+      ).toBeDefined();
       expect(promptRows).toEqual([
         { enabled: true, key: 'rich-content-output', revision: 1 },
       ]);
@@ -105,6 +127,30 @@ describe('Database migrations', () => {
       expect(ingestionJobs?.findColumnByName('nextRunAt')).toBeDefined();
     } finally {
       await queryRunner.release();
+    }
+
+    await dataSource.undoLastMigration();
+    const generationObservabilityRolledBack = dataSource.createQueryRunner();
+
+    try {
+      expect(
+        await generationObservabilityRolledBack.hasTable(
+          'observability_generations',
+        ),
+      ).toBe(false);
+      expect(
+        await generationObservabilityRolledBack.hasTable('prompt_policies'),
+      ).toBe(true);
+      const observabilityEvents =
+        await generationObservabilityRolledBack.getTable(
+          'observability_events',
+        );
+
+      expect(
+        observabilityEvents?.findColumnByName('requestedModel'),
+      ).toBeUndefined();
+    } finally {
+      await generationObservabilityRolledBack.release();
     }
 
     await dataSource.undoLastMigration();

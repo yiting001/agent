@@ -1,25 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-export interface ObservabilityTraceContext {
-  agentId?: string;
-  conversationId?: string;
-  source?: string;
-  spanId: string;
-  traceId: string;
-}
+import {
+  type ObservabilityTrace,
+  ObservabilityTraceContext,
+} from '../application/observability-trace.context';
 
 @Injectable()
-export class ObservabilityContext {
-  private readonly storage = new AsyncLocalStorage<ObservabilityTraceContext>();
+export class ObservabilityContext extends ObservabilityTraceContext {
+  private readonly storage = new AsyncLocalStorage<ObservabilityTrace>();
 
-  current(): ObservabilityTraceContext | undefined {
+  current(): ObservabilityTrace | undefined {
     return this.storage.getStore();
   }
 
   enrich(
     attributes: Pick<
-      ObservabilityTraceContext,
+      ObservabilityTrace,
       'agentId' | 'conversationId' | 'source'
     >,
   ): void {
@@ -30,10 +27,7 @@ export class ObservabilityContext {
     }
   }
 
-  run<Output>(
-    context: ObservabilityTraceContext,
-    operation: () => Output,
-  ): Output {
+  run<Output>(context: ObservabilityTrace, operation: () => Output): Output {
     return this.storage.run(context, operation);
   }
 }

@@ -345,6 +345,12 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     return gateway.uploadChatAttachment(agentId, ownerToken, file);
   }
 
+  function submitGenerationFeedback(
+    input: Parameters<typeof gateway.submitGenerationFeedback>[0],
+  ): ReturnType<typeof gateway.submitGenerationFeedback> {
+    return gateway.submitGenerationFeedback(input);
+  }
+
   function createMemoryOwnerToken(): Promise<string> {
     return gateway.createMemoryOwnerToken();
   }
@@ -384,6 +390,7 @@ export const useAdminWorkspaceStore = defineStore('admin-workspace', () => {
     requestCount,
     skillName,
     skills,
+    submitGenerationFeedback,
     updateAgent,
     updateAgentStatus,
     updateKnowledgeBase,

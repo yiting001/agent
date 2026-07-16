@@ -9,6 +9,7 @@ import { ModelProvidersModule } from '../model-providers/model-providers.module'
 import { PromptPoliciesModule } from '../prompt-policies/prompt-policies.module';
 import { SkillsModule } from '../skills/skills.module';
 import { ChatWithAgentUseCase } from './application/chat-with-agent.use-case';
+import { ChatConversationTracker } from './application/chat-conversation-tracker.service';
 import { SkillToolLoopService } from './application/skill-tool-loop.service';
 import { ChatAttachmentModule } from './chat-attachment.module';
 import { ChatWithAgentController } from './presentation/http/chat-with-agent.controller';
@@ -33,6 +34,10 @@ import { PublicChatWithAgentController } from './presentation/http/public-chat-w
     PromptPoliciesModule,
     SkillsModule,
   ],
-  providers: [ChatWithAgentUseCase, SkillToolLoopService],
+  providers: [
+    ChatConversationTracker,
+    ChatWithAgentUseCase,
+    SkillToolLoopService,
+  ],
 })
 export class ChatModule {}

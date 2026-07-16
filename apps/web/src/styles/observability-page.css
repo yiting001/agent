@@ -446,6 +446,133 @@
   color: var(--admin-danger);
 }
 
+.observability-generation-list {
+  display: grid;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.observability-generation {
+  background: color-mix(in srgb, var(--color-surface) 94%, #4f46e5 6%);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+}
+
+.observability-generation__header,
+.observability-generation__feedback header,
+.observability-generation__content header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.observability-generation__header h3,
+.observability-generation__content h4,
+.observability-generation__feedback h4 {
+  margin: 0;
+}
+
+.observability-generation__header p,
+.observability-generation__content small {
+  color: var(--color-text-muted);
+  margin: 4px 0 0;
+}
+
+.observability-generation__badges {
+  display: flex;
+  gap: 8px;
+}
+
+.observability-generation__badges span {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  padding: 5px 9px;
+}
+
+.observability-generation__identity {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.observability-generation__identity div {
+  min-width: 0;
+}
+
+.observability-generation__identity dt {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.observability-generation__identity dd {
+  font-size: 13px;
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.observability-generation__content,
+.observability-generation__feedback {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.observability-generation__content details {
+  border-top: 1px solid var(--color-border);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.observability-generation__content summary {
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.observability-generation__content pre {
+  font: inherit;
+  line-height: 1.65;
+  margin: 12px 0 0;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.observability-generation__feedback-item {
+  align-items: flex-start;
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto 1fr auto;
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.observability-generation__feedback-item small,
+.observability-generation__feedback-item time,
+.observability-generation__empty {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.observability-generation__feedback-item p {
+  margin: 5px 0 0;
+}
+
+.observability-generation__empty {
+  margin: 12px 0 0;
+}
+
 .observability-trace-summary {
   display: grid;
   grid-template-columns: minmax(170px, 1.7fr) repeat(5, minmax(78px, 1fr));

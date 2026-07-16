@@ -78,6 +78,51 @@ class UploadHttpClient implements HttpClient {
   }
 }
 
+class ChatHttpClient extends UploadHttpClient {
+  readonly putBodies: unknown[] = [];
+
+  override postEventStream<Body>(
+    path: string,
+    body: Body,
+    onEvent: (event: string, data: string) => void,
+  ): Promise<void> {
+    void body;
+
+    if (path !== '/agents/agent-1/chat') {
+      return Promise.reject(new Error(`Unexpected request: ${path}`));
+    }
+
+    onEvent(
+      'metadata',
+      JSON.stringify({
+        citations: [],
+        conversationId: 'conversation-1',
+        generationId: 'generation-1',
+        traceId: 'trace-1',
+      }),
+    );
+    onEvent('delta', JSON.stringify({ content: '真实回答' }));
+    onEvent('done', '{}');
+
+    return Promise.resolve();
+  }
+
+  override put<Response, Body>(path: string, body: Body): Promise<Response> {
+    this.paths.push(path);
+    this.putBodies.push(body);
+
+    return Promise.resolve({
+      createdAt: '2026-07-16T00:00:00.000Z',
+      id: 'feedback-1',
+      metric: 'helpfulness',
+      rating: 'negative',
+      reasonCodes: ['incorrect'],
+      source: 'end_user',
+      updatedAt: '2026-07-16T00:00:00.000Z',
+    } as Response);
+  }
+}
+
 describe('HttpAdminWorkspaceGateway', () => {
   it('uploads a file in server-defined chunks and reports progress', async () => {
     const httpClient = new UploadHttpClient();
@@ -100,5 +145,47 @@ describe('HttpAdminWorkspaceGateway', () => {
       '/uploads/upload-id/parts/3',
       '/uploads/upload-id/complete',
     ]);
+  });
+
+  it('解析 SSE generation metadata 并提交幂等反馈', async () => {
+    const httpClient = new ChatHttpClient();
+    const gateway = new HttpAdminWorkspaceGateway(httpClient);
+    const deltas: string[] = [];
+    const response = await gateway.chat(
+      'agent-1',
+      'conversation-1',
+      'owner-token',
+      [{ content: '问题', role: 'user' }],
+      (delta) => deltas.push(delta),
+    );
+
+    expect(response).toEqual(
+      expect.objectContaining({
+        answer: '真实回答',
+        generationId: 'generation-1',
+        traceId: 'trace-1',
+      }),
+    );
+    expect(deltas).toEqual(['真实回答']);
+
+    const feedback = await gateway.submitGenerationFeedback({
+      agentId: 'agent-1',
+      comment: '事实不准确',
+      generationId: response.generationId,
+      memoryOwnerToken: 'owner-token',
+      rating: 'negative',
+      reasonCodes: ['incorrect'],
+    });
+
+    expect(feedback.rating).toBe('negative');
+    expect(httpClient.paths.at(-1)).toBe(
+      '/agents/agent-1/generations/generation-1/feedback',
+    );
+    expect(httpClient.putBodies.at(-1)).toEqual({
+      comment: '事实不准确',
+      memoryOwnerToken: 'owner-token',
+      rating: 'negative',
+      reasonCodes: ['incorrect'],
+    });
   });
 });

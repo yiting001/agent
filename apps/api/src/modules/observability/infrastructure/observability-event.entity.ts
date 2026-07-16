@@ -56,6 +56,25 @@ export class ObservabilityEventEntity {
   @Column('text', { nullable: true })
   model?: string;
 
+  @Index()
+  @Column('text', { nullable: true })
+  generationId?: string;
+
+  @Column('text', { nullable: true })
+  providerName?: string;
+
+  @Column('text', { nullable: true })
+  requestedModel?: string;
+
+  @Column('text', { nullable: true })
+  responseModel?: string;
+
+  @Column('text', { nullable: true })
+  upstreamResponseId?: string;
+
+  @Column('jsonb', { default: [] })
+  finishReasons: string[];
+
   @Column('integer', { default: 0 })
   inputTokens: number;
 

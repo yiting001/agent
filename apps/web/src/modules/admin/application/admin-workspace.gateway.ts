@@ -16,7 +16,9 @@ import type {
   KnowledgeDocumentSummary,
   KnowledgeModuleSummary,
   ModelProviderSummary,
+  GenerationFeedback,
   SkillSummary,
+  SubmitGenerationFeedbackInput,
   UpdateKnowledgeResourceInput,
   UpdateSkillInput,
 } from '../domain/admin-workspace';
@@ -82,6 +84,10 @@ export abstract class AdminWorkspaceGateway {
   ): Promise<KnowledgeDocumentSummary[]>;
 
   abstract listSkills(): Promise<SkillSummary[]>;
+
+  abstract submitGenerationFeedback(
+    input: SubmitGenerationFeedbackInput,
+  ): Promise<GenerationFeedback>;
 
   abstract updateAgent(
     agentId: string,

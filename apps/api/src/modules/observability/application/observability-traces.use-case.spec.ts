@@ -6,6 +6,7 @@ import {
   type ObservabilityTraceEventPage,
 } from './observability-event.repository';
 import { GetObservabilityTraceUseCase } from './get-observability-trace.use-case';
+import { ObservabilityGenerationRepository } from './observability-generation.repository';
 import { ListObservabilityTracesUseCase } from './list-observability-traces.use-case';
 
 function event(
@@ -17,6 +18,7 @@ function event(
     category: input.category,
     costUsdMicros: input.costUsdMicros ?? 0,
     durationMs: input.durationMs ?? 100,
+    finishReasons: input.finishReasons ?? [],
     id: input.id ?? input.operation,
     inputTokens: input.inputTokens ?? 0,
     metadata: input.metadata ?? {},
@@ -117,7 +119,17 @@ describe('Observability trace use cases', () => {
         }),
       ]),
     } as unknown as ObservabilityEventRepository;
-    const useCase = new GetObservabilityTraceUseCase(repository);
+    const generations = {
+      findByTraceId: jest.fn().mockResolvedValue([
+        {
+          captureMode: 'redacted',
+          id: 'generation-id',
+          inputMessages: [],
+          outputText: '回答',
+        },
+      ]),
+    } as unknown as ObservabilityGenerationRepository;
+    const useCase = new GetObservabilityTraceUseCase(repository, generations);
 
     const detail = await useCase.execute('trace-detail');
 
@@ -136,13 +148,19 @@ describe('Observability trace use cases', () => {
         spanId: 'model-span',
       }),
     ]);
+    expect(detail.generations).toEqual([
+      expect.objectContaining({ id: 'generation-id', outputText: '回答' }),
+    ]);
   });
 
   it('raises not-found when a trace does not exist', async () => {
     const repository = {
       findByTraceId: jest.fn().mockResolvedValue([]),
     } as unknown as ObservabilityEventRepository;
-    const useCase = new GetObservabilityTraceUseCase(repository);
+    const generations = {
+      findByTraceId: jest.fn().mockResolvedValue([]),
+    } as unknown as ObservabilityGenerationRepository;
+    const useCase = new GetObservabilityTraceUseCase(repository, generations);
 
     await expect(useCase.execute('missing-trace')).rejects.toEqual(
       new ApplicationError('not_found', '执行链路不存在。'),

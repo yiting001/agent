@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { performance } from 'node:perf_hooks';
 
 import { ObservabilityService } from '../../observability/application/observability.service';
+import { GenerationCaptureService } from '../../observability/application/generation-capture.service';
 import type {
   ChatMessageInput,
   ChatToolDefinition,
@@ -15,12 +16,22 @@ export interface ModelUsage {
 
 export interface ModelCallDescriptor {
   estimatedInputTokens: number;
+  generationId?: string;
   inputCostPerMillionTokens?: number;
   metadata?: Record<string, string | number | boolean>;
-  model: string;
   operation: string;
   outputCostPerMillionTokens?: number;
   providerId?: string;
+  providerName?: string;
+  requestedModel: string;
+  traceId?: string;
+}
+
+export interface ModelResponseIdentity {
+  finishReasons?: string[];
+  responseModel?: string;
+  systemFingerprint?: string;
+  upstreamResponseId?: string;
 }
 
 function isCjkCharacter(character: string): boolean {
@@ -86,9 +97,11 @@ export class ModelCallObservation {
   private readonly started = performance.now();
   private readonly startedAt = new Date();
   private outputText = '';
+  private response: ModelResponseIdentity = {};
 
   constructor(
     private readonly observability: ObservabilityService,
+    private readonly generations: GenerationCaptureService,
     private readonly descriptor: ModelCallDescriptor,
   ) {}
 
@@ -100,6 +113,22 @@ export class ModelCallObservation {
     if (usage) {
       this.actualUsage = usage;
     }
+  }
+
+  captureResponse(response: ModelResponseIdentity): void {
+    this.response = {
+      finishReasons: [
+        ...new Set([
+          ...(this.response.finishReasons ?? []),
+          ...(response.finishReasons ?? []),
+        ]),
+      ],
+      responseModel: response.responseModel ?? this.response.responseModel,
+      systemFingerprint:
+        response.systemFingerprint ?? this.response.systemFingerprint,
+      upstreamResponseId:
+        response.upstreamResponseId ?? this.response.upstreamResponseId,
+    };
   }
 
   async cancel(): Promise<void> {
@@ -136,33 +165,59 @@ export class ModelCallObservation {
         outputTokens * (this.descriptor.outputCostPerMillionTokens ?? 0),
     );
 
-    await this.observability.record({
-      category: 'model',
-      costUsdMicros,
-      durationMs: performance.now() - this.started,
-      errorMessage,
-      inputTokens,
-      metadata: this.descriptor.metadata,
-      model: this.descriptor.model,
-      operation: this.descriptor.operation,
-      outputTokens,
-      providerId: this.descriptor.providerId,
-      startedAt: this.startedAt,
-      status,
-      tokenCountSource: this.actualUsage
-        ? 'actual'
-        : hasEstimate
-          ? 'estimated'
-          : 'unavailable',
-    });
+    await Promise.all([
+      this.observability.record({
+        category: 'model',
+        costUsdMicros,
+        durationMs: performance.now() - this.started,
+        errorMessage,
+        finishReasons: this.response.finishReasons,
+        generationId: this.descriptor.generationId,
+        inputTokens,
+        metadata: {
+          ...(this.response.systemFingerprint
+            ? { systemFingerprint: this.response.systemFingerprint }
+            : {}),
+          ...this.descriptor.metadata,
+        },
+        model: this.response.responseModel ?? this.descriptor.requestedModel,
+        operation: this.descriptor.operation,
+        outputTokens,
+        providerId: this.descriptor.providerId,
+        providerName: this.descriptor.providerName,
+        requestedModel: this.descriptor.requestedModel,
+        responseModel: this.response.responseModel,
+        startedAt: this.startedAt,
+        status,
+        tokenCountSource: this.actualUsage
+          ? 'actual'
+          : hasEstimate
+            ? 'estimated'
+            : 'unavailable',
+        traceId: this.descriptor.traceId,
+        upstreamResponseId: this.response.upstreamResponseId,
+      }),
+      this.generations.captureModelResponse(this.descriptor.generationId, {
+        finishReasons: this.response.finishReasons,
+        responseModel: this.response.responseModel,
+        upstreamResponseId: this.response.upstreamResponseId,
+      }),
+    ]);
   }
 }
 
 @Injectable()
 export class ModelCallObserver {
-  constructor(private readonly observability: ObservabilityService) {}
+  constructor(
+    private readonly observability: ObservabilityService,
+    private readonly generations: GenerationCaptureService,
+  ) {}
 
   start(descriptor: ModelCallDescriptor): ModelCallObservation {
-    return new ModelCallObservation(this.observability, descriptor);
+    return new ModelCallObservation(
+      this.observability,
+      this.generations,
+      descriptor,
+    );
   }
 }

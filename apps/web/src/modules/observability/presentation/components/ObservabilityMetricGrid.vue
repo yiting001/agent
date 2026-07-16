@@ -80,5 +80,38 @@ defineProps<{
         >
       </div>
     </article>
+    <article>
+      <span><BaseIcon name="activity" /></span>
+      <div>
+        <p>用户反馈</p>
+        <strong>{{ formatNumber(dashboard.quality.feedbackCount) }}</strong>
+        <small
+          >{{
+            formatNumber(dashboard.quality.negativeFeedbackCount)
+          }}
+          条负向反馈</small
+        >
+      </div>
+    </article>
+    <article>
+      <span><BaseIcon name="model" /></span>
+      <div>
+        <p>正反馈率</p>
+        <strong
+          >{{ dashboard.quality.positiveFeedbackRate.toFixed(2) }}%</strong
+        >
+        <small>基于当前时间窗口反馈</small>
+      </div>
+    </article>
+    <article>
+      <span><BaseIcon name="alert" /></span>
+      <div>
+        <p>模型不一致</p>
+        <strong>{{
+          formatNumber(dashboard.quality.modelMismatchCount)
+        }}</strong>
+        <small>请求模型与上游响应模型不同</small>
+      </div>
+    </article>
   </section>
 </template>

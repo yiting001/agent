@@ -1,5 +1,6 @@
 import type { ObservabilityEvent } from '../domain/observability-event';
 import { ObservabilityEventRepository } from './observability-event.repository';
+import { ObservabilityGenerationRepository } from './observability-generation.repository';
 import { GetObservabilityDashboardUseCase } from './get-observability-dashboard.use-case';
 
 function event(
@@ -11,6 +12,7 @@ function event(
     category: input.category,
     costUsdMicros: input.costUsdMicros ?? 0,
     durationMs: input.durationMs ?? 100,
+    finishReasons: input.finishReasons ?? [],
     id: input.id ?? input.operation,
     inputTokens: input.inputTokens ?? 0,
     metadata: {},
@@ -47,7 +49,18 @@ describe('GetObservabilityDashboardUseCase', () => {
         }),
       ]),
     } as unknown as ObservabilityEventRepository;
-    const useCase = new GetObservabilityDashboardUseCase(repository);
+    const generations = {
+      getQualitySummary: jest.fn().mockResolvedValue({
+        feedbackCount: 2,
+        modelMismatchCount: 1,
+        negativeFeedbackCount: 1,
+        positiveFeedbackRate: 50,
+      }),
+    } as unknown as ObservabilityGenerationRepository;
+    const useCase = new GetObservabilityDashboardUseCase(
+      repository,
+      generations,
+    );
 
     const dashboard = await useCase.execute(24);
 
@@ -66,6 +79,12 @@ describe('GetObservabilityDashboardUseCase', () => {
       pricedModelCallCount: 1,
     });
     expect(dashboard.alerts).toHaveLength(1);
+    expect(dashboard.quality).toEqual({
+      feedbackCount: 2,
+      modelMismatchCount: 1,
+      negativeFeedbackCount: 1,
+      positiveFeedbackRate: 50,
+    });
     expect(dashboard.recentTraces[0]).toEqual(
       expect.objectContaining({
         costUsd: 0.0025,

@@ -30,4 +30,6 @@ export interface AgentChatResponse {
   citations: ChatCitation[];
   /** 开启记忆能力时返回的会话标识。 */
   conversationId?: string;
+  generationId: string;
+  traceId: string;
 }

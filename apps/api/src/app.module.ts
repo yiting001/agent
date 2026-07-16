@@ -17,6 +17,7 @@ import { EnablePgvector1752157000000 } from './database/migrations/1752157000000
 import { AddKnowledgeIngestionLeases1752158000000 } from './database/migrations/1752158000000-add-knowledge-ingestion-leases';
 import { AddEvaluation1752159000000 } from './database/migrations/1752159000000-add-evaluation';
 import { AddPromptPolicies1752160000000 } from './database/migrations/1752160000000-add-prompt-policies';
+import { AddGenerationObservability1752161000000 } from './database/migrations/1752161000000-add-generation-observability';
 import { BrandingModule } from './modules/branding/branding.module';
 import { HealthModule } from './modules/health/health.module';
 import { AgentMemoryModule } from './modules/agent-memory/agent-memory.module';
@@ -60,6 +61,7 @@ import { RedisModule } from './shared/infrastructure/redis/redis.module';
             AddKnowledgeIngestionLeases1752158000000,
             AddEvaluation1752159000000,
             AddPromptPolicies1752160000000,
+            AddGenerationObservability1752161000000,
           ],
           migrationsRun: config.databaseMigrationsRun,
           extra: {

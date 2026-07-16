@@ -208,7 +208,7 @@
               </button>
             </div>
           </div>
-          <p class="chat-disclaimer">支持图片和音频输入；系统仅记录耗时、用量与异常，不在运行日志中保存对话正文。</p>
+          <p class="chat-disclaimer">支持图片和音频输入；诊断正文仅以脱敏、限长和短期保留方式独立保存，不保存附件原始内容或密钥。</p>
         </div>
       </main>
     </div>
@@ -221,6 +221,8 @@
     {eyou:static file="skin/js/agent-memory-identity.js" /}
     {eyou:static file="skin/js/agent-rich-visualizations.js" /}
     {eyou:static file="skin/js/agent-rich-content.js" /}
+    {eyou:static file="skin/js/agent-sse.js" /}
+    {eyou:static file="skin/js/agent-feedback.js" /}
     {eyou:static file="skin/js/agent-platform.js" /}
     {eyou:include file="footer.htm" /}
   </body>

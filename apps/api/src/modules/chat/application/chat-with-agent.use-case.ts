@@ -1,11 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { ApplicationError } from '../../../shared/application/application-error';
-import { AgentCatalogService } from '../../agents/application/agent-catalog.service';
-import { AgentRepository } from '../../agents/application/agent.repository';
 import { AgentEpisodicMemoryService } from '../../agent-memory/application/agent-episodic-memory.service';
 import { AgentMemoryService } from '../../agent-memory/application/agent-memory.service';
-import { AgentMemoryTaskDispatcher } from '../../agent-memory/application/agent-memory-task.dispatcher';
+import { AgentCatalogService } from '../../agents/application/agent-catalog.service';
 import { KnowledgeRetrieverService } from '../../knowledge/application/knowledge-retriever.service';
 import {
   type ChatMessageInput,
@@ -16,9 +14,12 @@ import { ModelProviderRuntimeService } from '../../model-providers/application/m
 import { PromptPolicyRuntimeService } from '../../prompt-policies/application/prompt-policy-runtime.service';
 import { SkillRuntimeService } from '../../skills/application/skill-runtime.service';
 import type { Skill } from '../../skills/domain/skill';
-import { ObservabilityContext } from '../../observability/infrastructure/observability-context';
+import { GenerationCaptureService } from '../../observability/application/generation-capture.service';
+import { ObservabilityTraceContext } from '../../observability/application/observability-trace.context';
+import type { ObservabilityGenerationMessage } from '../../observability/domain/observability-generation';
 import type { AgentChatResponse, ConversationMessage } from '../domain/chat';
 import { ChatAttachmentStorage } from './chat-attachment.storage';
+import { ChatConversationTracker } from './chat-conversation-tracker.service';
 import { SkillToolLoopService } from './skill-tool-loop.service';
 import { composeSystemPrompt } from './system-prompt.composer';
 
@@ -40,6 +41,8 @@ export interface StreamingAgentChatResponse {
   citations: AgentChatResponse['citations'];
   content: AsyncIterable<string>;
   conversationId?: string;
+  generationId: string;
+  traceId: string;
 }
 
 /** 多模态调用失败时生成明确告知附件被省略的纯文本消息。 */
@@ -60,17 +63,35 @@ function buildTextOnlyMessages(
   });
 }
 
+function toGenerationMessages(
+  messages: ChatMessageInput[],
+): ObservabilityGenerationMessage[] {
+  return messages.map((message) => ({
+    content:
+      typeof message.content === 'string'
+        ? message.content
+        : message.content
+            .map((part) => {
+              if (part.type === 'text') {
+                return part.text;
+              }
+
+              return part.type === 'image_url'
+                ? '[图片内容已省略]'
+                : '[音频内容已省略]';
+            })
+            .join('\n'),
+    role: message.role,
+  }));
+}
+
 /** 编排 Agent、RAG、长期记忆、情景证据、技能和模型流式输出。 */
 @Injectable()
 export class ChatWithAgentUseCase {
-  private readonly logger = new Logger(ChatWithAgentUseCase.name);
-
   constructor(
     private readonly agents: AgentCatalogService,
-    private readonly agentRepository: AgentRepository,
     private readonly agentMemory: AgentMemoryService,
     private readonly episodicMemory: AgentEpisodicMemoryService,
-    private readonly memoryTaskDispatcher: AgentMemoryTaskDispatcher,
     private readonly knowledgeRetriever: KnowledgeRetrieverService,
     private readonly modelProviders: ModelProviderRuntimeService,
     private readonly modelGateway: ModelGateway,
@@ -78,7 +99,9 @@ export class ChatWithAgentUseCase {
     private readonly promptPolicies: PromptPolicyRuntimeService,
     private readonly skillRuntime: SkillRuntimeService,
     private readonly toolLoop: SkillToolLoopService,
-    private readonly observabilityContext: ObservabilityContext,
+    private readonly observabilityContext: ObservabilityTraceContext,
+    private readonly generationCapture: GenerationCaptureService,
+    private readonly conversationTracker: ChatConversationTracker,
   ) {}
 
   /** 消费流式用例并聚合为非流式响应。 */
@@ -95,6 +118,8 @@ export class ChatWithAgentUseCase {
       answer,
       citations: response.citations,
       conversationId: response.conversationId,
+      generationId: response.generationId,
+      traceId: response.traceId,
     };
   }
 
@@ -210,16 +235,40 @@ export class ChatWithAgentUseCase {
       ...episodicEvidence,
       ...conversationMessages,
     ];
+    const generation = await this.generationCapture.start({
+      actorKey: command.memoryOwnerKey,
+      agentId: agent.id,
+      configuration: {
+        agentUpdatedAt: agent.updatedAt.toISOString(),
+        citationDocumentIds: knowledge.map((result) => result.documentId),
+        policyRevisions: policies.map((policy) => ({
+          key: policy.key,
+          revision: policy.revision,
+        })),
+        skillIds: [...skillSet.instructions, ...skillSet.toolProviders].map(
+          (skill) => skill.id,
+        ),
+      },
+      conversationId: command.conversationId,
+      inputMessages: toGenerationMessages(requestMessages),
+      providerId: provider.id,
+      providerName: provider.name,
+      requestedModel: provider.chatModel,
+      source: command.access,
+    });
     const request = {
       apiKey: provider.apiKey,
       baseUrl: provider.baseUrl,
+      generationId: generation.generationId,
       inputCostPerMillionTokens: provider.chatInputCostPerMillionTokens,
       messages: requestMessages,
       model: provider.chatModel,
       operation: 'chat.generate',
       outputCostPerMillionTokens: provider.chatOutputCostPerMillionTokens,
       providerId: provider.id,
+      providerName: provider.name,
       temperature: agent.temperature,
+      traceId: generation.traceId,
     };
     const hasMultimodalContent = requestMessages.some(
       (message) => typeof message.content !== 'string',
@@ -242,7 +291,7 @@ export class ChatWithAgentUseCase {
         moduleId: result.moduleId,
         score: result.score,
       })),
-      content: this.trackConversation(
+      content: this.conversationTracker.track(
         {
           agentId: agent.id,
           conversationId: command.conversationId,
@@ -251,8 +300,11 @@ export class ChatWithAgentUseCase {
           source: command.access,
         },
         content,
+        generation,
       ),
       conversationId: command.conversationId,
+      generationId: generation.generationId,
+      traceId: generation.traceId,
     };
   }
 
@@ -369,13 +421,16 @@ export class ChatWithAgentUseCase {
       {
         apiKey: request.apiKey,
         baseUrl: request.baseUrl,
+        generationId: request.generationId,
         inputCostPerMillionTokens: request.inputCostPerMillionTokens,
         messages: request.messages,
         model: request.model,
         operation: 'chat.tool_round',
         outputCostPerMillionTokens: request.outputCostPerMillionTokens,
         providerId: request.providerId,
+        providerName: request.providerName,
         temperature: request.temperature,
+        traceId: request.traceId,
       },
       toolProviders,
     );
@@ -412,76 +467,5 @@ export class ChatWithAgentUseCase {
       ...request,
       messages: textOnlyMessages,
     });
-  }
-
-  /** 流完整结束后才计数；记忆失败不反向破坏已交付的回答。 */
-  private async *trackConversation(
-    command: {
-      agentId: string;
-      conversationId?: string;
-      memoryOwnerKey?: string;
-      messages: ConversationMessage[];
-      source: ChatWithAgentCommand['access'];
-    },
-    content: AsyncIterable<string>,
-  ): AsyncIterable<string> {
-    let answer = '';
-    let completed = false;
-
-    try {
-      for await (const delta of content) {
-        answer += delta;
-        yield delta;
-      }
-
-      completed = true;
-    } finally {
-      if (completed && command.source !== 'evaluation') {
-        await this.agentRepository.incrementConversationCount(command.agentId);
-
-        try {
-          await this.agentMemory.recordTurn({
-            agentId: command.agentId,
-            answer,
-            conversationId: command.conversationId,
-            messages: command.messages,
-            ownerKey: command.memoryOwnerKey,
-            source: command.source,
-          });
-        } catch (error) {
-          this.logger.warn(
-            JSON.stringify({
-              error:
-                error instanceof Error ? error.message : '记忆写入发生未知错误',
-              operation: 'agent_memory.record_turn',
-            }),
-          );
-        }
-
-        try {
-          const taskEnqueued = await this.episodicMemory.recordEpisode({
-            agentId: command.agentId,
-            answer,
-            conversationId: command.conversationId,
-            messages: command.messages,
-            ownerKey: command.memoryOwnerKey,
-          });
-
-          if (taskEnqueued) {
-            this.memoryTaskDispatcher.dispatch();
-          }
-        } catch (error) {
-          this.logger.warn(
-            JSON.stringify({
-              error:
-                error instanceof Error
-                  ? error.message
-                  : '图片情景记忆写入发生未知错误',
-              operation: 'agent_memory.record_episode',
-            }),
-          );
-        }
-      }
-    }
   }
 }

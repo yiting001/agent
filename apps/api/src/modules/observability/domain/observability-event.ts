@@ -1,3 +1,8 @@
+import type {
+  ObservabilityGenerationDetail,
+  ObservabilityQualitySummary,
+} from './observability-generation';
+
 /** 观测告警等级。 */
 export type ObservabilityAlertSeverity = 'critical' | 'warning';
 /** 观测事件所属的调用边界。 */
@@ -17,6 +22,8 @@ export interface ObservabilityEvent {
   costUsdMicros: number;
   durationMs: number;
   errorMessage?: string;
+  finishReasons: string[];
+  generationId?: string;
   id: string;
   inputTokens: number;
   /** 仅允许低基数、非敏感元数据，禁止记录提示词和密钥。 */
@@ -28,6 +35,9 @@ export interface ObservabilityEvent {
   /** 父 span 标识，用于还原调用树。 */
   parentSpanId?: string;
   providerId?: string;
+  providerName?: string;
+  requestedModel?: string;
+  responseModel?: string;
   route?: string;
   /** 当前 span 标识。 */
   spanId: string;
@@ -37,6 +47,7 @@ export interface ObservabilityEvent {
   tokenCountSource: TokenCountSource;
   /** 跨模块传播的根追踪标识。 */
   traceId: string;
+  upstreamResponseId?: string;
 }
 
 /** 最近执行链路列表中的聚合摘要。 */
@@ -59,6 +70,8 @@ export interface ObservabilityTraceSpan {
   costUsd: number;
   durationMs: number;
   errorMessage?: string;
+  finishReasons: string[];
+  generationId?: string;
   inputTokens: number;
   metadata: Record<string, string | number | boolean>;
   method?: string;
@@ -67,16 +80,21 @@ export interface ObservabilityTraceSpan {
   outputTokens: number;
   parentSpanId?: string;
   providerId?: string;
+  providerName?: string;
+  requestedModel?: string;
+  responseModel?: string;
   route?: string;
   spanId: string;
   startedAt: string;
   status: ObservabilityStatus;
   statusCode?: number;
   tokenCountSource: TokenCountSource;
+  upstreamResponseId?: string;
 }
 
 /** 一条执行链路及其完整 Span 明细。 */
 export interface ObservabilityTraceDetail extends ObservabilityTraceSummary {
+  generations: ObservabilityGenerationDetail[];
   spans: ObservabilityTraceSpan[];
 }
 
@@ -110,6 +128,7 @@ export interface ObservabilityDashboard {
     p95LatencyMs: number;
     requestCount: number;
   };
+  quality: ObservabilityQualitySummary;
   recentTraces: ObservabilityTraceSummary[];
   runtime: {
     heapTotalBytes: number;

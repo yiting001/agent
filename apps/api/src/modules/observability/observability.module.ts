@@ -2,18 +2,29 @@ import { Global, Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { MemoryOwnerIdentityModule } from '../agent-memory/memory-owner-identity.module';
+import { ApiAccessModule } from '../api-access/api-access.module';
 import { GetObservabilityDashboardUseCase } from './application/get-observability-dashboard.use-case';
+import { GenerationCaptureService } from './application/generation-capture.service';
 import { GetObservabilityTraceUseCase } from './application/get-observability-trace.use-case';
 import { ListObservabilityTracesUseCase } from './application/list-observability-traces.use-case';
 import { ObservabilityEventRepository } from './application/observability-event.repository';
+import { ObservabilityGenerationRepository } from './application/observability-generation.repository';
 import { ObservabilityService } from './application/observability.service';
+import { ObservabilityTraceContext } from './application/observability-trace.context';
+import { SubmitGenerationFeedbackUseCase } from './application/submit-generation-feedback.use-case';
 import { ObservabilityContext } from './infrastructure/observability-context';
+import { ObservabilityFeedbackEntity } from './infrastructure/observability-feedback.entity';
+import { ObservabilityGenerationContentEntity } from './infrastructure/observability-generation-content.entity';
+import { ObservabilityGenerationEntity } from './infrastructure/observability-generation.entity';
 import { ObservabilityEventEntity } from './infrastructure/observability-event.entity';
 import { RequestObservabilityInterceptor } from './infrastructure/request-observability.interceptor';
 import { TypeOrmObservabilityEventRepository } from './infrastructure/typeorm-observability-event.repository';
+import { TypeOrmObservabilityGenerationRepository } from './infrastructure/typeorm-observability-generation.repository';
 import { GetObservabilityDashboardController } from './presentation/http/get-observability-dashboard.controller';
 import { GetObservabilityTraceController } from './presentation/http/get-observability-trace.controller';
 import { ListObservabilityTracesController } from './presentation/http/list-observability-traces.controller';
+import { SubmitGenerationFeedbackController } from './presentation/http/submit-generation-feedback.controller';
 
 @Global()
 @Module({
@@ -21,15 +32,36 @@ import { ListObservabilityTracesController } from './presentation/http/list-obse
     GetObservabilityDashboardController,
     GetObservabilityTraceController,
     ListObservabilityTracesController,
+    SubmitGenerationFeedbackController,
   ],
-  exports: [ObservabilityContext, ObservabilityService],
-  imports: [TypeOrmModule.forFeature([ObservabilityEventEntity])],
+  exports: [
+    GenerationCaptureService,
+    ObservabilityGenerationRepository,
+    ObservabilityService,
+    ObservabilityTraceContext,
+  ],
+  imports: [
+    ApiAccessModule,
+    MemoryOwnerIdentityModule,
+    TypeOrmModule.forFeature([
+      ObservabilityEventEntity,
+      ObservabilityFeedbackEntity,
+      ObservabilityGenerationContentEntity,
+      ObservabilityGenerationEntity,
+    ]),
+  ],
   providers: [
+    GenerationCaptureService,
     GetObservabilityDashboardUseCase,
     GetObservabilityTraceUseCase,
     ListObservabilityTracesUseCase,
     ObservabilityContext,
     ObservabilityService,
+    SubmitGenerationFeedbackUseCase,
+    {
+      provide: ObservabilityTraceContext,
+      useExisting: ObservabilityContext,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: RequestObservabilityInterceptor,
@@ -37,6 +69,10 @@ import { ListObservabilityTracesController } from './presentation/http/list-obse
     {
       provide: ObservabilityEventRepository,
       useClass: TypeOrmObservabilityEventRepository,
+    },
+    {
+      provide: ObservabilityGenerationRepository,
+      useClass: TypeOrmObservabilityGenerationRepository,
     },
   ],
 })

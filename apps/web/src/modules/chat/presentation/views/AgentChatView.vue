@@ -4,11 +4,15 @@ import { useRoute } from 'vue-router';
 
 import { webApplicationConfig } from '@/config/application.config';
 import { createRandomId } from '@/shared/identity/random-id';
-import type { ChatAttachmentSummary } from '@/modules/admin/domain/admin-workspace';
+import type {
+  ChatAttachmentSummary,
+  GenerationFeedback,
+} from '@/modules/admin/domain/admin-workspace';
 import BaseIcon from '@/modules/admin/presentation/components/BaseIcon.vue';
 import { useAdminWorkspaceStore } from '@/modules/admin/stores/admin-workspace.store';
 import { useBrandSettingsStore } from '@/modules/branding/stores/brand-settings.store';
 import RichMessageContent from '../components/RichMessageContent.vue';
+import ChatMessageFeedback from '../components/ChatMessageFeedback.vue';
 
 interface DisplayAttachment extends ChatAttachmentSummary {
   previewUrl: string;
@@ -18,8 +22,11 @@ interface ChatMessage {
   attachments?: DisplayAttachment[];
   content: string;
   id: string;
+  feedback?: GenerationFeedback;
+  generationId?: string;
   role: 'assistant' | 'user';
   sources?: string[];
+  traceId?: string;
 }
 
 interface PendingAttachment {
@@ -88,7 +95,6 @@ const quickQuestions = [
   '请介绍一下你可以提供哪些帮助？',
   '请根据知识库总结最重要的信息。',
 ];
-
 function welcomeMessage(): ChatMessage {
   return {
     content: `你好，我是${agent.value?.name ?? '企业知识助手'}。请直接提出问题，我会结合已绑定的知识模块回答。`,
@@ -183,6 +189,8 @@ async function sendMessage(content = message.value): Promise<void> {
     reply.sources = [
       ...new Set(response.citations.map((item) => item.fileName)),
     ];
+    reply.generationId = response.generationId;
+    reply.traceId = response.traceId;
   } catch (error) {
     const lastMessage = messages.value.at(-1);
 
@@ -391,6 +399,16 @@ onBeforeUnmount(revokePreviewUrls);
               <small v-if="item.sources?.length" class="chat-sources">
                 参考资料：{{ item.sources.join('、') }}
               </small>
+              <ChatMessageFeedback
+                v-if="
+                  item.role === 'assistant' && item.generationId && !replying
+                "
+                :agent-id="agentId"
+                :current-feedback="item.feedback"
+                :generation-id="item.generationId"
+                :memory-owner-token="memoryOwnerToken"
+                @saved="item.feedback = $event"
+              />
             </div>
           </article>
           <p v-if="errorMessage" class="chat-error">
