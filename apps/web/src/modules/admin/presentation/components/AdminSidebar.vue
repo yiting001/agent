@@ -28,6 +28,7 @@ const navigation = [
   { icon: 'api' as const, label: 'API 管理', to: '/api-access' },
   { icon: 'activity' as const, label: '观测与监控', to: '/observability' },
   { icon: 'check' as const, label: '评估与测试', to: '/evaluation' },
+  { icon: 'office' as const, label: '智能办公室', to: '/office' },
   { icon: 'settings' as const, label: '系统设置', to: '/settings' },
 ];
 </script>

@@ -1,0 +1,188 @@
+.office-page {
+  min-width: 0;
+}
+
+.office-stage {
+  position: relative;
+  width: 100%;
+  height: clamp(420px, calc(100vh - 145px), 820px);
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid var(--admin-line);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 14px 38px rgb(40 42 70 / 7%);
+}
+
+.office-canvas {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #ffffff;
+  isolation: isolate;
+}
+
+.office-canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.office-canvas__status {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  justify-content: center;
+  color: var(--admin-muted);
+  background: #ffffff;
+  font-size: 12px;
+}
+
+.office-canvas__status--error {
+  color: var(--admin-danger);
+}
+
+.office-canvas__spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #dedce9;
+  border-top-color: var(--admin-primary);
+  border-radius: 50%;
+  animation: office-spinner 700ms linear infinite;
+}
+
+.agent-action-menu {
+  position: absolute;
+  z-index: 20;
+  width: min(260px, calc(100% - 24px));
+  max-height: min(520px, calc(100% - 24px));
+  overflow: auto;
+  border: 1px solid #e1e2e8;
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--admin-ink);
+  background: rgb(255 255 255 / 96%);
+  box-shadow:
+    0 14px 34px rgb(28 29 48 / 16%),
+    0 1px 2px rgb(28 29 48 / 8%);
+  backdrop-filter: blur(12px);
+}
+
+.agent-action-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #ececf1;
+  padding: 6px 8px 10px;
+}
+
+.agent-action-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-action-state {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: #527068;
+  background: #e7f3ef;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.agent-action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.agent-action-group + .agent-action-group {
+  margin-top: 8px;
+  border-top: 1px solid #ececf1;
+  padding-top: 8px;
+}
+
+.agent-action-section-title {
+  padding: 0 8px 4px;
+  color: #979aa9;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.agent-action-btn,
+.agent-action-chip {
+  min-width: 0;
+  border: 0;
+  border-radius: 6px;
+  color: #4c5061;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    background 150ms ease;
+}
+
+.agent-action-btn {
+  width: 100%;
+  padding: 9px 10px;
+  font-size: 12px;
+}
+
+.agent-action-btn--subtle {
+  margin-bottom: 4px;
+  color: #7f8392;
+}
+
+.agent-action-btn:hover,
+.agent-action-chip:hover {
+  color: #302a80;
+  background: #f0effb;
+}
+
+.agent-emote-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.agent-action-chip {
+  padding: 7px 8px;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+
+@keyframes office-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .office-stage {
+    height: max(320px, calc((100vw - 28px) * 2 / 3));
+    min-height: 320px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .office-canvas__spinner {
+    animation-duration: 1.8s;
+  }
+}

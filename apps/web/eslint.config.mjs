@@ -23,4 +23,10 @@ export default tseslint.config(
       'vue/multi-word-component-names': 'off',
     },
   },
+  {
+    files: ['src/modules/office/scene/**/*.ts'],
+    rules: {
+      '@typescript-eslint/explicit-function-return-type': 'off',
+    },
+  },
 );

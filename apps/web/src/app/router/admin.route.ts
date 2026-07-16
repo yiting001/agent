@@ -95,6 +95,16 @@ export const adminRoute: RouteRecordRaw = {
     },
     {
       component: () =>
+        import('@/modules/office/presentation/views/OfficeView.vue'),
+      meta: {
+        description: '查看团队成员的实时状态与协作流转。',
+        title: '智能办公室',
+      },
+      name: 'office',
+      path: 'office',
+    },
+    {
+      component: () =>
         import('@/modules/admin/presentation/views/BrandSettingsView.vue'),
       meta: {
         description: '统一设置管理端与用户对话页面的软件名称和图标。',

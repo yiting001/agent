@@ -22,6 +22,7 @@ defineProps<{
     | 'memory'
     | 'model'
     | 'more'
+    | 'office'
     | 'plus'
     | 'refresh'
     | 'search'
@@ -74,6 +75,10 @@ defineProps<{
     </template>
     <template v-else-if="name === 'api'">
       <path d="M8 9 4 12l4 3M16 9l4 3-4 3M14 5l-4 14" />
+    </template>
+    <template v-else-if="name === 'office'">
+      <rect x="4" y="3" width="16" height="18" rx="1" />
+      <path d="M8 7h2M14 7h2M8 11h2M14 11h2M9 21v-6h6v6" />
     </template>
     <template v-else-if="name === 'chat'">
       <path d="M5 19 3 21l.8-4A8 8 0 1 1 7 19H5Z" />
