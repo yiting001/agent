@@ -68,7 +68,7 @@ describe('Database migrations', () => {
       });
   });
 
-  it('migrates and rolls back ingestion leases, pgvector and memory tasks', async () => {
+  it('migrates and rolls back prompt policies, evaluation and infrastructure changes', async () => {
     const dataSource = app.get(DataSource);
     const queryRunner = dataSource.createQueryRunner();
 
@@ -80,7 +80,16 @@ describe('Database migrations', () => {
       const ingestionJobs = await queryRunner.getTable(
         'knowledge_ingestion_jobs',
       );
+      const promptPolicies = await queryRunner.getTable('prompt_policies');
+      const promptRows = (await queryRunner.query(
+        'SELECT "key", "enabled", "revision" FROM "prompt_policies" WHERE "key" = $1',
+        ['rich-content-output'],
+      )) as Array<{ enabled: boolean; key: string; revision: number }>;
 
+      expect(promptPolicies?.findColumnByName('revision')).toBeDefined();
+      expect(promptRows).toEqual([
+        { enabled: true, key: 'rich-content-output', revision: 1 },
+      ]);
       expect(await queryRunner.hasTable('evaluation_suites')).toBe(true);
       expect(await queryRunner.hasTable('evaluation_metrics')).toBe(true);
       expect(await queryRunner.hasTable('evaluation_cases')).toBe(true);
@@ -96,6 +105,20 @@ describe('Database migrations', () => {
       expect(ingestionJobs?.findColumnByName('nextRunAt')).toBeDefined();
     } finally {
       await queryRunner.release();
+    }
+
+    await dataSource.undoLastMigration();
+    const promptPoliciesRolledBack = dataSource.createQueryRunner();
+
+    try {
+      expect(await promptPoliciesRolledBack.hasTable('prompt_policies')).toBe(
+        false,
+      );
+      expect(await promptPoliciesRolledBack.hasTable('evaluation_suites')).toBe(
+        true,
+      );
+    } finally {
+      await promptPoliciesRolledBack.release();
     }
 
     await dataSource.undoLastMigration();

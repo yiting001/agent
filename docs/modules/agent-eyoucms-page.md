@@ -9,7 +9,8 @@
 - 切换浏览器本地保存的最近会话，并通过同一 `conversationId` 恢复服务端短期记忆。
 - 输入问题并发送。
 - 上传图片或音频，与文本一起发送给当前智能体。
-- 查看富内容回答：Markdown、数学公式、表格、ECharts（含仪表盘）与 Mermaid 图表。
+- 查看富内容回答：安全 HTML、Markdown、数学公式、表格、ECharts、D3、
+  Three.js 基础模型与 Mermaid 图表。
 - 点击常用问题快速发起对话。
 - 未配置智能体 ID 时，从平台全部可用智能体（除已停用外）中选择要对话的智能体；配置后只能使用指定的那一个。
 - 清空当前对话。
@@ -52,7 +53,8 @@ templates/eyoucms/
         ├── agent-attachments.js     # 附件选择、预览、移除和上传
         ├── agent-conversations.js   # 浏览器本地会话历史
         ├── agent-memory-identity.js # 会话 ID 与 owner 隔离标识
-        ├── agent-rich-content.js    # Markdown、KaTeX、ECharts 与 Mermaid 渲染
+        ├── agent-rich-content.js    # 安全 HTML、Markdown、KaTeX 与渲染调度
+        ├── agent-rich-visualizations.js # D3、Three.js 与 JSON 安全协议
         └── agent-platform.js        # 后台地址、品牌加载、对话和移动侧栏
 ```
 
@@ -162,9 +164,9 @@ http://localhost:4173/preview/agent-platform.html?agentId=<智能体ID>
    同域部署使用 `/api`；前后端分离部署时改为完整地址，例如
    `https://api.example.com/api`。
 
-富内容渲染库（markdown-it、KaTeX、ECharts、Mermaid）按需懒加载，
+富内容渲染库（markdown-it、KaTeX、ECharts、D3、Three.js、Mermaid）按需懒加载，
 基础地址统一保存在 `skin/js/agent-rich-content.js` 顶部的
-`AGENT_RICH_ASSET_BASE_URL` 常量中，默认使用公共 CDN；内网或离线部署时
+`AGENT_RICH_ASSET_BASE_URLS` 常量中，默认使用公共 CDN；内网或离线部署时
 改为自托管目录即可，目录内部结构需与 npm 包路径一致。
 渲染库加载失败时回退为纯文本显示，不影响对话。
 
@@ -199,10 +201,11 @@ http://localhost:4173/preview/agent-platform.html?agentId=<智能体ID>
 - 附件先上传到 `/api/chat-attachments`，对话消息只提交后端返回的附件标识。
 - 已发送的图片和音频在当前会话中显示预览，重新开始时释放本地预览资源。
 - 发送后先展示“正在回复”，再通过 SSE 逐段显示真实模型和知识检索生成的回答。
-- 回答按 Markdown 渲染，支持标题、列表、代码块、表格与 `$...$`/`$$...$$` 数学公式；
-  `echarts` 代码块渲染图表（含仪表盘 gauge），`mermaid` 代码块渲染流程图，
-  图表在回答结束后统一绘制，避免流式半截 JSON 渲染失败。
-- Markdown 渲染禁用原始 HTML，避免模型输出脚本进入页面。
+- 回答支持语义化 HTML、Markdown、标题、列表、代码块、表格与
+  `$...$`/`$$...$$` 数学公式；`echarts`、`d3`、`three` 和 `mermaid`
+  代码块在回答结束后统一绘制，避免流式半截 JSON 渲染失败。
+- DOMPurify 会移除脚本、事件属性、style、图片和外链资源；消毒器加载失败时
+  降级为禁用原始 HTML。
 - 点击“开始新对话”“重新开始”或清空按钮会恢复初始状态。
 - 手机端点击左上角菜单按钮可打开最近对话抽屉。
 
@@ -262,6 +265,6 @@ flowchart LR
 - 输入、快捷问题、回复、清空和移动侧栏交互可用。
 - 短窗口和 EyouCMS 公共导航同时存在时输入区保持可见。
 - 图片和音频可选择、预览、移除、上传，并通过公开智能体接口发送。
-- 回答中的 Markdown、公式、表格、ECharts 仪表盘与 Mermaid 图表可正常渲染。
+- 回答中的安全 HTML、Markdown、公式、表格、ECharts、D3、Three.js 与 Mermaid 可正常渲染。
 - 单个源文件不超过 500 行。
 - 项目格式、lint、类型检查、测试和构建保持通过。

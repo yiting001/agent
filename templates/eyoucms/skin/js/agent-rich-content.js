@@ -11,6 +11,7 @@ const AGENT_RICH_ASSET_BASE_URLS = [
 /** 各渲染库路径与 Vue 管理端依赖版本保持一致，升级时需同步修改。 */
 const AGENT_RICH_LIBRARIES = {
   dompurify: 'dompurify@3.4.11/dist/purify.min.js',
+  d3: 'd3@7.9.0/dist/d3.min.js',
   echarts: 'echarts@6.1.0/dist/echarts.min.js',
   katex: 'katex@0.16.47/dist/katex.min.js',
   katexAutoRender: 'katex@0.16.47/dist/contrib/auto-render.min.js',
@@ -18,12 +19,15 @@ const AGENT_RICH_LIBRARIES = {
   markdownIt: 'markdown-it@14.2.0/dist/markdown-it.min.js',
   mermaid: 'mermaid@11.16.0/dist/mermaid.min.js',
 };
+const AGENT_RICH_MODULES = {
+  three: 'three@0.185.1/build/three.module.min.js',
+};
 
 (function () {
   'use strict';
 
   /** 使用可视化代码块语言标识区分普通代码与图表。 */
-  const VISUALIZATION_TYPES = new Set(['echarts', 'mermaid']);
+  const VISUALIZATION_TYPES = new Set(['d3', 'echarts', 'mermaid', 'three']);
   const MATH_DELIMITERS = [
     { display: true, left: '$$', right: '$$' },
     { display: false, left: '$', right: '$' },
@@ -34,6 +38,7 @@ const AGENT_RICH_LIBRARIES = {
   const MATH_PATTERN =
     /\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^$\n]+?\$/g;
   const loaders = new Map();
+  const moduleLoaders = new Map();
   const markdownRenderers = new Map();
   let mermaidReady = false;
 
@@ -80,6 +85,28 @@ const AGENT_RICH_LIBRARIES = {
     });
 
     loaders.set(library, promise);
+    return promise;
+  }
+
+  /** ES module 资源同样按需加载并支持备用 CDN，Three.js 不进入首屏脚本。 */
+  function loadModule(library) {
+    if (moduleLoaders.has(library)) {
+      return moduleLoaders.get(library);
+    }
+
+    const promise = AGENT_RICH_ASSET_BASE_URLS.reduce(
+      (attempt, base) =>
+        attempt.catch(() => {
+          const normalized = base.endsWith('/') ? base.slice(0, -1) : base;
+          return import(`${normalized}/${AGENT_RICH_MODULES[library]}`);
+        }),
+      Promise.reject(new Error('no-cdn')),
+    ).catch((error) => {
+      moduleLoaders.delete(library);
+      throw error;
+    });
+
+    moduleLoaders.set(library, promise);
     return promise;
   }
 
@@ -136,7 +163,30 @@ const AGENT_RICH_LIBRARIES = {
   async function getSanitizer() {
     try {
       await loadAsset('dompurify', 'script');
-      return (html) => window.DOMPurify.sanitize(html);
+      return (html) =>
+        window.DOMPurify.sanitize(html, {
+          ADD_ATTR: ['data-source', 'data-visualization'],
+          FORBID_ATTR: ['srcset', 'style'],
+          FORBID_TAGS: [
+            'audio',
+            'base',
+            'button',
+            'embed',
+            'form',
+            'iframe',
+            'img',
+            'input',
+            'link',
+            'meta',
+            'object',
+            'script',
+            'select',
+            'source',
+            'style',
+            'textarea',
+            'video',
+          ],
+        });
     } catch {
       return null;
     }
@@ -171,7 +221,14 @@ const AGENT_RICH_LIBRARIES = {
     await loadAsset('echarts', 'script');
     const chart = window.echarts.init(element);
 
-    chart.setOption(JSON.parse(decodeURIComponent(element.dataset.source)));
+    const source = decodeURIComponent(element.dataset.source);
+    const option = window.AgentRichVisualizations.parseSafeJson(source);
+
+    if (!option || typeof option !== 'object' || Array.isArray(option)) {
+      throw new Error('ECharts 配置必须是 JSON 对象。');
+    }
+
+    chart.setOption(option);
     return chart;
   }
 
@@ -201,14 +258,29 @@ const AGENT_RICH_LIBRARIES = {
     element.innerHTML = svg;
   }
 
-  async function renderVisualization(element, charts) {
+  async function renderVisualization(
+    element,
+    charts,
+    disposers,
+    visualizations,
+  ) {
     element.replaceChildren();
 
     try {
       if (element.dataset.visualization === 'echarts') {
         charts.push(await renderECharts(element));
-      } else {
+      } else if (element.dataset.visualization === 'mermaid') {
         await renderMermaid(element);
+      } else {
+        const dispose = await visualizations.render(
+          element,
+          element.dataset.visualization,
+          decodeURIComponent(element.dataset.source),
+        );
+
+        if (dispose) {
+          disposers.push(dispose);
+        }
       }
     } catch (error) {
       renderVisualizationFallback(element, error);
@@ -234,6 +306,11 @@ const AGENT_RICH_LIBRARIES = {
   /** 为单个消息视图创建串行渲染队列和 ECharts 生命周期容器。 */
   function createController() {
     const charts = [];
+    const disposers = [];
+    const visualizations = window.AgentRichVisualizations.create({
+      loadAsset,
+      loadModule,
+    });
     let queue = Promise.resolve();
 
     /**
@@ -269,7 +346,9 @@ const AGENT_RICH_LIBRARIES = {
       const targets = element.querySelectorAll('[data-visualization]');
 
       await Promise.all(
-        [...targets].map((target) => renderVisualization(target, charts)),
+        [...targets].map((target) =>
+          renderVisualization(target, charts, disposers, visualizations),
+        ),
       );
     }
 
@@ -284,6 +363,10 @@ const AGENT_RICH_LIBRARIES = {
       reset() {
         for (const chart of charts.splice(0)) {
           chart.dispose();
+        }
+
+        for (const dispose of disposers.splice(0)) {
+          dispose();
         }
       },
     };

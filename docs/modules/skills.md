@@ -93,6 +93,10 @@ sequenceDiagram
 ```
 
 `prompt` 技能不进入工具环：其 `content` 会以「已安装技能指令」小节追加到系统提示。
+平台级内置输出和安全要求由 `prompt-policies` 模块管理，并在知识与记忆之前注入；
+可安装的财务、图表或行业格式能力继续使用 `prompt` Skill，在独立分区中追加。
+两者的数据和生命周期互不耦合，详见
+[富内容输出与内置提示词管理](rich-content-prompts.md)。
 
 ## 接口
 

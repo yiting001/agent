@@ -16,6 +16,7 @@ import { AddAgentMemoryTasks1752156000000 } from './database/migrations/17521560
 import { EnablePgvector1752157000000 } from './database/migrations/1752157000000-enable-pgvector';
 import { AddKnowledgeIngestionLeases1752158000000 } from './database/migrations/1752158000000-add-knowledge-ingestion-leases';
 import { AddEvaluation1752159000000 } from './database/migrations/1752159000000-add-evaluation';
+import { AddPromptPolicies1752160000000 } from './database/migrations/1752160000000-add-prompt-policies';
 import { BrandingModule } from './modules/branding/branding.module';
 import { HealthModule } from './modules/health/health.module';
 import { AgentMemoryModule } from './modules/agent-memory/agent-memory.module';
@@ -27,6 +28,7 @@ import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { ModelProvidersModule } from './modules/model-providers/model-providers.module';
 import { SkillsModule } from './modules/skills/skills.module';
 import { ObservabilityModule } from './modules/observability/observability.module';
+import { PromptPoliciesModule } from './modules/prompt-policies/prompt-policies.module';
 import { RedisModule } from './shared/infrastructure/redis/redis.module';
 
 @Module({
@@ -57,6 +59,7 @@ import { RedisModule } from './shared/infrastructure/redis/redis.module';
             EnablePgvector1752157000000,
             AddKnowledgeIngestionLeases1752158000000,
             AddEvaluation1752159000000,
+            AddPromptPolicies1752160000000,
           ],
           migrationsRun: config.databaseMigrationsRun,
           extra: {
@@ -77,6 +80,7 @@ import { RedisModule } from './shared/infrastructure/redis/redis.module';
     SkillsModule,
     AgentsModule,
     EvaluationModule,
+    PromptPoliciesModule,
     ApiAccessModule,
     ChatModule,
     HealthModule,

@@ -5,6 +5,7 @@ import { HttpEvaluationGateway } from '@/modules/evaluation/infrastructure/http-
 import { GetSystemStatus } from '@/modules/system/application/get-system-status';
 import { HttpHealthStatusGateway } from '@/modules/system/infrastructure/http-health-status.gateway';
 import { HttpObservabilityGateway } from '@/modules/observability/infrastructure/http-observability.gateway';
+import { HttpPromptPolicyGateway } from '@/modules/prompt-policies/infrastructure/http-prompt-policy.gateway';
 import { FetchHttpClient } from '@/shared/http/http-client';
 
 const httpClient = new FetchHttpClient(webApplicationConfig.apiBaseUrl);
@@ -12,6 +13,7 @@ const healthStatusGateway = new HttpHealthStatusGateway(httpClient);
 const adminWorkspaceGateway = new HttpAdminWorkspaceGateway(httpClient);
 const observabilityGateway = new HttpObservabilityGateway(httpClient);
 const evaluationGateway = new HttpEvaluationGateway(httpClient);
+const promptPolicyGateway = new HttpPromptPolicyGateway(httpClient);
 const brandSettingsGateway = new HttpBrandSettingsGateway(
   httpClient,
   webApplicationConfig.apiBaseUrl,
@@ -24,4 +26,5 @@ export const applicationDependencies = {
   evaluationGateway,
   getSystemStatus: new GetSystemStatus(healthStatusGateway),
   observabilityGateway,
+  promptPolicyGateway,
 };

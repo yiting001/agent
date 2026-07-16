@@ -3,59 +3,18 @@ import type { ECharts } from 'echarts/core';
 
 import { createRandomId } from '@/shared/identity/random-id';
 
-interface D3Datum {
-  name: string;
-  value: number;
-}
-
-interface D3Specification {
-  data: D3Datum[];
-  type: 'bar' | 'line';
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function readJson(source: string): Record<string, unknown> {
-  const value: unknown = JSON.parse(source);
-
-  if (!isRecord(value)) {
-    throw new Error('图表配置必须是 JSON 对象。');
-  }
-
-  return value;
-}
-
-function readD3Specification(source: string): D3Specification {
-  const value = readJson(source);
-  const type = value.type === 'line' ? 'line' : 'bar';
-  const data = Array.isArray(value.data)
-    ? value.data.flatMap((item): D3Datum[] => {
-        if (
-          !isRecord(item) ||
-          typeof item.name !== 'string' ||
-          typeof item.value !== 'number'
-        ) {
-          return [];
-        }
-
-        return [{ name: item.name, value: item.value }];
-      })
-    : [];
-
-  if (!data.length) {
-    throw new Error('D3 图表需要包含 name 和 value 的 data 数组。');
-  }
-
-  return { data, type };
-}
+import { renderThreeVisualization } from './three-visualization.renderer';
+import type { D3Datum } from './visualization-specification';
+import {
+  parseD3Specification,
+  parseEChartsOption,
+} from './visualization-specification';
 
 async function renderECharts(
   element: HTMLElement,
   source: string,
 ): Promise<ECharts> {
-  const option = readJson(source);
+  const option = parseEChartsOption(source);
   const { prepareECharts } = await import('./echarts-runtime');
   const echarts = await prepareECharts(option);
   const chart = echarts.init(element);
@@ -87,7 +46,7 @@ async function renderMermaid(
 
 async function renderD3(element: HTMLElement, source: string): Promise<void> {
   const d3 = await import('d3');
-  const specification = readD3Specification(source);
+  const specification = parseD3Specification(source);
   const width = Math.max(element.clientWidth, 560);
   const height = 340;
   const margin = { bottom: 52, left: 52, right: 24, top: 24 };
@@ -96,9 +55,11 @@ async function renderD3(element: HTMLElement, source: string): Promise<void> {
     .domain(specification.data.map((item) => item.name))
     .range([margin.left, width - margin.right])
     .padding(0.28);
+  const minimum = d3.min(specification.data, (item) => item.value) ?? 0;
+  const maximum = d3.max(specification.data, (item) => item.value) ?? 0;
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(specification.data, (item) => item.value) ?? 0])
+    .domain([Math.min(0, minimum), Math.max(0, maximum)])
     .nice()
     .range([height - margin.bottom, margin.top]);
   const svg = d3
@@ -144,9 +105,9 @@ async function renderD3(element: HTMLElement, source: string): Promise<void> {
     .data(specification.data)
     .join('rect')
     .attr('x', (item) => x(item.name) ?? 0)
-    .attr('y', (item) => y(item.value))
+    .attr('y', (item) => y(Math.max(0, item.value)))
     .attr('width', x.bandwidth())
-    .attr('height', (item) => y(0) - y(item.value))
+    .attr('height', (item) => Math.abs(y(item.value) - y(0)))
     .attr('rx', 5);
 }
 
@@ -174,6 +135,7 @@ export async function renderVisualizations(
   root: HTMLElement,
 ): Promise<() => void> {
   const charts: ECharts[] = [];
+  const disposers: Array<() => void> = [];
   const observers: ResizeObserver[] = [];
   const elements = root.querySelectorAll<HTMLElement>('[data-visualization]');
 
@@ -193,8 +155,12 @@ export async function renderVisualizations(
           observers.push(observer);
         } else if (element.dataset.visualization === 'mermaid') {
           await renderMermaid(element, source);
-        } else {
+        } else if (element.dataset.visualization === 'd3') {
           await renderD3(element, source);
+        } else if (element.dataset.visualization === 'three') {
+          disposers.push(await renderThreeVisualization(element, source));
+        } else {
+          throw new Error('不支持的可视化类型。');
         }
       } catch (error) {
         renderFallback(element, source, error);
@@ -208,6 +174,9 @@ export async function renderVisualizations(
     }
     for (const chart of charts) {
       chart.dispose();
+    }
+    for (const dispose of disposers) {
+      dispose();
     }
   };
 }

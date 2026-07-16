@@ -65,6 +65,8 @@ openssl rand -hex 32
 - `/`：管理工作台与后端服务状态。
 - `/agents`：智能体创建、列表和测试入口。
 - `/knowledge-bases`：知识库创建、文档上传和处理状态。
+- `/skills`：提示词技能和 MCP 工具安装管理。
+- `/prompt-policies`：内置系统提示词、启停与富内容输出协议管理。
 - `/model-providers`：DeepSeek、通义千问、豆包及兼容模型配置。
 - `/api-access`：智能体应用与 API 访问凭证管理。
 - `/evaluation`：评估指标、测试用例和基准运行管理。
@@ -83,9 +85,12 @@ openssl rand -hex 32
 智能体对话支持服务端短期会话、跨会话偏好/事实，以及带原始图片证据的自动情景记忆。设计、混合召回、安全边界、接口与配置见
 [智能体记忆系统文档](docs/modules/agent-memory.md)。
 
-对话默认流式输出，支持 Markdown、数学公式、ECharts/D3 图表、Mermaid
-流程图/思维导图，以及图片和音频输入。格式与接口见
+对话默认流式输出，支持受控 HTML、Markdown、数学公式、ECharts/D3 图表、
+Three.js 基础模型、Mermaid 流程图/思维导图，以及图片和音频输入。内置输出策略
+可在管理页编辑，后续场景能力继续通过 prompt Skill 扩展。格式、安全和接口见
 [流式富内容与多模态对话文档](docs/modules/rich-streaming-chat.md)。
+提示词数据模型、并发控制与 Skill 扩展边界见
+[富内容输出与内置提示词管理文档](docs/modules/rich-content-prompts.md)。
 
 ## 单 JS 服务端构建
 

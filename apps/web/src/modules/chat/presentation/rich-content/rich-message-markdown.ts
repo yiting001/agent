@@ -1,8 +1,32 @@
 import DOMPurify from 'dompurify';
+import type { Config } from 'dompurify';
 import MarkdownIt from 'markdown-it';
 import markdownItKatex from 'markdown-it-katex';
 
-const VISUALIZATION_TYPES = new Set(['d3', 'echarts', 'mermaid']);
+const VISUALIZATION_TYPES = new Set(['d3', 'echarts', 'mermaid', 'three']);
+const SANITIZE_OPTIONS: Config = {
+  ADD_ATTR: ['data-source', 'data-visualization'],
+  FORBID_ATTR: ['srcset', 'style'],
+  FORBID_TAGS: [
+    'audio',
+    'base',
+    'button',
+    'embed',
+    'form',
+    'iframe',
+    'img',
+    'input',
+    'link',
+    'meta',
+    'object',
+    'script',
+    'select',
+    'source',
+    'style',
+    'textarea',
+    'video',
+  ],
+};
 
 /** 将受支持的图表代码块转换为延迟渲染占位符。 */
 function visualizationPlaceholder(type: string, source: string): string {
@@ -53,5 +77,5 @@ const markdown = createMarkdownRenderer();
  * 再经 DOMPurify 白名单消毒去除脚本等危险内容，兼顾排版与安全。
  */
 export function renderRichMarkdown(content: string): string {
-  return DOMPurify.sanitize(markdown.render(content));
+  return DOMPurify.sanitize(markdown.render(content), SANITIZE_OPTIONS);
 }
