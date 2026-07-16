@@ -45,6 +45,10 @@ function normalizeRoute(path: string): string {
     .replace(/\/\d+(?=\/|$)/g, '/:id');
 }
 
+function isObservabilityReadRoute(route: string): boolean {
+  return route.startsWith('/api/observability/');
+}
+
 @Injectable()
 export class RequestObservabilityInterceptor implements NestInterceptor {
   constructor(
@@ -69,6 +73,10 @@ export class RequestObservabilityInterceptor implements NestInterceptor {
     const started = performance.now();
     const route = normalizeRoute(`${request.baseUrl}${request.path}`);
     const operation = `${request.method} ${route}`;
+
+    if (request.method === 'GET' && isObservabilityReadRoute(route)) {
+      return next.handle();
+    }
 
     response.setHeader('X-Trace-Id', traceId);
 

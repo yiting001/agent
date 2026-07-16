@@ -6,6 +6,7 @@ import BaseIcon from '@/modules/admin/presentation/components/BaseIcon.vue';
 import ObservabilityAlerts from '../components/ObservabilityAlerts.vue';
 import ObservabilityMetricGrid from '../components/ObservabilityMetricGrid.vue';
 import ObservabilityTraceTable from '../components/ObservabilityTraceTable.vue';
+import ObservabilityTraceDetailModal from '../components/ObservabilityTraceDetailModal.vue';
 import ObservabilityTrend from '../components/ObservabilityTrend.vue';
 import { useObservabilityStore } from '../../stores/observability.store';
 
@@ -61,7 +62,12 @@ onMounted(() => store.refresh());
         <ObservabilityTrend :series="store.dashboard.series" />
         <ObservabilityAlerts :alerts="store.dashboard.alerts" />
       </div>
-      <ObservabilityTraceTable :traces="store.dashboard.recentTraces" />
+      <ObservabilityTraceTable
+        :is-loading="store.isTraceListLoading"
+        :trace-page="store.tracePage"
+        @page-change="store.goToTracePage"
+        @select-trace="store.openTrace"
+      />
     </template>
 
     <section v-else-if="store.isLoading" class="panel-card empty-state">
@@ -69,5 +75,14 @@ onMounted(() => store.refresh());
       <h2>正在汇总监控数据</h2>
       <p>正在读取请求、模型和工具执行事件。</p>
     </section>
+
+    <ObservabilityTraceDetailModal
+      :error-message="store.traceDetailErrorMessage"
+      :loading="store.isTraceDetailLoading"
+      :open="Boolean(store.selectedTraceId)"
+      :trace="store.selectedTrace"
+      :trace-id="store.selectedTraceId"
+      @close="store.closeTrace"
+    />
   </div>
 </template>

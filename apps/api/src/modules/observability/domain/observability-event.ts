@@ -39,6 +39,60 @@ export interface ObservabilityEvent {
   traceId: string;
 }
 
+/** 最近执行链路列表中的聚合摘要。 */
+export interface ObservabilityTraceSummary {
+  costUsd: number;
+  durationMs: number;
+  inputTokens: number;
+  operation: string;
+  outputTokens: number;
+  spanCount: number;
+  startedAt: string;
+  status: ObservabilityStatus;
+  traceId: string;
+}
+
+/** 供管理端还原调用顺序的单个 Span。 */
+export interface ObservabilityTraceSpan {
+  agentId?: string;
+  category: ObservabilityCategory;
+  costUsd: number;
+  durationMs: number;
+  errorMessage?: string;
+  inputTokens: number;
+  metadata: Record<string, string | number | boolean>;
+  method?: string;
+  model?: string;
+  operation: string;
+  outputTokens: number;
+  parentSpanId?: string;
+  providerId?: string;
+  route?: string;
+  spanId: string;
+  startedAt: string;
+  status: ObservabilityStatus;
+  statusCode?: number;
+  tokenCountSource: TokenCountSource;
+}
+
+/** 一条执行链路及其完整 Span 明细。 */
+export interface ObservabilityTraceDetail extends ObservabilityTraceSummary {
+  spans: ObservabilityTraceSpan[];
+}
+
+/** 服务端分页后的执行链路列表。 */
+export interface ObservabilityTracePage {
+  items: ObservabilityTraceSummary[];
+  nextCursor?: {
+    startedAt: string;
+    traceId: string;
+  };
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
 /** 由时间窗口内事件和进程指标聚合出的管理端仪表盘。 */
 export interface ObservabilityDashboard {
   alerts: Array<{
@@ -56,17 +110,7 @@ export interface ObservabilityDashboard {
     p95LatencyMs: number;
     requestCount: number;
   };
-  recentTraces: Array<{
-    costUsd: number;
-    durationMs: number;
-    inputTokens: number;
-    operation: string;
-    outputTokens: number;
-    spanCount: number;
-    startedAt: string;
-    status: ObservabilityStatus;
-    traceId: string;
-  }>;
+  recentTraces: ObservabilityTraceSummary[];
   runtime: {
     heapTotalBytes: number;
     heapUsedBytes: number;

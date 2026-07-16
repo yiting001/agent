@@ -3,9 +3,9 @@ import { Injectable } from '@nestjs/common';
 import type {
   ObservabilityDashboard,
   ObservabilityEvent,
-  ObservabilityStatus,
 } from '../domain/observability-event';
 import { ObservabilityEventRepository } from './observability-event.repository';
+import { buildObservabilityTraceSummary } from './observability-trace.mapper';
 
 const MAX_RECENT_ALERTS = 20;
 const MAX_RECENT_TRACES = 20;
@@ -29,18 +29,6 @@ function percentile(values: number[], ratio: number): number {
   );
 
   return sorted[index] ?? 0;
-}
-
-function traceStatus(events: ObservabilityEvent[]): ObservabilityStatus {
-  if (events.some((event) => event.status === 'error')) {
-    return 'error';
-  }
-
-  if (events.some((event) => event.status === 'cancelled')) {
-    return 'cancelled';
-  }
-
-  return 'ok';
 }
 
 @Injectable()
@@ -135,40 +123,9 @@ export class GetObservabilityDashboardUseCase {
     }
 
     return [...traces.entries()]
-      .map(([traceId, traceEvents]) => {
-        const root =
-          traceEvents.find((event) => event.category === 'http') ??
-          traceEvents[traceEvents.length - 1] ??
-          traceEvents[0];
-
-        if (!root) {
-          return undefined;
-        }
-
-        return {
-          costUsd: round(
-            traceEvents.reduce(
-              (total, event) => total + event.costUsdMicros,
-              0,
-            ) / 1_000_000,
-            6,
-          ),
-          durationMs: round(root.durationMs),
-          inputTokens: traceEvents.reduce(
-            (total, event) => total + event.inputTokens,
-            0,
-          ),
-          operation: root.operation,
-          outputTokens: traceEvents.reduce(
-            (total, event) => total + event.outputTokens,
-            0,
-          ),
-          spanCount: traceEvents.length,
-          startedAt: root.startedAt.toISOString(),
-          status: traceStatus(traceEvents),
-          traceId,
-        };
-      })
+      .map(([traceId, traceEvents]) =>
+        buildObservabilityTraceSummary(traceId, traceEvents),
+      )
       .filter(
         (trace): trace is ObservabilityDashboard['recentTraces'][number] =>
           trace !== undefined,

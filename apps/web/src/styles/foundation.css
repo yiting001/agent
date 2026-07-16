@@ -388,6 +388,10 @@ p {
   animation: modal-enter 180ms ease-out;
 }
 
+.modal-card--wide {
+  width: min(920px, 100%);
+}
+
 .modal-card__header {
   display: flex;
   gap: 20px;
@@ -412,6 +416,10 @@ p {
 .modal-card__content {
   overflow-y: auto;
   padding: 23px 25px 25px;
+}
+
+.modal-card__content--flush {
+  padding: 0;
 }
 
 @keyframes modal-enter {
