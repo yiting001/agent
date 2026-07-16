@@ -4,6 +4,7 @@ describe('application configuration', () => {
   const originalDatabaseSynchronize = process.env.DATABASE_SYNCHRONIZE;
   const originalDatabaseUrl = process.env.DATABASE_URL;
   const originalNodeEnv = process.env.NODE_ENV;
+  const originalCaptureMode = process.env.OBSERVABILITY_CONTENT_CAPTURE_MODE;
   const originalRedisUrl = process.env.REDIS_URL;
 
   beforeEach(() => {
@@ -11,12 +12,17 @@ describe('application configuration', () => {
     delete process.env.DATABASE_SYNCHRONIZE;
     delete process.env.DATABASE_URL;
     delete process.env.REDIS_URL;
+    delete process.env.OBSERVABILITY_CONTENT_CAPTURE_MODE;
   });
 
   afterAll(() => {
     restoreEnvironment('DATABASE_SYNCHRONIZE', originalDatabaseSynchronize);
     restoreEnvironment('DATABASE_URL', originalDatabaseUrl);
     restoreEnvironment('NODE_ENV', originalNodeEnv);
+    restoreEnvironment(
+      'OBSERVABILITY_CONTENT_CAPTURE_MODE',
+      originalCaptureMode,
+    );
     restoreEnvironment('REDIS_URL', originalRedisUrl);
   });
 
@@ -45,6 +51,20 @@ describe('application configuration', () => {
 
     expect(() => applicationConfig()).toThrow(
       'DATABASE_URL must be a valid URL.',
+    );
+  });
+
+  it('defaults generation content capture to redacted and rejects full mode', () => {
+    process.env.NODE_ENV = 'test';
+
+    expect(applicationConfig().observabilityContentCaptureMode).toBe(
+      'redacted',
+    );
+
+    process.env.OBSERVABILITY_CONTENT_CAPTURE_MODE = 'full';
+
+    expect(() => applicationConfig()).toThrow(
+      'OBSERVABILITY_CONTENT_CAPTURE_MODE must be off or redacted.',
     );
   });
 });

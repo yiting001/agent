@@ -44,6 +44,13 @@ const AGENT_DEFAULT_AGENT_ID = '';
   const richContent = window.AgentRichContent
     ? window.AgentRichContent.create()
     : undefined;
+  const feedback = window.AgentFeedback
+    ? window.AgentFeedback.create({
+        getAgentId: () => agentId,
+        getMemoryOwnerToken: () => memoryOwnerToken,
+        request,
+      })
+    : undefined;
   const messages = [];
 
   function createMessage(role, content, attachments = []) {
@@ -151,67 +158,7 @@ const AGENT_DEFAULT_AGENT_ID = '';
   }
 
   async function streamRequest(path, body, onDelta) {
-    const response = await fetch(apiUrl(path), {
-      body: JSON.stringify(body),
-      headers: {
-        Accept: 'text/event-stream',
-        'Content-Type': 'application/json',
-      },
-      method: 'POST',
-    });
-
-    if (!response.ok || !response.body) {
-      const errorBody = await response.json().catch(() => undefined);
-
-      throw new Error(
-        errorBody && typeof errorBody.message === 'string'
-          ? errorBody.message
-          : `服务请求失败（${response.status}）`,
-      );
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const result = await reader.read();
-
-      if (result.done) {
-        break;
-      }
-
-      buffer += decoder.decode(result.value, { stream: true });
-      const blocks = buffer.split(/\r?\n\r?\n/);
-
-      buffer = blocks.pop() || '';
-
-      for (const block of blocks) {
-        const eventLine = block
-          .split(/\r?\n/)
-          .find((line) => line.startsWith('event:'));
-        const event = eventLine ? eventLine.slice(6).trim() : 'message';
-        const data = block
-          .split(/\r?\n/)
-          .filter((line) => line.startsWith('data:'))
-          .map((line) => line.slice(5).trimStart())
-          .join('\n');
-
-        if (!data) {
-          continue;
-        }
-
-        const payload = JSON.parse(data);
-
-        if (event === 'delta' && typeof payload.content === 'string') {
-          onDelta(payload.content);
-        }
-
-        if (event === 'error') {
-          throw new Error(payload.message || '模型流式响应读取失败。');
-        }
-      }
-    }
+    return window.AgentSse.stream(apiUrl(path), body, onDelta);
   }
 
   async function initializeAgent() {
@@ -279,6 +226,10 @@ const AGENT_DEFAULT_AGENT_ID = '';
 
       if (saved.role === 'assistant' && richContent && bubble) {
         richContent.render(bubble, saved.content, true);
+      }
+
+      if (saved.role === 'assistant' && saved.generationId) {
+        feedback?.append(element, saved.generationId);
       }
 
       messageList?.appendChild(element);
@@ -368,7 +319,7 @@ const AGENT_DEFAULT_AGENT_ID = '';
       scrollToLatest();
       let answer = '';
 
-      await streamRequest(
+      const streamMetadata = await streamRequest(
         `/public/agents/${agentId}/chat`,
         { conversationId, memoryOwnerToken, messages, stream: true },
         (delta) => {
@@ -393,12 +344,22 @@ const AGENT_DEFAULT_AGENT_ID = '';
 
       if (!answer) {
         answer = '模型没有返回有效内容。';
-        typingMessage?.replaceWith(createMessage('assistant', answer));
+        answerMessage = createMessage('assistant', answer);
+        typingMessage?.replaceWith(answerMessage);
       } else if (richContent && answerBubble) {
         await richContent.render(answerBubble, answer, true);
       }
 
-      messages.push({ content: answer, role: 'assistant' });
+      if (answerMessage && streamMetadata.generationId) {
+        feedback?.append(answerMessage, streamMetadata.generationId);
+      }
+
+      messages.push({
+        content: answer,
+        generationId: streamMetadata.generationId,
+        role: 'assistant',
+        traceId: streamMetadata.traceId,
+      });
       conversationStore?.save(messages, conversationId);
     } catch (error) {
       const errorMessage = createMessage(

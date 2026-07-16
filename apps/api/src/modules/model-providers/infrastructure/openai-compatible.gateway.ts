@@ -16,6 +16,7 @@ import {
   estimateEmbeddingInputTokens,
   ModelCallObserver,
   type ModelUsage,
+  type ModelResponseIdentity,
 } from './model-call-observer';
 
 interface JsonRecord {
@@ -121,7 +122,7 @@ function readEmbeddings(value: unknown): number[][] | undefined {
   return embeddings;
 }
 
-function readUsage(value: unknown): ModelUsage | undefined {
+export function readUsage(value: unknown): ModelUsage | undefined {
   if (!isRecord(value) || !isRecord(value.usage)) {
     return undefined;
   }
@@ -142,6 +143,32 @@ function readUsage(value: unknown): ModelUsage | undefined {
   }
 
   return { inputTokens, outputTokens };
+}
+
+export function readResponseIdentity(value: unknown): ModelResponseIdentity {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  const finishReasons = Array.isArray(value.choices)
+    ? value.choices
+        .map((choice) =>
+          isRecord(choice) && typeof choice.finish_reason === 'string'
+            ? choice.finish_reason
+            : undefined,
+        )
+        .filter((reason): reason is string => reason !== undefined)
+    : [];
+
+  return {
+    finishReasons,
+    responseModel: typeof value.model === 'string' ? value.model : undefined,
+    systemFingerprint:
+      typeof value.system_fingerprint === 'string'
+        ? value.system_fingerprint
+        : undefined,
+    upstreamResponseId: typeof value.id === 'string' ? value.id : undefined,
+  };
 }
 
 async function parseResponse(response: Response): Promise<unknown> {
@@ -195,12 +222,15 @@ export class OpenAiCompatibleGateway extends ModelGateway {
   async *streamChat(input: ChatCompletionInput): AsyncIterable<string> {
     const observation = this.modelCalls.start({
       estimatedInputTokens: estimateChatInputTokens(input.messages),
+      generationId: input.generationId,
       inputCostPerMillionTokens: input.inputCostPerMillionTokens,
-      model: input.model,
       metadata: input.metadata,
       operation: input.operation ?? 'chat.stream',
       outputCostPerMillionTokens: input.outputCostPerMillionTokens,
       providerId: input.providerId,
+      providerName: input.providerName,
+      requestedModel: input.model,
+      traceId: input.traceId,
     });
     let outcome: 'active' | 'completed' | 'failed' = 'active';
 
@@ -226,6 +256,7 @@ export class OpenAiCompatibleGateway extends ModelGateway {
         const body: unknown = await response.json();
         const content = readChatContent(body);
 
+        observation.captureResponse(readResponseIdentity(body));
         observation.captureUsage(readUsage(body));
 
         if (content) {
@@ -263,6 +294,7 @@ export class OpenAiCompatibleGateway extends ModelGateway {
           const payload: unknown = JSON.parse(data);
           const delta = readChatDelta(payload);
 
+          observation.captureResponse(readResponseIdentity(payload));
           observation.captureUsage(readUsage(payload));
 
           if (delta) {
@@ -292,12 +324,15 @@ export class OpenAiCompatibleGateway extends ModelGateway {
         input.messages,
         input.tools,
       ),
+      generationId: input.generationId,
       inputCostPerMillionTokens: input.inputCostPerMillionTokens,
-      model: input.model,
       metadata: input.metadata,
       operation: input.operation ?? 'chat.tools',
       outputCostPerMillionTokens: input.outputCostPerMillionTokens,
       providerId: input.providerId,
+      providerName: input.providerName,
+      requestedModel: input.model,
+      traceId: input.traceId,
     });
 
     try {
@@ -315,6 +350,7 @@ export class OpenAiCompatibleGateway extends ModelGateway {
       const content = readChatContent(body) ?? '';
 
       observation.addOutput(content);
+      observation.captureResponse(readResponseIdentity(body));
       observation.captureUsage(readUsage(body));
       await observation.complete();
 
@@ -332,10 +368,12 @@ export class OpenAiCompatibleGateway extends ModelGateway {
     const observation = this.modelCalls.start({
       estimatedInputTokens: estimateEmbeddingInputTokens(input.input),
       inputCostPerMillionTokens: input.inputCostPerMillionTokens,
-      model: input.model,
       metadata: input.metadata,
       operation: input.operation ?? 'embedding.generate',
       providerId: input.providerId,
+      providerName: input.providerName,
+      requestedModel: input.model,
+      traceId: input.traceId,
     });
 
     try {
@@ -360,6 +398,7 @@ export class OpenAiCompatibleGateway extends ModelGateway {
       }
 
       observation.captureUsage(readUsage(body));
+      observation.captureResponse(readResponseIdentity(body));
       await observation.complete();
 
       return embeddings;
@@ -372,8 +411,8 @@ export class OpenAiCompatibleGateway extends ModelGateway {
   async verify(baseUrl: string, apiKey: string): Promise<void> {
     const observation = this.modelCalls.start({
       estimatedInputTokens: 0,
-      model: 'model-catalog',
       operation: 'model.verify',
+      requestedModel: 'model-catalog',
     });
 
     try {

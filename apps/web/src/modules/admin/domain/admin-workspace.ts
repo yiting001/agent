@@ -241,4 +241,34 @@ export interface AgentChatResponse {
     score: number;
   }>;
   conversationId?: string;
+  generationId: string;
+  traceId: string;
+}
+
+export type GenerationFeedbackReason =
+  | 'citation'
+  | 'format'
+  | 'incorrect'
+  | 'irrelevant'
+  | 'model'
+  | 'other';
+
+export interface GenerationFeedback {
+  comment?: string;
+  createdAt: string;
+  id: string;
+  metric: 'helpfulness';
+  rating: 'negative' | 'positive';
+  reasonCodes: GenerationFeedbackReason[];
+  source: 'end_user';
+  updatedAt: string;
+}
+
+export interface SubmitGenerationFeedbackInput {
+  agentId: string;
+  comment?: string;
+  generationId: string;
+  memoryOwnerToken: string;
+  rating: GenerationFeedback['rating'];
+  reasonCodes: GenerationFeedbackReason[];
 }

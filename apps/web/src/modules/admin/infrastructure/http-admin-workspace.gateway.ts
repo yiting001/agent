@@ -9,6 +9,7 @@ import type {
   ChatAttachmentSummary,
   ConfigureProviderInput,
   ConversationMessage,
+  GenerationFeedback,
   CreateAgentInput,
   CreateApiApplicationInput,
   CreateKnowledgeBaseInput,
@@ -20,6 +21,7 @@ import type {
   KnowledgeModuleSummary,
   ModelProviderSummary,
   SkillSummary,
+  SubmitGenerationFeedbackInput,
   UpdateKnowledgeResourceInput,
   UpdateSkillInput,
 } from '../domain/admin-workspace';
@@ -60,6 +62,8 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
       agentId,
       answer: '',
       citations: [],
+      generationId: '',
+      traceId: '',
     };
 
     await this.httpClient.postEventStream(
@@ -68,14 +72,24 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
       (event, data) => {
         const payload = parseRecord(data);
 
-        if (event === 'metadata' && Array.isArray(payload.citations)) {
+        if (event === 'metadata') {
           result = {
             ...result,
-            citations: payload.citations as AgentChatResponse['citations'],
+            citations: Array.isArray(payload.citations)
+              ? (payload.citations as AgentChatResponse['citations'])
+              : result.citations,
             conversationId:
               typeof payload.conversationId === 'string'
                 ? payload.conversationId
                 : result.conversationId,
+            generationId:
+              typeof payload.generationId === 'string'
+                ? payload.generationId
+                : result.generationId,
+            traceId:
+              typeof payload.traceId === 'string'
+                ? payload.traceId
+                : result.traceId,
           };
         }
 
@@ -223,6 +237,23 @@ export class HttpAdminWorkspaceGateway extends AdminWorkspaceGateway {
 
   listSkills(): Promise<SkillSummary[]> {
     return this.httpClient.get<SkillSummary[]>('/skills');
+  }
+
+  submitGenerationFeedback(
+    input: SubmitGenerationFeedbackInput,
+  ): Promise<GenerationFeedback> {
+    return this.httpClient.put<
+      GenerationFeedback,
+      Omit<SubmitGenerationFeedbackInput, 'agentId' | 'generationId'>
+    >(
+      `/agents/${encodeURIComponent(input.agentId)}/generations/${encodeURIComponent(input.generationId)}/feedback`,
+      {
+        comment: input.comment,
+        memoryOwnerToken: input.memoryOwnerToken,
+        rating: input.rating,
+        reasonCodes: input.reasonCodes,
+      },
+    );
   }
 
   updateAgent(agentId: string, input: CreateAgentInput): Promise<AgentSummary> {

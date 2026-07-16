@@ -42,6 +42,9 @@ const DEFAULT_KNOWLEDGE_CHUNK_OVERLAP = 180;
 const DEFAULT_EMBEDDING_BATCH_SIZE = 24;
 const DEFAULT_MCP_CLIENT_NAME = 'agent-api';
 const DEFAULT_OBSERVABILITY_HIGH_COST_USD = 0.1;
+const DEFAULT_OBSERVABILITY_CONTENT_CAPTURE_MODE = 'redacted';
+const DEFAULT_OBSERVABILITY_CONTENT_MAX_CHARACTERS = 50_000;
+const DEFAULT_OBSERVABILITY_CONTENT_RETENTION_DAYS = 7;
 const DEFAULT_OBSERVABILITY_RETENTION_DAYS = 30;
 const DEFAULT_OBSERVABILITY_SLOW_MODEL_MS = 30_000;
 const DEFAULT_OBSERVABILITY_SLOW_REQUEST_MS = 2_000;
@@ -120,6 +123,9 @@ export interface ApplicationConfig {
   mcpClientName: string;
   /** 模型 HTTP 请求超时时间。 */
   modelRequestTimeoutMs: number;
+  observabilityContentCaptureMode: 'off' | 'redacted';
+  observabilityContentMaxCharacters: number;
+  observabilityContentRetentionDays: number;
   observabilityHighCostUsd: number;
   observabilityRetentionDays: number;
   observabilitySlowModelMs: number;
@@ -164,6 +170,20 @@ function parseCorsOrigins(value: string | undefined): string[] {
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
+}
+
+function parseObservabilityCaptureMode(
+  value: string | undefined,
+): 'off' | 'redacted' {
+  const mode = value ?? DEFAULT_OBSERVABILITY_CONTENT_CAPTURE_MODE;
+
+  if (mode !== 'off' && mode !== 'redacted') {
+    throw new Error(
+      'OBSERVABILITY_CONTENT_CAPTURE_MODE must be off or redacted.',
+    );
+  }
+
+  return mode;
 }
 
 /** 从环境变量构造经过范围和生产安全约束校验的 Nest 配置。 */
@@ -371,6 +391,19 @@ export const applicationConfig = registerAs(
         'MODEL_REQUEST_TIMEOUT_MS',
         process.env.MODEL_REQUEST_TIMEOUT_MS,
         120_000,
+      ),
+      observabilityContentCaptureMode: parseObservabilityCaptureMode(
+        process.env.OBSERVABILITY_CONTENT_CAPTURE_MODE,
+      ),
+      observabilityContentMaxCharacters: parsePositiveInteger(
+        'OBSERVABILITY_CONTENT_MAX_CHARACTERS',
+        process.env.OBSERVABILITY_CONTENT_MAX_CHARACTERS,
+        DEFAULT_OBSERVABILITY_CONTENT_MAX_CHARACTERS,
+      ),
+      observabilityContentRetentionDays: parsePositiveInteger(
+        'OBSERVABILITY_CONTENT_RETENTION_DAYS',
+        process.env.OBSERVABILITY_CONTENT_RETENTION_DAYS,
+        DEFAULT_OBSERVABILITY_CONTENT_RETENTION_DAYS,
       ),
       observabilityHighCostUsd: parseNonNegativeNumber(
         'OBSERVABILITY_HIGH_COST_USD',

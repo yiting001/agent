@@ -26,6 +26,8 @@ export async function sendAgentChatStream(
     agentId: chat.agentId,
     citations: chat.citations,
     conversationId: chat.conversationId,
+    generationId: chat.generationId,
+    traceId: chat.traceId,
   });
 
   try {

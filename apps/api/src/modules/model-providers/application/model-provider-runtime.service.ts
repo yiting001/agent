@@ -30,6 +30,8 @@ export class ModelProviderRuntimeService {
         provider.embeddingInputCostPerMillionTokens,
       embeddingModel: provider.embeddingModel,
       id: provider.id,
+      key: provider.key,
+      name: provider.name,
     };
   }
 }

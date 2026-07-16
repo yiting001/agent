@@ -19,6 +19,8 @@ function toDomain(entity: ObservabilityEventEntity): ObservabilityEvent {
     costUsdMicros: entity.costUsdMicros,
     durationMs: entity.durationMs,
     errorMessage: entity.errorMessage,
+    finishReasons: entity.finishReasons,
+    generationId: entity.generationId,
     id: entity.id,
     inputTokens: entity.inputTokens,
     metadata: entity.metadata,
@@ -28,6 +30,9 @@ function toDomain(entity: ObservabilityEventEntity): ObservabilityEvent {
     outputTokens: entity.outputTokens,
     parentSpanId: entity.parentSpanId,
     providerId: entity.providerId,
+    providerName: entity.providerName,
+    requestedModel: entity.requestedModel,
+    responseModel: entity.responseModel,
     route: entity.route,
     spanId: entity.spanId,
     startedAt: entity.startedAt,
@@ -35,6 +40,7 @@ function toDomain(entity: ObservabilityEventEntity): ObservabilityEvent {
     statusCode: entity.statusCode,
     tokenCountSource: entity.tokenCountSource,
     traceId: entity.traceId,
+    upstreamResponseId: entity.upstreamResponseId,
   };
 }
 

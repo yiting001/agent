@@ -37,7 +37,7 @@ function selectTrace(traceId: string): void {
     <header class="panel-card__header">
       <div>
         <h2>最近执行链路</h2>
-        <p>一次请求关联 HTTP、模型和工具步骤，正文不会写入日志。</p>
+        <p>一次请求关联 HTTP、模型、工具和独立短期脱敏正文。</p>
       </div>
       <span v-if="isLoading" class="observability-traces__loading">加载中</span>
     </header>

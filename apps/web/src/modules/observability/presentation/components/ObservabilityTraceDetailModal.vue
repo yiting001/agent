@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import BaseIcon from '@/modules/admin/presentation/components/BaseIcon.vue';
 import BaseModal from '@/modules/admin/presentation/components/BaseModal.vue';
 
+import ObservabilityGenerationDetail from './ObservabilityGenerationDetail.vue';
 import type {
   ObservabilityCategory,
   ObservabilityTraceDetail,
@@ -162,6 +163,17 @@ function formatMetadataValue(value: string | number | boolean): string {
         </span>
       </div>
 
+      <section
+        v-if="trace.generations.length"
+        class="observability-generation-list"
+      >
+        <ObservabilityGenerationDetail
+          v-for="generation in trace.generations"
+          :key="generation.id"
+          :generation="generation"
+        />
+      </section>
+
       <section class="observability-trace-chain">
         <header class="observability-trace-chain__header">
           <div>
@@ -221,7 +233,9 @@ function formatMetadataValue(value: string | number | boolean): string {
                   span.route ||
                   span.statusCode ||
                   span.model ||
-                  span.providerId
+                  span.providerId ||
+                  span.requestedModel ||
+                  span.responseModel
                 "
                 class="observability-trace-span__context"
               >
@@ -230,10 +244,21 @@ function formatMetadataValue(value: string | number | boolean): string {
                   {{ span.method }} {{ span.route }}
                   <em v-if="span.statusCode">HTTP {{ span.statusCode }}</em>
                 </span>
-                <span v-if="span.model || span.providerId">
+                <span
+                  v-if="
+                    span.model ||
+                    span.providerId ||
+                    span.requestedModel ||
+                    span.responseModel
+                  "
+                >
                   <strong>模型</strong>
-                  {{ span.providerId ?? '未指定服务' }}
-                  <em v-if="span.model">{{ span.model }}</em>
+                  {{ span.providerName ?? span.providerId ?? '未指定服务' }}
+                  <em>
+                    {{ span.requestedModel ?? span.model ?? '未知请求模型' }}
+                    →
+                    {{ span.responseModel ?? '上游未返回' }}
+                  </em>
                 </span>
               </div>
 

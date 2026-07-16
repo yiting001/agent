@@ -26,7 +26,7 @@ onMounted(() => store.refresh());
       <div>
         <span class="section-kicker">Observability</span>
         <h2>观测与监控</h2>
-        <p>统一查看日志链路、黄金指标、模型 Token、估算成本与异常告警。</p>
+        <p>统一查看调用链、真实响应模型、脱敏输入输出、用户反馈与质量指标。</p>
       </div>
       <div class="observability-actions">
         <div class="observability-window" aria-label="监控时间窗口">

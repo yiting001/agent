@@ -11,8 +11,8 @@ import type {
   ObservabilityStatus,
   TokenCountSource,
 } from '../domain/observability-event';
-import { ObservabilityContext } from '../infrastructure/observability-context';
 import { ObservabilityEventRepository } from './observability-event.repository';
+import { ObservabilityTraceContext } from './observability-trace.context';
 
 const CLEANUP_INTERVAL_MS = 60 * 60 * 1_000;
 const MAX_ERROR_MESSAGE_LENGTH = 1_000;
@@ -23,6 +23,8 @@ export interface RecordObservabilityEvent {
   costUsdMicros?: number;
   durationMs: number;
   errorMessage?: string;
+  finishReasons?: string[];
+  generationId?: string;
   inputTokens?: number;
   metadata?: Record<string, string | number | boolean>;
   method?: string;
@@ -31,6 +33,9 @@ export interface RecordObservabilityEvent {
   outputTokens?: number;
   parentSpanId?: string;
   providerId?: string;
+  providerName?: string;
+  requestedModel?: string;
+  responseModel?: string;
   route?: string;
   spanId?: string;
   startedAt: Date;
@@ -38,6 +43,7 @@ export interface RecordObservabilityEvent {
   statusCode?: number;
   tokenCountSource?: TokenCountSource;
   traceId?: string;
+  upstreamResponseId?: string;
 }
 
 export type TrackOperationInput = Omit<
@@ -56,7 +62,7 @@ export class ObservabilityService {
 
   constructor(
     private readonly repository: ObservabilityEventRepository,
-    private readonly context: ObservabilityContext,
+    private readonly context: ObservabilityTraceContext,
     configService: ConfigService,
   ) {
     const config = configService.getOrThrow<ApplicationConfig>('application');
@@ -81,6 +87,8 @@ export class ObservabilityService {
       costUsdMicros,
       durationMs: Math.max(0, input.durationMs),
       errorMessage: this.normalizeError(input.errorMessage),
+      finishReasons: input.finishReasons ?? [],
+      generationId: input.generationId,
       id: randomUUID(),
       inputTokens: input.inputTokens ?? 0,
       metadata: {
@@ -98,6 +106,9 @@ export class ObservabilityService {
         input.parentSpanId ??
         (input.spanId === current?.spanId ? undefined : current?.spanId),
       providerId: input.providerId,
+      providerName: input.providerName,
+      requestedModel: input.requestedModel,
+      responseModel: input.responseModel,
       route: input.route,
       spanId: input.spanId ?? this.createSpanId(),
       startedAt: input.startedAt,
@@ -105,6 +116,7 @@ export class ObservabilityService {
       statusCode: input.statusCode,
       tokenCountSource: input.tokenCountSource ?? 'unavailable',
       traceId: input.traceId ?? current?.traceId ?? this.createTraceId(),
+      upstreamResponseId: input.upstreamResponseId,
     };
 
     this.writeStructuredLog(event);
@@ -227,11 +239,15 @@ export class ObservabilityService {
       operation: event.operation,
       outputTokens: event.outputTokens,
       providerId: event.providerId,
+      providerName: event.providerName,
+      requestedModel: event.requestedModel,
+      responseModel: event.responseModel,
       spanId: event.spanId,
       status: event.status,
       statusCode: event.statusCode,
       timestamp: new Date().toISOString(),
       traceId: event.traceId,
+      upstreamResponseId: event.upstreamResponseId,
     });
 
     if (event.status === 'error') {

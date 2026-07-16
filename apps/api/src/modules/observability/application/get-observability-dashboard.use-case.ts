@@ -5,6 +5,7 @@ import type {
   ObservabilityEvent,
 } from '../domain/observability-event';
 import { ObservabilityEventRepository } from './observability-event.repository';
+import { ObservabilityGenerationRepository } from './observability-generation.repository';
 import { buildObservabilityTraceSummary } from './observability-trace.mapper';
 
 const MAX_RECENT_ALERTS = 20;
@@ -33,12 +34,18 @@ function percentile(values: number[], ratio: number): number {
 
 @Injectable()
 export class GetObservabilityDashboardUseCase {
-  constructor(private readonly repository: ObservabilityEventRepository) {}
+  constructor(
+    private readonly repository: ObservabilityEventRepository,
+    private readonly generations: ObservabilityGenerationRepository,
+  ) {}
 
   async execute(hours: number): Promise<ObservabilityDashboard> {
     const now = new Date();
     const since = new Date(now.getTime() - hours * 60 * 60 * 1_000);
-    const events = await this.repository.findSince(since);
+    const [events, quality] = await Promise.all([
+      this.repository.findSince(since),
+      this.generations.getQualitySummary(since),
+    ]);
     const requests = events.filter((event) => event.category === 'http');
     const modelCalls = events.filter((event) => event.category === 'model');
     const requestDurations = requests.map((event) => event.durationMs);
@@ -81,6 +88,7 @@ export class GetObservabilityDashboardUseCase {
         p95LatencyMs: round(percentile(requestDurations, 0.95)),
         requestCount: requests.length,
       },
+      quality,
       recentTraces: this.buildRecentTraces(events),
       runtime: {
         heapTotalBytes: memory.heapTotal,

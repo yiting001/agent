@@ -61,4 +61,6 @@ export interface RuntimeModelProvider {
   embeddingInputCostPerMillionTokens?: number;
   embeddingModel?: string;
   id: string;
+  key: string;
+  name: string;
 }

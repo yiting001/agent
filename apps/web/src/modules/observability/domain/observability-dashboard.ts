@@ -28,6 +28,8 @@ export interface ObservabilityTraceSpan {
   costUsd: number;
   durationMs: number;
   errorMessage?: string;
+  finishReasons: string[];
+  generationId?: string;
   inputTokens: number;
   metadata: Record<string, string | number | boolean>;
   method?: string;
@@ -36,15 +38,66 @@ export interface ObservabilityTraceSpan {
   outputTokens: number;
   parentSpanId?: string;
   providerId?: string;
+  providerName?: string;
+  requestedModel?: string;
+  responseModel?: string;
   route?: string;
   spanId: string;
   startedAt: string;
   status: ObservabilityStatus;
   statusCode?: number;
   tokenCountSource: ObservabilityTokenCountSource;
+  upstreamResponseId?: string;
+}
+
+export interface ObservabilityGenerationMessage {
+  content: string;
+  role: 'assistant' | 'system' | 'tool' | 'user';
+}
+
+export interface ObservabilityGenerationFeedback {
+  comment?: string;
+  createdAt: string;
+  id: string;
+  metric: 'helpfulness';
+  rating: 'negative' | 'positive';
+  reasonCodes: Array<
+    'citation' | 'format' | 'incorrect' | 'irrelevant' | 'model' | 'other'
+  >;
+  source: 'admin' | 'end_user' | 'llm_judge' | 'rule';
+  updatedAt: string;
+}
+
+export interface ObservabilityGenerationDetail {
+  agentId: string;
+  captureMode: 'off' | 'redacted';
+  completedAt?: string;
+  configuration: {
+    agentUpdatedAt: string;
+    citationDocumentIds: string[];
+    policyRevisions: Array<{ key: string; revision: number }>;
+    skillIds: string[];
+  };
+  conversationId?: string;
+  feedback: ObservabilityGenerationFeedback[];
+  finishReasons: string[];
+  id: string;
+  inputMessages: ObservabilityGenerationMessage[];
+  outputText: string;
+  providerId: string;
+  providerName: string;
+  requestedModel: string;
+  responseModel?: string;
+  source: string;
+  startedAt: string;
+  status: 'cancelled' | 'completed' | 'error' | 'running';
+  traceId: string;
+  truncated: boolean;
+  upstreamResponseId?: string;
 }
 
 export interface ObservabilityTraceDetail extends ObservabilityTraceSummary {
+  generations: ObservabilityGenerationDetail[];
   spans: ObservabilityTraceSpan[];
 }
 
@@ -76,6 +129,12 @@ export interface ObservabilityDashboard {
     modelCallCount: number;
     p95LatencyMs: number;
     requestCount: number;
+  };
+  quality: {
+    feedbackCount: number;
+    modelMismatchCount: number;
+    negativeFeedbackCount: number;
+    positiveFeedbackRate: number;
   };
   recentTraces: ObservabilityTraceSummary[];
   runtime: {

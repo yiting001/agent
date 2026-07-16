@@ -29,12 +29,15 @@ export interface ChatMessageInput {
 
 /** 模型调用观测所需的非敏感计费和关联信息。 */
 export interface ModelCallTelemetry {
+  generationId?: string;
   inputCostPerMillionTokens?: number;
   /** 仅允许低基数、非敏感值。 */
   metadata?: Record<string, string | number | boolean>;
   operation?: string;
   outputCostPerMillionTokens?: number;
   providerId?: string;
+  providerName?: string;
+  traceId?: string;
 }
 
 /** 普通聊天或流式聊天的模型调用输入。 */

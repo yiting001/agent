@@ -17,13 +17,16 @@ import { ObservabilityService } from '../../observability/application/observabil
 export interface ToolLoopRequest {
   apiKey: string;
   baseUrl: string;
+  generationId?: string;
   inputCostPerMillionTokens?: number;
   messages: ToolLoopMessage[];
   model: string;
   operation?: string;
   outputCostPerMillionTokens?: number;
   providerId?: string;
+  providerName?: string;
   temperature: number;
+  traceId?: string;
 }
 
 function parseToolArguments(raw: string): Record<string, unknown> {
@@ -67,14 +70,17 @@ export class SkillToolLoopService {
       const input: ToolChatInput = {
         apiKey: request.apiKey,
         baseUrl: request.baseUrl,
+        generationId: request.generationId,
         inputCostPerMillionTokens: request.inputCostPerMillionTokens,
         messages,
         model: request.model,
         operation: request.operation,
         outputCostPerMillionTokens: request.outputCostPerMillionTokens,
         providerId: request.providerId,
+        providerName: request.providerName,
         temperature: request.temperature,
         tools: definitions,
+        traceId: request.traceId,
       };
       const result = await this.modelGateway.chatWithTools(input);
 
