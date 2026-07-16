@@ -50,6 +50,18 @@ export const adminRoute: RouteRecordRaw = {
     {
       component: () =>
         import(
+          '@/modules/prompt-policies/presentation/views/PromptPoliciesView.vue'
+        ),
+      meta: {
+        description: '管理控制智能体输出格式与行为的内置系统提示词。',
+        title: '提示词管理',
+      },
+      name: 'prompt-policies',
+      path: 'prompt-policies',
+    },
+    {
+      component: () =>
+        import(
           '@/modules/admin/presentation/views/ModelProvidersManagementView.vue'
         ),
       meta: {

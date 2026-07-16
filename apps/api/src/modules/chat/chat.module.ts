@@ -6,6 +6,7 @@ import { MemoryOwnerIdentityModule } from '../agent-memory/memory-owner-identity
 import { ApiAccessModule } from '../api-access/api-access.module';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { ModelProvidersModule } from '../model-providers/model-providers.module';
+import { PromptPoliciesModule } from '../prompt-policies/prompt-policies.module';
 import { SkillsModule } from '../skills/skills.module';
 import { ChatWithAgentUseCase } from './application/chat-with-agent.use-case';
 import { SkillToolLoopService } from './application/skill-tool-loop.service';
@@ -29,6 +30,7 @@ import { PublicChatWithAgentController } from './presentation/http/public-chat-w
     ChatAttachmentModule,
     KnowledgeModule,
     ModelProvidersModule,
+    PromptPoliciesModule,
     SkillsModule,
   ],
   providers: [ChatWithAgentUseCase, SkillToolLoopService],

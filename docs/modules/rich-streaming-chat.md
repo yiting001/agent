@@ -4,8 +4,8 @@
 
 - 智能体后台与公开接口默认使用 SSE 流式输出。
 - 对话入口支持可选 `conversationId`，用于服务端短期记忆和长期记忆归档。
-- Vue 管理端回答支持 Markdown、LaTeX、ECharts、D3 和 Mermaid；
-  EyouCMS 用户页支持 Markdown、LaTeX、表格、ECharts（含仪表盘）和 Mermaid。
+- Vue 管理端与 EyouCMS 用户页均支持受控 HTML、Markdown、LaTeX、表格、
+  ECharts、D3、Three.js 与 Mermaid。
 - Vue 管理端和 EyouCMS 用户页都可在单条消息中上传图片或音频，并与文本一并提交模型。
 - 所有智能体入口共用 `ChatWithAgentUseCase`，后台测试、公开页面和 API 应用具有一致的多模态能力。
 - 附件存储、模型协议和界面渲染通过端口分离，便于替换对象存储或模型厂商。
@@ -29,8 +29,8 @@ flowchart LR
   Chat -->|delta / citations / done| Vue
   Chat -->|delta / citations / done| Eyou
   Vue --> Markdown[Markdown + KaTeX]
-  Vue --> Charts[ECharts / D3 / Mermaid]
-  Eyou --> EyouRich[Markdown + KaTeX + ECharts + Mermaid]
+  Vue --> Charts[ECharts / D3 / Three.js / Mermaid]
+  Eyou --> EyouRich[安全 HTML + Markdown + KaTeX + ECharts + D3 + Three.js + Mermaid]
 ```
 
 ## 输出格式
@@ -57,6 +57,10 @@ $$
 {"type":"bar","data":[{"name":"一月","value":12},{"name":"二月","value":18}]}
 ```
 
+```three
+{"background":"#f7f8fc","objects":[{"type":"box","size":[2,1,3],"color":"#7765e8"}]}
+```
+
 ```mermaid
 flowchart LR
   提问 --> 检索 --> 回答
@@ -71,14 +75,16 @@ ECharts 配置必须是 JSON，支持全部原生图表类型，仪表盘使用 
 ```
 ````
 
-D3 仅 Vue 管理端支持，当前提供 `bar` 和 `line` 两种结构化图表。
+D3 在两个页面均提供 `bar` 和 `line` 两种结构化图表；Three.js 在两个页面均只接受
+基础几何体 JSON，不支持模型 URL、纹理和任意 JavaScript。完整协议和数值限制见
+[富内容输出与内置提示词管理](rich-content-prompts.md)。
 
 图表渲染有统一兜底：Mermaid 渲染前先 `parse` 语法校验，任一图表配置非法或
 类型不支持（如 Mermaid 不存在的 `gauge`）时降级为友好错误提示加原始代码块，
 不中断消息内其余内容；ECharts 图表随容器尺寸变化自动 `resize`。仪表盘请使用
 ECharts 的 `gauge` 系列。
-Markdown 渲染允许模型输出的内联 HTML（如表格单元格中的 `<br>` 换行），
-渲染结果经 DOMPurify 白名单消毒后再进入页面，脚本与危险属性会被移除。
+Markdown 渲染允许模型输出语义化 HTML 片段（如财务表格和单元格中的 `<br>`），
+渲染结果经 DOMPurify 白名单消毒后再进入页面，脚本、图片、外链资源、style 与危险属性会被移除。
 EyouCMS 页的 DOMPurify 由 CDN 按需加载，加载失败时自动降级为禁用
 原始 HTML 的安全模式，保证任何浏览器环境下内容都可读且无注入风险。
 EyouCMS 页的渲染库由 `templates/eyoucms/skin/js/agent-rich-content.js`
@@ -132,7 +138,7 @@ OpenAI 兼容的 `image_url` 或 `input_audio` 内容片段。owner 绑定附件
 
 ## 前端按需分包
 
-- Markdown 与 KaTeX 保持页面级依赖；D3、ECharts 和 Mermaid 仅在消息出现对应
+- Markdown 与 KaTeX 保持页面级依赖；D3、ECharts、Three.js 和 Mermaid 仅在消息出现对应
   visualization fence 时动态加载。
 - ECharts 使用 `echarts/core`、Canvas renderer、两组通用组件和按系列族拆分的
   cartesian、hierarchy、map、specialty chunk；保留全部 ECharts 6 原生系列，
@@ -141,5 +147,7 @@ OpenAI 兼容的 `image_url` 或 `input_audio` 内容片段。owner 绑定附件
   loader 拆分。当前 Mermaid 11.16 的可选 Cynefin parser 是单个上游生成模块，
   minified 约 691 kB；只有渲染 Cynefin 图时才加载，未通过提高
   `chunkSizeWarningLimit` 隐藏该剩余告警。
+- Three.js 只注册受限基础几何体，组件卸载时释放动画、ResizeObserver、
+  OrbitControls、几何体、材质、renderer 和 WebGL context。
 - 当前生产构建中 ECharts runtime 约 417 kB、D3 约 290 kB、KaTeX 约 372 kB，
   主对话视图约 119 kB；构建测试覆盖 ECharts 四个系列族的动态注册。

@@ -15,12 +15,17 @@ describe('renderRichMarkdown', () => {
 {"series":[]}
 \`\`\`
 
+\`\`\`three
+{"objects":[{"type":"box"}]}
+\`\`\`
+
 <script>alert('xss')</script>
 `);
 
     expect(output).toContain('<h1>分析结果</h1>');
     expect(output).toContain('class="katex"');
     expect(output).toContain('data-visualization="echarts"');
+    expect(output).toContain('data-visualization="three"');
     expect(output).not.toContain("<script>alert('xss')</script>");
   });
 
@@ -33,9 +38,14 @@ describe('renderRichMarkdown', () => {
   });
 
   it('strips dangerous attributes while keeping the element', () => {
-    const output = renderRichMarkdown('<em onclick="alert(1)">重点</em>');
+    const output = renderRichMarkdown(
+      '<em onclick="alert(1)" style="position:fixed">重点</em><img src="https://tracker.example/pixel">',
+    );
 
     expect(output).toContain('<em>重点</em>');
     expect(output).not.toContain('onclick');
+    expect(output).not.toContain('style');
+    expect(output).not.toContain('<img');
+    expect(output).not.toContain('tracker.example');
   });
 });

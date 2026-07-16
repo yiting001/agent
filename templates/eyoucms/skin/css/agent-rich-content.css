@@ -102,7 +102,7 @@
   padding: 6px 0;
 }
 
-/* ECharts（含仪表盘）与 Mermaid 图表容器。 */
+/* ECharts、D3、Three.js 与 Mermaid 共用的图表容器。 */
 .chat-visualization {
   width: 100%;
   min-height: 320px;
@@ -148,4 +148,22 @@
   max-width: 100%;
   height: auto;
   margin: 0 auto;
+}
+
+.chat-visualization__canvas {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: 360px;
+  border-radius: var(--chat-radius-sm);
+}
+
+.chat-visualization rect {
+  fill: #7765e8;
+}
+
+.chat-d3-line {
+  fill: none;
+  stroke: #6654dc;
+  stroke-width: 3;
 }

@@ -7,6 +7,7 @@
 @import './styles/admin-services.css';
 @import './styles/observability-page.css';
 @import './styles/evaluation-page.css';
+@import './styles/prompt-policies-page.css';
 @import './styles/office-page.css';
 @import './styles/chat-page.css';
 @import './styles/chat-attachments.css';

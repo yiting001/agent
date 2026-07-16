@@ -24,6 +24,7 @@ const navigation = [
   { icon: 'bot' as const, label: '智能体管理', to: '/agents' },
   { icon: 'database' as const, label: '知识库管理', to: '/knowledge-bases' },
   { icon: 'skill' as const, label: '技能管理', to: '/skills' },
+  { icon: 'document' as const, label: '提示词管理', to: '/prompt-policies' },
   { icon: 'model' as const, label: '模型配置', to: '/model-providers' },
   { icon: 'api' as const, label: 'API 管理', to: '/api-access' },
   { icon: 'activity' as const, label: '观测与监控', to: '/observability' },

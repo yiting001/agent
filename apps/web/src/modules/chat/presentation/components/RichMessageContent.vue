@@ -46,5 +46,6 @@ onBeforeUnmount(() => disposeVisualizations());
 </script>
 
 <template>
+  <!-- renderedContent 已经过 DOMPurify 白名单消毒，禁止直接注入原始模型输出。 -->
   <div ref="root" class="rich-message-content" v-html="renderedContent"></div>
 </template>

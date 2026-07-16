@@ -147,6 +147,14 @@
   height: auto;
 }
 
+.rich-visualization__canvas {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: 360px;
+  border-radius: 8px;
+}
+
 .rich-visualization rect {
   fill: #7765e8;
 }
