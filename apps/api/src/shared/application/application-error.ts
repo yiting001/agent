@@ -1,6 +1,7 @@
 /** 可稳定映射为 HTTP 状态码的应用错误分类。 */
 export type ApplicationErrorCode =
   | 'conflict'
+  | 'forbidden'
   | 'invalid_operation'
   | 'not_found'
   | 'service_unavailable'

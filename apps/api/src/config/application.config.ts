@@ -10,6 +10,10 @@ import {
   parsePositiveInteger,
   parseUrl,
 } from './configuration-parsers';
+import {
+  type ObservabilityEncryptionConfiguration,
+  parseObservabilityEncryptionConfiguration,
+} from './observability-encryption.config';
 
 const DEFAULT_API_PORT = 3000;
 const DEFAULT_BRAND_ICON_MAX_BYTES = 1024 * 1024;
@@ -124,6 +128,7 @@ export interface ApplicationConfig {
   /** 模型 HTTP 请求超时时间。 */
   modelRequestTimeoutMs: number;
   observabilityContentCaptureMode: 'off' | 'redacted';
+  observabilityContentEncryption: ObservabilityEncryptionConfiguration;
   observabilityContentMaxCharacters: number;
   observabilityContentRetentionDays: number;
   observabilityHighCostUsd: number;
@@ -242,6 +247,17 @@ export const applicationConfig = registerAs(
       throw new Error('REDIS_URL is required in production.');
     }
 
+    const credentialEncryptionKey = optionalValue(
+      process.env.CREDENTIAL_ENCRYPTION_KEY,
+    );
+    const observabilityContentEncryption =
+      parseObservabilityEncryptionConfiguration({
+        activeKeyVersion:
+          process.env.OBSERVABILITY_CONTENT_ENCRYPTION_ACTIVE_KEY_VERSION,
+        credentialEncryptionKey,
+        serializedKeys: process.env.OBSERVABILITY_CONTENT_ENCRYPTION_KEYS,
+      });
+
     return {
       apiRateLimitMax: parsePositiveInteger(
         'API_RATE_LIMIT_MAX',
@@ -317,9 +333,7 @@ export const applicationConfig = registerAs(
         process.env.CORS_ORIGIN?.trim() === '*'
           ? '*'
           : parseCorsOrigins(process.env.CORS_ORIGIN),
-      credentialEncryptionKey: optionalValue(
-        process.env.CREDENTIAL_ENCRYPTION_KEY,
-      ),
+      credentialEncryptionKey,
       databaseDropSchema: process.env.NODE_ENV === 'test',
       databaseMigrationsRun: parseBoolean(process.env.DATABASE_MIGRATIONS_RUN),
       databasePoolMax: parsePositiveInteger(
@@ -395,6 +409,7 @@ export const applicationConfig = registerAs(
       observabilityContentCaptureMode: parseObservabilityCaptureMode(
         process.env.OBSERVABILITY_CONTENT_CAPTURE_MODE,
       ),
+      observabilityContentEncryption,
       observabilityContentMaxCharacters: parsePositiveInteger(
         'OBSERVABILITY_CONTENT_MAX_CHARACTERS',
         process.env.OBSERVABILITY_CONTENT_MAX_CHARACTERS,

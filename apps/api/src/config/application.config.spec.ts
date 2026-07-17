@@ -1,24 +1,44 @@
 import { applicationConfig } from './application.config';
 
 describe('application configuration', () => {
+  const originalCredentialEncryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY;
   const originalDatabaseSynchronize = process.env.DATABASE_SYNCHRONIZE;
   const originalDatabaseUrl = process.env.DATABASE_URL;
   const originalNodeEnv = process.env.NODE_ENV;
+  const originalObservabilityActiveKeyVersion =
+    process.env.OBSERVABILITY_CONTENT_ENCRYPTION_ACTIVE_KEY_VERSION;
+  const originalObservabilityEncryptionKeys =
+    process.env.OBSERVABILITY_CONTENT_ENCRYPTION_KEYS;
   const originalCaptureMode = process.env.OBSERVABILITY_CONTENT_CAPTURE_MODE;
   const originalRedisUrl = process.env.REDIS_URL;
 
   beforeEach(() => {
     process.env.NODE_ENV = 'production';
+    process.env.CREDENTIAL_ENCRYPTION_KEY = '11'.repeat(32);
     delete process.env.DATABASE_SYNCHRONIZE;
     delete process.env.DATABASE_URL;
     delete process.env.REDIS_URL;
+    delete process.env.OBSERVABILITY_CONTENT_ENCRYPTION_ACTIVE_KEY_VERSION;
+    delete process.env.OBSERVABILITY_CONTENT_ENCRYPTION_KEYS;
     delete process.env.OBSERVABILITY_CONTENT_CAPTURE_MODE;
   });
 
   afterAll(() => {
+    restoreEnvironment(
+      'CREDENTIAL_ENCRYPTION_KEY',
+      originalCredentialEncryptionKey,
+    );
     restoreEnvironment('DATABASE_SYNCHRONIZE', originalDatabaseSynchronize);
     restoreEnvironment('DATABASE_URL', originalDatabaseUrl);
     restoreEnvironment('NODE_ENV', originalNodeEnv);
+    restoreEnvironment(
+      'OBSERVABILITY_CONTENT_ENCRYPTION_ACTIVE_KEY_VERSION',
+      originalObservabilityActiveKeyVersion,
+    );
+    restoreEnvironment(
+      'OBSERVABILITY_CONTENT_ENCRYPTION_KEYS',
+      originalObservabilityEncryptionKeys,
+    );
     restoreEnvironment(
       'OBSERVABILITY_CONTENT_CAPTURE_MODE',
       originalCaptureMode,

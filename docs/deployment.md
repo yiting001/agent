@@ -70,12 +70,32 @@ openssl rand -hex 32
 
 ```dotenv
 CREDENTIAL_ENCRYPTION_KEY=<固定的 64 位十六进制密钥>
+MANAGEMENT_ACCESS_CREDENTIALS='[{"subject":"production-admin","token":"mgmt_<至少43位URL安全随机字符>","scopes":["observability:metrics","observability:content","observability:feedback","evaluation:manage","observability:capture"]}]'
 BRAND_STORAGE_PATH=/srv/agent-data/brand-storage
 CHAT_ATTACHMENT_STORAGE_PATH=/srv/agent-data/chat-attachments
 KNOWLEDGE_STORAGE_PATH=/srv/agent-data/knowledge-storage
 ```
 
-更换 `CREDENTIAL_ENCRYPTION_KEY` 会导致已保存模型密钥无法解密。连接 URL、密码和该密钥不得写入仓库或日志。
+管理 token 必须由密码学安全随机源生成，例如先生成 48 字节随机值，再添加 `mgmt_`
+前缀；原始值只进入 Secret 管理系统，不写入仓库、镜像、URL、日志或错误信息。生产环境
+缺少有效的 `MANAGEMENT_ACCESS_CREDENTIALS` 时 API 会拒绝启动。
+
+更换 `CREDENTIAL_ENCRYPTION_KEY` 会导致已保存模型密钥无法解密。未配置独立正文
+keyring 时，Observability 还会从该根密钥按固定领域上下文派生正文密钥，因此轮换根密钥
+前必须先把正文迁移到独立 keyring。连接 URL、密码、管理 token 和密钥不得写入仓库或
+日志。
+
+推荐生产正文 keyring：
+
+```dotenv
+OBSERVABILITY_CONTENT_ENCRYPTION_KEYS='{"v1":"<固定的64位十六进制密钥>"}'
+OBSERVABILITY_CONTENT_ENCRYPTION_ACTIVE_KEY_VERSION=v1
+```
+
+轮换时同时保留旧、新版本，把 active version 指向新版本，再启动单个新版本 API 实例。
+启动迁移器会持有 PostgreSQL advisory lock，认证解密旧正文并按批次重加密；缺少旧 key、
+认证失败或 payload 无效都会阻止实例完成启动。确认旧版本记录清零后才能移除旧 key。
+详细步骤见 [观测与监控文档](modules/observability.md)。
 
 ## 向量配置
 
@@ -164,7 +184,9 @@ server {
 1. PostgreSQL 全量备份与 WAL/PITR；
 2. 知识文档、聊天附件和品牌文件；
 3. `CREDENTIAL_ENCRYPTION_KEY` 的安全副本；
-4. 已审核代码版本和 migration 版本。
+4. Observability 正文 keyring 的全部仍在用历史版本；
+5. 管理凭证的 Secret 配置；
+6. 已审核代码版本和 migration 版本。
 
 Redis 限流状态无需恢复。恢复后先运行 schema 和 pgvector extension 检查，再验证动态向量表、文件引用和 `/api/health/readiness`。
 
@@ -185,14 +207,17 @@ Redis 限流状态无需恢复。恢复后先运行 schema 和 pgvector extensio
 
 ## 商用安全前置
 
-数据库迁移不等于完成多租户 SaaS。浏览器 owner 已改为服务端签名匿名 bearer token，
-能够阻止客户端直接伪造其他 ownerKey，但 token 被窃取后仍可重放。上线外部租户前还必须
-实现 workspace/member/API key 身份上下文、资源 workspace 外键、权限矩阵、审计和
-PostgreSQL RLS；匿名 owner token 不能作为 tenantId。
+数据库迁移不等于完成多租户 SaaS。Observability 和 Evaluation 已使用配置型管理凭证、
+scope 与低敏感审计保护，但该主体仍不是 Workspace 或租户身份。浏览器 owner token 和
+管理 token 被窃取后都可重放。上线外部租户前还必须实现 workspace/member 身份上下文、
+资源 workspace 外键、租户权限矩阵、凭证吊销和 PostgreSQL RLS；匿名 owner token 不能
+作为 tenantId。
 
 ## 发布检查
 
 - migration 在独立任务中成功，API 副本未启用 `synchronize`；
+- 管理凭证和全部正文 key version 已从 Secret 注入，未出现在日志或构建产物；
+- 正文启动迁移完成，旧明文和非 active key version 记录均已清零；
 - liveness 与 readiness 均符合预期；
 - PostgreSQL 连接池、慢查询、磁盘、WAL 和 HNSW 索引可观测；
 - Redis 故障时高成本入口 fail-closed；

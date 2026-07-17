@@ -1,6 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { RequireManagementScopes } from '../../../management-access/presentation/http/management-access.decorators';
 import { ListObservabilityTracesUseCase } from '../../application/list-observability-traces.use-case';
 import type { ObservabilityTracePage } from '../../domain/observability-event';
 import { ListObservabilityTracesDto } from './list-observability-traces.dto';
@@ -11,6 +12,7 @@ export class ListObservabilityTracesController {
   constructor(private readonly listTraces: ListObservabilityTracesUseCase) {}
 
   @Get()
+  @RequireManagementScopes('observability:metrics')
   @ApiOperation({ summary: 'List paginated recent execution traces' })
   execute(
     @Query() query: ListObservabilityTracesDto,

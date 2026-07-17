@@ -9,6 +9,7 @@ import {
   parseRecord,
   readString,
 } from './knowledge-test-app';
+import { MANAGEMENT_TEST_AUTHORIZATION } from './management-test-credentials';
 
 function readNumber(value: Record<string, unknown>, property: string): number {
   const result = value[property];
@@ -62,6 +63,7 @@ describe('Evaluation', () => {
 
     const suiteResponse = await request(app.getHttpServer())
       .post('/api/evaluation-suites')
+      .set('Authorization', MANAGEMENT_TEST_AUTHORIZATION)
       .send({
         agentId,
         cases: [
@@ -85,6 +87,7 @@ describe('Evaluation', () => {
 
     await request(app.getHttpServer())
       .get('/api/evaluation-suites')
+      .set('Authorization', MANAGEMENT_TEST_AUTHORIZATION)
       .expect(200)
       .expect(({ text }) => {
         expect(text).toContain(suiteId);
@@ -92,6 +95,7 @@ describe('Evaluation', () => {
 
     const runResponse = await request(app.getHttpServer())
       .post(`/api/evaluation-suites/${suiteId}/runs`)
+      .set('Authorization', MANAGEMENT_TEST_AUTHORIZATION)
       .send({})
       .expect(201);
     const run = parseRecord(runResponse.text);
@@ -121,6 +125,7 @@ describe('Evaluation', () => {
 
     await request(app.getHttpServer())
       .get(`/api/evaluation-runs/${runId}`)
+      .set('Authorization', MANAGEMENT_TEST_AUTHORIZATION)
       .expect(200)
       .expect(({ text }) => {
         expect(text).toContain('matchedKeywords');

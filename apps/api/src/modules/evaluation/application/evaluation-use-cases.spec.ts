@@ -95,10 +95,11 @@ describe('evaluation application use cases', () => {
     const suite = await useCase.execute(createCommand());
 
     expect(suite.status).toBe('ready');
-    expect(repository.suite?.cases[0]?.expectedKeywords).toEqual([
-      '退款',
-      '人工客服',
-    ]);
+    expect(repository.suite?.cases[0]).toMatchObject({
+      expectedKeywords: ['退款', '人工客服'],
+      source: 'manual',
+      tags: [],
+    });
   });
 
   it('rejects disabled agents', async () => {

@@ -7,6 +7,20 @@ import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
 import { AgentMemoryTaskScheduler } from '../src/modules/agent-memory/infrastructure/agent-memory-task.scheduler';
 import { IngestionScheduler } from '../src/modules/knowledge/infrastructure/indexing/ingestion.scheduler';
+import { ObservabilityContentMigrator } from '../src/modules/observability/infrastructure/observability-content-migrator';
+import { MANAGEMENT_TEST_AUTHORIZATION } from './management-test-credentials';
+
+const LEGACY_GENERATION_ID = 'migration-legacy-generation';
+const INVALID_GENERATION_ID = 'migration-invalid-generation';
+
+interface ContentStorageRow {
+  authTag: string | null;
+  ciphertext: string | null;
+  initializationVector: string | null;
+  inputMessages: unknown;
+  keyVersion: string | null;
+  outputText: string | null;
+}
 
 describe('Database migrations', () => {
   let app: INestApplication<Server>;
@@ -60,6 +74,7 @@ describe('Database migrations', () => {
       });
     await request(app.getHttpServer())
       .get('/api/observability/dashboard?hours=24')
+      .set('Authorization', MANAGEMENT_TEST_AUTHORIZATION)
       .expect(200)
       .expect((response) => {
         expect(response.text).toContain('"goldenSignals"');
@@ -73,6 +88,10 @@ describe('Database migrations', () => {
     const queryRunner = dataSource.createQueryRunner();
 
     try {
+      await assertInvalidEncryptedContentFailsClosed(app, queryRunner);
+      await insertLegacyObservabilityContent(queryRunner);
+      await app.get(ObservabilityContentMigrator).onApplicationBootstrap();
+
       const taskTable = await queryRunner.getTable('agent_memory_tasks');
       const memoryTable = await queryRunner.getTable('agent_memories');
       const vectorCollections =
@@ -88,8 +107,13 @@ describe('Database migrations', () => {
         'observability_generation_contents',
       );
       const feedback = await queryRunner.getTable('observability_feedback');
+      const evaluationCases = await queryRunner.getTable('evaluation_cases');
       const observabilityEvents = await queryRunner.getTable(
         'observability_events',
+      );
+      const encryptedContent = await readContentStorageRow(
+        queryRunner,
+        LEGACY_GENERATION_ID,
       );
       const promptRows = (await queryRunner.query(
         'SELECT "key", "enabled", "revision" FROM "prompt_policies" WHERE "key" = $1',
@@ -99,6 +123,18 @@ describe('Database migrations', () => {
       expect(promptPolicies?.findColumnByName('revision')).toBeDefined();
       expect(generations?.findColumnByName('responseModel')).toBeDefined();
       expect(generationContents?.findColumnByName('expiresAt')).toBeDefined();
+      expect(generationContents?.findColumnByName('ciphertext')).toBeDefined();
+      expect(generationContents?.findColumnByName('keyVersion')).toBeDefined();
+      expect(encryptedContent).toEqual(
+        expect.objectContaining({
+          inputMessages: null,
+          keyVersion: 'credential-derived-v1',
+          outputText: null,
+        }),
+      );
+      expect(typeof encryptedContent.authTag).toBe('string');
+      expect(typeof encryptedContent.ciphertext).toBe('string');
+      expect(typeof encryptedContent.initializationVector).toBe('string');
       expect(feedback?.uniques).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -106,6 +142,18 @@ describe('Database migrations', () => {
           }),
         ]),
       );
+      expect(feedback?.findColumnByName('reviewStatus')).toBeDefined();
+      expect(
+        evaluationCases?.findColumnByName('sourceFeedbackId'),
+      ).toBeDefined();
+      expect(evaluationCases?.uniques).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'UQ_evaluation_cases_source_feedback',
+          }),
+        ]),
+      );
+      expect(await queryRunner.hasTable('management_audit_logs')).toBe(true);
       expect(
         observabilityEvents?.findColumnByName('requestedModel'),
       ).toBeDefined();
@@ -127,6 +175,55 @@ describe('Database migrations', () => {
       expect(ingestionJobs?.findColumnByName('nextRunAt')).toBeDefined();
     } finally {
       await queryRunner.release();
+    }
+
+    await dataSource.undoLastMigration();
+    const qualityP0RolledBack = dataSource.createQueryRunner();
+
+    try {
+      expect(
+        await qualityP0RolledBack.hasTable('observability_generations'),
+      ).toBe(true);
+      expect(await qualityP0RolledBack.hasTable('prompt_policies')).toBe(true);
+      expect(await qualityP0RolledBack.hasTable('management_audit_logs')).toBe(
+        false,
+      );
+      const generationContents = await qualityP0RolledBack.getTable(
+        'observability_generation_contents',
+      );
+      const feedback = await qualityP0RolledBack.getTable(
+        'observability_feedback',
+      );
+      const evaluationCases =
+        await qualityP0RolledBack.getTable('evaluation_cases');
+      const observabilityEvents = await qualityP0RolledBack.getTable(
+        'observability_events',
+      );
+      const restoredContent = await readContentStorageRow(
+        qualityP0RolledBack,
+        LEGACY_GENERATION_ID,
+      );
+
+      expect(
+        observabilityEvents?.findColumnByName('requestedModel'),
+      ).toBeDefined();
+      expect(
+        generationContents?.findColumnByName('ciphertext'),
+      ).toBeUndefined();
+      expect(
+        generationContents?.findColumnByName('keyVersion'),
+      ).toBeUndefined();
+      expect(feedback?.findColumnByName('reviewStatus')).toBeUndefined();
+      expect(
+        evaluationCases?.findColumnByName('sourceFeedbackId'),
+      ).toBeUndefined();
+      expect(restoredContent.inputMessages).toEqual([
+        { content: '旧版输入', role: 'user' },
+      ]);
+      expect(restoredContent.outputText).toBe('旧版输出');
+      expect(restoredContent.ciphertext).toBeUndefined();
+    } finally {
+      await qualityP0RolledBack.release();
     }
 
     await dataSource.undoLastMigration();
@@ -240,3 +337,112 @@ describe('Database migrations', () => {
     await dataSource.runMigrations();
   });
 });
+
+async function assertInvalidEncryptedContentFailsClosed(
+  app: INestApplication<Server>,
+  queryRunner: ReturnType<DataSource['createQueryRunner']>,
+): Promise<void> {
+  await insertGeneration(queryRunner, INVALID_GENERATION_ID);
+  await queryRunner.query(
+    `INSERT INTO "observability_generation_contents" (
+       "generationId",
+       "captureMode",
+       "inputMessages",
+       "outputText",
+       "ciphertext",
+       "initializationVector",
+       "authTag",
+       "keyVersion",
+       "redactionCount",
+       "truncated",
+       "expiresAt"
+     ) VALUES ($1, 'redacted', NULL, NULL, $2, $3, $4, $5, 0, false, NOW() + INTERVAL '1 day')`,
+    [
+      INVALID_GENERATION_ID,
+      Buffer.from('invalid ciphertext').toString('base64'),
+      Buffer.alloc(12, 1).toString('base64'),
+      Buffer.alloc(16, 2).toString('base64'),
+      'unavailable-key-v0',
+    ],
+  );
+
+  await expect(
+    app.get(ObservabilityContentMigrator).onApplicationBootstrap(),
+  ).rejects.toMatchObject({ code: 'service_unavailable' });
+  expect(
+    await readContentStorageRow(queryRunner, INVALID_GENERATION_ID),
+  ).toEqual(
+    expect.objectContaining({
+      inputMessages: null,
+      keyVersion: 'unavailable-key-v0',
+      outputText: null,
+    }),
+  );
+
+  await queryRunner.query(
+    'DELETE FROM "observability_generations" WHERE "id" = $1',
+    [INVALID_GENERATION_ID],
+  );
+}
+
+async function insertLegacyObservabilityContent(
+  queryRunner: ReturnType<DataSource['createQueryRunner']>,
+): Promise<void> {
+  await insertGeneration(queryRunner, LEGACY_GENERATION_ID);
+  await queryRunner.query(
+    `INSERT INTO "observability_generation_contents" (
+       "generationId",
+       "captureMode",
+       "inputMessages",
+       "outputText",
+       "redactionCount",
+       "truncated",
+       "expiresAt"
+     ) VALUES ($1, 'redacted', $2::jsonb, $3, 0, false, NOW() + INTERVAL '1 day')`,
+    [
+      LEGACY_GENERATION_ID,
+      JSON.stringify([{ content: '旧版输入', role: 'user' }]),
+      '旧版输出',
+    ],
+  );
+}
+
+async function insertGeneration(
+  queryRunner: ReturnType<DataSource['createQueryRunner']>,
+  generationId: string,
+): Promise<void> {
+  await queryRunner.query(
+    `INSERT INTO "observability_generations" (
+       "id",
+       "traceId",
+       "agentId",
+       "source",
+       "providerId",
+       "providerName",
+       "requestedModel",
+       "finishReasons",
+       "configuration",
+       "status",
+       "startedAt",
+       "completedAt"
+     ) VALUES ($1, $2, 'migration-agent', 'admin', 'migration-provider', '迁移供应商', 'migration-model', '[]'::jsonb, '{}'::jsonb, 'completed', NOW(), NOW())`,
+    [generationId, `trace-${generationId}`],
+  );
+}
+
+async function readContentStorageRow(
+  queryRunner: ReturnType<DataSource['createQueryRunner']>,
+  generationId: string,
+): Promise<ContentStorageRow> {
+  const rows = (await queryRunner.query(
+    'SELECT * FROM "observability_generation_contents" WHERE "generationId" = $1',
+    [generationId],
+  )) as ContentStorageRow[];
+  const row = rows[0];
+
+  if (!row) {
+    throw new Error(`Missing observability content fixture ${generationId}.`);
+  }
+
+  return row;
+}

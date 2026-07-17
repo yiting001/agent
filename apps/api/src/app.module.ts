@@ -18,6 +18,7 @@ import { AddKnowledgeIngestionLeases1752158000000 } from './database/migrations/
 import { AddEvaluation1752159000000 } from './database/migrations/1752159000000-add-evaluation';
 import { AddPromptPolicies1752160000000 } from './database/migrations/1752160000000-add-prompt-policies';
 import { AddGenerationObservability1752161000000 } from './database/migrations/1752161000000-add-generation-observability';
+import { AddObservabilityQualityP01752162000000 } from './database/migrations/1752162000000-add-observability-quality-p0';
 import { BrandingModule } from './modules/branding/branding.module';
 import { HealthModule } from './modules/health/health.module';
 import { AgentMemoryModule } from './modules/agent-memory/agent-memory.module';
@@ -27,6 +28,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { EvaluationModule } from './modules/evaluation/evaluation.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { ModelProvidersModule } from './modules/model-providers/model-providers.module';
+import { ManagementAccessModule } from './modules/management-access/management-access.module';
 import { SkillsModule } from './modules/skills/skills.module';
 import { ObservabilityModule } from './modules/observability/observability.module';
 import { PromptPoliciesModule } from './modules/prompt-policies/prompt-policies.module';
@@ -62,6 +64,7 @@ import { RedisModule } from './shared/infrastructure/redis/redis.module';
             AddEvaluation1752159000000,
             AddPromptPolicies1752160000000,
             AddGenerationObservability1752161000000,
+            AddObservabilityQualityP01752162000000,
           ],
           migrationsRun: config.databaseMigrationsRun,
           extra: {
@@ -75,6 +78,7 @@ import { RedisModule } from './shared/infrastructure/redis/redis.module';
       },
     }),
     ModelProvidersModule,
+    ManagementAccessModule,
     ObservabilityModule,
     AgentMemoryModule,
     BrandingModule,
