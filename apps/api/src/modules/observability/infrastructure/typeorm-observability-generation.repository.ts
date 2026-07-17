@@ -14,6 +14,11 @@ import {
   ObservabilityGenerationRepository,
   type UpdateObservabilityGenerationModelInput,
 } from '../application/observability-generation.repository';
+import { ObservabilityContentCipher } from '../application/observability-content-cipher';
+import {
+  encryptContentColumns,
+  readPersistedContent,
+} from './observability-content-persistence';
 import { ObservabilityFeedbackEntity } from './observability-feedback.entity';
 import { ObservabilityGenerationContentEntity } from './observability-generation-content.entity';
 import { ObservabilityGenerationEntity } from './observability-generation.entity';
@@ -53,7 +58,12 @@ function mapFeedback(
     metric: entity.metric,
     rating: entity.rating,
     reasonCodes: entity.reasonCodes,
+    reviewReason: entity.reviewReason ?? undefined,
+    reviewedAt: entity.reviewedAt ?? undefined,
+    reviewerSubject: entity.reviewerSubject ?? undefined,
+    reviewStatus: entity.reviewStatus ?? undefined,
     source: entity.source,
+    convertedAt: entity.convertedAt ?? undefined,
     updatedAt: entity.updatedAt,
   };
 }
@@ -68,6 +78,7 @@ export class TypeOrmObservabilityGenerationRepository extends ObservabilityGener
     private readonly contents: Repository<ObservabilityGenerationContentEntity>,
     @InjectRepository(ObservabilityFeedbackEntity)
     private readonly feedback: Repository<ObservabilityFeedbackEntity>,
+    private readonly contentCipher: ObservabilityContentCipher,
   ) {
     super();
   }
@@ -103,9 +114,14 @@ export class TypeOrmObservabilityGenerationRepository extends ObservabilityGener
         return;
       }
 
+      const payload = readPersistedContent(this.contentCipher, content);
+
       await repository.save({
         ...content,
-        outputText: input.output.text,
+        ...encryptContentColumns(this.contentCipher, input.generationId, {
+          inputMessages: payload.inputMessages,
+          outputText: input.output.text,
+        }),
         redactionCount: content.redactionCount + input.output.redactionCount,
         truncated: content.truncated || input.output.truncated,
       });
@@ -148,6 +164,9 @@ export class TypeOrmObservabilityGenerationRepository extends ObservabilityGener
 
     return generations.map((generation) => {
       const content = contentByGeneration.get(generation.id);
+      const payload = content
+        ? readPersistedContent(this.contentCipher, content)
+        : undefined;
 
       return {
         agentId: generation.agentId,
@@ -169,8 +188,8 @@ export class TypeOrmObservabilityGenerationRepository extends ObservabilityGener
           })),
         finishReasons: generation.finishReasons,
         id: generation.id,
-        inputMessages: content?.inputMessages ?? [],
-        outputText: content?.outputText ?? '',
+        inputMessages: payload?.inputMessages ?? [],
+        outputText: payload?.outputText ?? '',
         providerId: generation.providerId,
         providerName: generation.providerName,
         requestedModel: generation.requestedModel,
@@ -236,9 +255,18 @@ export class TypeOrmObservabilityGenerationRepository extends ObservabilityGener
       });
 
       if (content) {
+        const encrypted = encryptContentColumns(
+          this.contentCipher,
+          content.generationId,
+          {
+            inputMessages: content.inputMessages,
+            outputText: content.outputText,
+          },
+        );
+
         await manager
           .getRepository(ObservabilityGenerationContentEntity)
-          .save({ ...content });
+          .save({ ...content, ...encrypted });
       }
     });
   }
@@ -268,22 +296,52 @@ export class TypeOrmObservabilityGenerationRepository extends ObservabilityGener
   async upsertFeedback(
     feedback: ObservabilityFeedback,
   ): Promise<ObservabilityFeedback> {
-    await this.feedback
-      .createQueryBuilder()
-      .insert()
-      .into(ObservabilityFeedbackEntity)
-      .values(feedback)
-      .orUpdate(
-        ['rating', 'reasonCodes', 'comment', 'source', 'updatedAt'],
-        ['generationId', 'actorKeyHash', 'metric'],
-      )
-      .execute();
-    const saved = await this.feedback.findOneByOrFail({
-      actorKeyHash: feedback.actorKeyHash,
-      generationId: feedback.generationId,
-      metric: feedback.metric,
-    });
+    return this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(ObservabilityFeedbackEntity);
+      const initialReviewStatus =
+        feedback.rating === 'negative' ? 'pending' : null;
 
-    return mapFeedback(saved);
+      await repository
+        .createQueryBuilder()
+        .insert()
+        .into(ObservabilityFeedbackEntity)
+        .values({
+          ...feedback,
+          convertedAt: null,
+          reviewReason: null,
+          reviewedAt: null,
+          reviewerSubject: null,
+          reviewStatus: initialReviewStatus,
+        })
+        .orIgnore()
+        .execute();
+      const current = await repository
+        .createQueryBuilder('feedback')
+        .setLock('pessimistic_write')
+        .where('feedback."generationId" = :generationId', {
+          generationId: feedback.generationId,
+        })
+        .andWhere('feedback."actorKeyHash" = :actorKeyHash', {
+          actorKeyHash: feedback.actorKeyHash,
+        })
+        .andWhere('feedback."metric" = :metric', { metric: feedback.metric })
+        .getOneOrFail();
+      const converted = current.reviewStatus === 'converted';
+      const saved = await repository.save({
+        ...current,
+        comment: feedback.comment,
+        convertedAt: converted ? current.convertedAt : null,
+        rating: feedback.rating,
+        reasonCodes: feedback.reasonCodes,
+        reviewReason: converted ? current.reviewReason : null,
+        reviewedAt: converted ? current.reviewedAt : null,
+        reviewerSubject: converted ? current.reviewerSubject : null,
+        reviewStatus: converted ? 'converted' : initialReviewStatus,
+        source: feedback.source,
+        updatedAt: feedback.updatedAt,
+      });
+
+      return mapFeedback(saved);
+    });
   }
 }

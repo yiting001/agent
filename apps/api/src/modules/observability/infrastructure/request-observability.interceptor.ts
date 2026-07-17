@@ -15,6 +15,17 @@ import { getApplicationErrorHttpStatus } from '../../../shared/presentation/appl
 import { ObservabilityService } from '../application/observability.service';
 import { ObservabilityContext } from './observability-context';
 
+const UNMATCHED_ROUTE = '/unmatched';
+const MAX_ROUTE_TEMPLATE_CHARACTERS = 500;
+
+function containsControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const codePoint = character.codePointAt(0);
+
+    return codePoint !== undefined && (codePoint <= 31 || codePoint === 127);
+  });
+}
+
 function readTraceId(request: Request, fallback: string): string {
   const traceParent = request.header('traceparent');
   const traceId = traceParent?.match(
@@ -36,17 +47,32 @@ function errorStatus(error: unknown, response: Response): number {
   return response.headersSent ? response.statusCode : 500;
 }
 
-function normalizeRoute(path: string): string {
-  return path
-    .replace(
-      /\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}(?=\/|$)/gi,
-      '/:id',
-    )
-    .replace(/\/\d+(?=\/|$)/g, '/:id');
+function readMatchedRouteTemplate(request: Request): string {
+  const route: unknown = (request as unknown as { route?: unknown }).route;
+
+  if (typeof route !== 'object' || route === null || Array.isArray(route)) {
+    return UNMATCHED_ROUTE;
+  }
+
+  const path = (route as Record<string, unknown>).path;
+
+  if (
+    typeof path !== 'string' ||
+    !path.startsWith('/') ||
+    path.length > MAX_ROUTE_TEMPLATE_CHARACTERS ||
+    containsControlCharacter(path)
+  ) {
+    return UNMATCHED_ROUTE;
+  }
+
+  return path;
 }
 
 function isObservabilityReadRoute(route: string): boolean {
-  return route.startsWith('/api/observability/');
+  return (
+    route.startsWith('/api/observability/') ||
+    route.startsWith('/observability/')
+  );
 }
 
 @Injectable()
@@ -71,7 +97,7 @@ export class RequestObservabilityInterceptor implements NestInterceptor {
     const spanId = this.observability.createSpanId();
     const startedAt = new Date();
     const started = performance.now();
-    const route = normalizeRoute(`${request.baseUrl}${request.path}`);
+    const route = readMatchedRouteTemplate(request);
     const operation = `${request.method} ${route}`;
 
     if (request.method === 'GET' && isObservabilityReadRoute(route)) {

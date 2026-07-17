@@ -109,10 +109,16 @@ export class TypeOrmEvaluationRepository extends EvaluationRepository {
       ? {
           agentId: suite.agentId,
           cases: cases.map((evaluationCase) => ({
+            evaluationCriteria: evaluationCase.evaluationCriteria,
             expectedKeywords: evaluationCase.expectedKeywords,
+            expectedOutput: evaluationCase.expectedOutput,
             id: evaluationCase.id,
             input: evaluationCase.input,
+            source: evaluationCase.source,
+            sourceFeedbackId: evaluationCase.sourceFeedbackId,
+            sourceGenerationId: evaluationCase.sourceGenerationId,
             suiteId: evaluationCase.suiteId,
+            tags: evaluationCase.tags,
           })),
           createdAt: suite.createdAt,
           description: suite.description,

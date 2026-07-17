@@ -27,6 +27,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: [];
+  retry: [];
 }>();
 
 const categoryLabels: Record<ObservabilityCategory, string> = {
@@ -127,6 +128,13 @@ function formatMetadataValue(value: string | number | boolean): string {
     >
       <BaseIcon name="alert" />
       <strong>{{ errorMessage }}</strong>
+      <button
+        class="secondary-button secondary-button--small"
+        type="button"
+        @click="emit('retry')"
+      >
+        重试
+      </button>
     </div>
     <div v-else-if="trace" class="observability-trace-detail">
       <div class="observability-trace-summary">

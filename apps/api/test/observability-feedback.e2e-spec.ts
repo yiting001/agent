@@ -10,6 +10,7 @@ import {
   parseRecord,
   readString,
 } from './knowledge-test-app';
+import { MANAGEMENT_TEST_AUTHORIZATION } from './management-test-credentials';
 
 describe('Generation observability feedback', () => {
   const storagePath = resolve('.test-data/observability-feedback');
@@ -137,6 +138,7 @@ describe('Generation observability feedback', () => {
 
     await request(app.getHttpServer())
       .get(`/api/observability/traces/${traceId}`)
+      .set('Authorization', MANAGEMENT_TEST_AUTHORIZATION)
       .expect(200)
       .expect(({ text }) => {
         expect(text).toContain('"captureMode":"redacted"');

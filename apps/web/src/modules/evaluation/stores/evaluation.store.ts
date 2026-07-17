@@ -2,6 +2,8 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
 import { applicationDependencies } from '@/app/dependencies';
+import { useManagementAccessStore } from '@/modules/management-access/stores/management-access.store';
+import { HttpError } from '@/shared/http/http-client';
 
 import type {
   CreateEvaluationSuiteInput,
@@ -21,12 +23,28 @@ function replaceSuite(
 }
 
 export const useEvaluationStore = defineStore('evaluation', () => {
+  const accessStore = useManagementAccessStore();
   const errorMessage = ref('');
   const isLoading = ref(false);
   const isSaving = ref(false);
   const runsBySuiteId = ref<Record<string, EvaluationRunDetail[]>>({});
   const selectedRun = ref<EvaluationRunDetail>();
   const suites = ref<EvaluationSuiteSummary[]>([]);
+  let stateVersion = 0;
+
+  function operationError(error: unknown, fallback: string): string {
+    if (error instanceof HttpError && error.status === 401) {
+      reset();
+      accessStore.invalidate();
+      return '管理凭证无效或已失效，请重新登录。';
+    }
+
+    if (error instanceof HttpError && error.status === 403) {
+      return '当前凭证缺少评估管理权限。';
+    }
+
+    return error instanceof Error ? error.message : fallback;
+  }
 
   const latestRuns = computed(() =>
     suites.value
@@ -44,17 +62,25 @@ export const useEvaluationStore = defineStore('evaluation', () => {
   async function execute<Output>(
     operation: () => Promise<Output>,
   ): Promise<Output> {
+    const requestVersion = stateVersion;
+
     errorMessage.value = '';
     isSaving.value = true;
 
     try {
       return await operation();
     } catch (error) {
-      errorMessage.value =
-        error instanceof Error ? error.message : '评估操作失败，请稍后重试。';
+      if (requestVersion === stateVersion) {
+        errorMessage.value = operationError(
+          error,
+          '评估操作失败，请稍后重试。',
+        );
+      }
       throw error;
     } finally {
-      isSaving.value = false;
+      if (requestVersion === stateVersion) {
+        isSaving.value = false;
+      }
     }
   }
 
@@ -63,34 +89,57 @@ export const useEvaluationStore = defineStore('evaluation', () => {
       return;
     }
 
+    const requestVersion = stateVersion;
+
     isLoading.value = true;
     errorMessage.value = '';
 
     try {
-      suites.value = await gateway.listSuites();
+      const nextSuites = await gateway.listSuites();
+
+      if (requestVersion === stateVersion) {
+        suites.value = nextSuites;
+      }
     } catch (error) {
-      errorMessage.value =
-        error instanceof Error ? error.message : '评估数据加载失败。';
+      if (requestVersion === stateVersion) {
+        errorMessage.value = operationError(error, '评估数据加载失败。');
+      }
     } finally {
-      isLoading.value = false;
+      if (requestVersion === stateVersion) {
+        isLoading.value = false;
+      }
     }
   }
 
   async function createSuite(input: CreateEvaluationSuiteInput): Promise<void> {
+    const requestVersion = stateVersion;
     const created = await execute(() => gateway.createSuite(input));
 
-    suites.value = replaceSuite(suites.value, created);
+    if (requestVersion === stateVersion) {
+      suites.value = replaceSuite(suites.value, created);
+    }
   }
 
   async function loadRuns(suiteId: string): Promise<void> {
-    runsBySuiteId.value = {
-      ...runsBySuiteId.value,
-      [suiteId]: await execute(() => gateway.listRuns(suiteId)),
-    };
+    const requestVersion = stateVersion;
+    const runs = await execute(() => gateway.listRuns(suiteId));
+
+    if (requestVersion === stateVersion) {
+      runsBySuiteId.value = {
+        ...runsBySuiteId.value,
+        [suiteId]: runs,
+      };
+    }
   }
 
   async function runSuite(suiteId: string): Promise<void> {
+    const requestVersion = stateVersion;
     const run = await execute(() => gateway.runSuite(suiteId));
+
+    if (requestVersion !== stateVersion) {
+      return;
+    }
+
     const runs = runsBySuiteId.value[suiteId] ?? [];
 
     selectedRun.value = run;
@@ -117,7 +166,22 @@ export const useEvaluationStore = defineStore('evaluation', () => {
   }
 
   async function openRun(runId: string): Promise<void> {
-    selectedRun.value = await execute(() => gateway.getRun(runId));
+    const requestVersion = stateVersion;
+    const run = await execute(() => gateway.getRun(runId));
+
+    if (requestVersion === stateVersion) {
+      selectedRun.value = run;
+    }
+  }
+
+  function reset(): void {
+    stateVersion += 1;
+    errorMessage.value = '';
+    isLoading.value = false;
+    isSaving.value = false;
+    runsBySuiteId.value = {};
+    selectedRun.value = undefined;
+    suites.value = [];
   }
 
   return {
@@ -129,6 +193,7 @@ export const useEvaluationStore = defineStore('evaluation', () => {
     latestRuns,
     loadRuns,
     openRun,
+    reset,
     runSuite,
     runsBySuiteId,
     selectedRun,

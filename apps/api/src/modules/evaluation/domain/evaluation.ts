@@ -10,6 +10,9 @@ export type EvaluationRunStatus = 'completed' | 'failed';
 /** 单个用例执行结果。 */
 export type EvaluationCaseResultStatus = 'failed' | 'passed';
 
+/** 评估用例来源；线上反馈仅能经过人工审核后转换。 */
+export type EvaluationCaseSource = 'feedback' | 'manual';
+
 export interface EvaluationMetric {
   id: string;
   kind: EvaluationMetricKind;
@@ -19,10 +22,16 @@ export interface EvaluationMetric {
 }
 
 export interface EvaluationCase {
-  id: string;
+  evaluationCriteria?: string;
   expectedKeywords: string[];
+  expectedOutput?: string;
+  id: string;
   input: string;
+  source: EvaluationCaseSource;
+  sourceFeedbackId?: string;
+  sourceGenerationId?: string;
   suiteId: string;
+  tags: string[];
 }
 
 export interface EvaluationSuite {

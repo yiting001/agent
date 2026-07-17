@@ -80,7 +80,9 @@ export class CreateEvaluationSuiteUseCase {
           expectedKeywords,
           id: randomUUID(),
           input: evaluationCase.input.trim(),
+          source: 'manual' as const,
           suiteId,
+          tags: [],
         };
       }),
       createdAt: now,

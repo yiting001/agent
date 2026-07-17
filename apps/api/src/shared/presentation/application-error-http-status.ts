@@ -4,6 +4,7 @@ import type { ApplicationError } from '../application/application-error';
 
 const errorStatus: Record<ApplicationError['code'], HttpStatus> = {
   conflict: HttpStatus.CONFLICT,
+  forbidden: HttpStatus.FORBIDDEN,
   invalid_operation: HttpStatus.UNPROCESSABLE_ENTITY,
   not_found: HttpStatus.NOT_FOUND,
   service_unavailable: HttpStatus.SERVICE_UNAVAILABLE,

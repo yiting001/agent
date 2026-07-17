@@ -8,6 +8,7 @@ describe('observability generation redaction', () => {
     const result = sanitizeGenerationText(
       [
         'Bearer token-secret',
+        `mgmt_${'A'.repeat(43)}`,
         'sk-abcdefghijklmnopqrstuvwxyz',
         'api_key=top-secret',
         'user@example.com',
@@ -20,11 +21,12 @@ describe('observability generation redaction', () => {
     );
 
     expect(result.value).not.toContain('token-secret');
+    expect(result.value).not.toContain('mgmt_');
     expect(result.value).not.toContain('user@example.com');
     expect(result.value).not.toContain('13800138000');
     expect(result.value).not.toContain('private.txt');
     expect(result.value).not.toContain('AAAAABBBBB');
-    expect(result.redactionCount).toBe(8);
+    expect(result.redactionCount).toBe(9);
   });
 
   it('按整个消息集合限制字符数并保留结构化角色', () => {

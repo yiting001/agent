@@ -6,11 +6,42 @@ import type {
   ObservabilityTraceDetail,
   ObservabilityTracePage,
 } from '../domain/observability-dashboard';
+import type {
+  ConvertFeedbackReviewInput,
+  DecideFeedbackReviewInput,
+  FeedbackReviewConversionResult,
+  FeedbackReviewItem,
+  FeedbackReviewPage,
+  FeedbackReviewQueueStatus,
+} from '../domain/feedback-review';
 import type { ObservabilityTracePageQuery } from '../application/observability.gateway';
 
 export class HttpObservabilityGateway extends ObservabilityGateway {
   constructor(private readonly httpClient: HttpClient) {
     super();
+  }
+
+  convertFeedbackReview(
+    feedbackId: string,
+    input: ConvertFeedbackReviewInput,
+  ): Promise<FeedbackReviewConversionResult> {
+    return this.httpClient.post<
+      FeedbackReviewConversionResult,
+      ConvertFeedbackReviewInput
+    >(
+      `/observability/feedback-reviews/${encodeURIComponent(feedbackId)}/evaluation-case`,
+      input,
+    );
+  }
+
+  decideFeedbackReview(
+    feedbackId: string,
+    input: DecideFeedbackReviewInput,
+  ): Promise<FeedbackReviewItem> {
+    return this.httpClient.put<FeedbackReviewItem, DecideFeedbackReviewInput>(
+      `/observability/feedback-reviews/${encodeURIComponent(feedbackId)}`,
+      input,
+    );
   }
 
   getDashboard(hours: number): Promise<ObservabilityDashboard> {
@@ -41,6 +72,22 @@ export class HttpObservabilityGateway extends ObservabilityGateway {
 
     return this.httpClient.get<ObservabilityTracePage>(
       `/observability/traces?${params.toString()}`,
+    );
+  }
+
+  listFeedbackReviews(
+    status: FeedbackReviewQueueStatus,
+    page: number,
+    pageSize: number,
+  ): Promise<FeedbackReviewPage> {
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: String(pageSize),
+      status,
+    });
+
+    return this.httpClient.get<FeedbackReviewPage>(
+      `/observability/feedback-reviews?${params.toString()}`,
     );
   }
 }

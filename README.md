@@ -69,8 +69,13 @@ openssl rand -hex 32
 - `/prompt-policies`：内置系统提示词、启停与富内容输出协议管理。
 - `/model-providers`：DeepSeek、通义千问、豆包及兼容模型配置。
 - `/api-access`：智能体应用与 API 访问凭证管理。
+- `/observability`：观测指标、Trace 正文、负反馈审核与 Evaluation 转换。
 - `/evaluation`：评估指标、测试用例和基准运行管理。
 - `/chat/:agentId`：指定智能体的独立真实对话测试页。
+
+`/observability` 和 `/evaluation` 使用共享管理登录。管理凭证由服务端
+`MANAGEMENT_ACCESS_CREDENTIALS` 配置，前端只在当前标签页的 `sessionStorage` 保存
+token，并按页面所需 scope 加载受保护数据。
 
 管理后台模块结构与后端边界见
 [中文智能体管理后台文档](docs/modules/admin-web.md)。

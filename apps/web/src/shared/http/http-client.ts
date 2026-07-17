@@ -19,9 +19,25 @@ export interface HttpClient {
   putFile<Response>(path: string, body: File): Promise<Response>;
 }
 
+export type AuthorizationTokenProvider = () => string | undefined;
+
+/** HTTP failure with a machine-readable status and a token-free message. */
+export class HttpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = 'HttpError';
+  }
+}
+
 /** Browser fetch implementation with consistent HTTP error handling. */
 export class FetchHttpClient implements HttpClient {
-  constructor(private readonly baseUrl: string) {}
+  constructor(
+    private readonly baseUrl: string,
+    private readonly authorizationTokenProvider?: AuthorizationTokenProvider,
+  ) {}
 
   delete<Response>(path: string): Promise<Response> {
     return this.request<Response>(path, { method: 'DELETE' });
@@ -61,12 +77,10 @@ export class FetchHttpClient implements HttpClient {
     body: Body,
     onEvent: (event: string, data: string) => void,
   ): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}${path}`,
-      this.jsonRequest('POST', body),
-    );
+    const prepared = this.prepareRequest(this.jsonRequest('POST', body));
+    const response = await fetch(`${this.baseUrl}${path}`, prepared.request);
 
-    await this.ensureSuccessful(response);
+    await this.ensureSuccessful(response, prepared.token);
 
     if (!response.body) {
       throw new Error('后端未返回可读取的流。');
@@ -148,12 +162,10 @@ export class FetchHttpClient implements HttpClient {
     path: string,
     request: RequestInit,
   ): Promise<Response> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      headers: { Accept: 'application/json' },
-      ...request,
-    });
+    const prepared = this.prepareRequest(request);
+    const response = await fetch(`${this.baseUrl}${path}`, prepared.request);
 
-    await this.ensureSuccessful(response);
+    await this.ensureSuccessful(response, prepared.token);
 
     if (response.status === 204) {
       return undefined as Response;
@@ -162,20 +174,50 @@ export class FetchHttpClient implements HttpClient {
     return response.json() as Promise<Response>;
   }
 
-  private async ensureSuccessful(response: Response): Promise<void> {
+  private prepareRequest(request: RequestInit): {
+    request: RequestInit;
+    token?: string;
+  } {
+    const headers = new Headers(request.headers);
+    const token = this.authorizationTokenProvider?.()?.trim() || undefined;
+
+    if (!headers.has('Accept')) {
+      headers.set('Accept', 'application/json');
+    }
+
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    return {
+      request: {
+        ...request,
+        headers,
+      },
+      token,
+    };
+  }
+
+  private async ensureSuccessful(
+    response: Response,
+    token?: string,
+  ): Promise<void> {
     if (response.ok) {
       return;
     }
 
     const errorBody: unknown = await response.json().catch(() => undefined);
-    const message =
+    const unsafeMessage =
       typeof errorBody === 'object' &&
       errorBody !== null &&
       'message' in errorBody &&
       typeof errorBody.message === 'string'
         ? errorBody.message
         : `后端请求失败，状态码：${response.status}。`;
+    const message = token
+      ? unsafeMessage.replaceAll(token, '[REDACTED]')
+      : unsafeMessage;
 
-    throw new Error(message);
+    throw new HttpError(message, response.status);
   }
 }

@@ -15,6 +15,11 @@ export type ObservabilityFeedbackSource =
 /** 一期用户反馈评价的质量维度。 */
 export type ObservabilityFeedbackMetric = 'helpfulness';
 export type ObservabilityFeedbackRating = 'negative' | 'positive';
+export type ObservabilityFeedbackReviewStatus =
+  | 'accepted'
+  | 'converted'
+  | 'pending'
+  | 'rejected';
 export type ObservabilityFeedbackReason =
   | 'citation'
   | 'format'
@@ -78,7 +83,12 @@ export interface ObservabilityFeedback {
   metric: ObservabilityFeedbackMetric;
   rating: ObservabilityFeedbackRating;
   reasonCodes: ObservabilityFeedbackReason[];
+  reviewReason?: string;
+  reviewedAt?: Date;
+  reviewerSubject?: string;
+  reviewStatus?: ObservabilityFeedbackReviewStatus;
   source: ObservabilityFeedbackSource;
+  convertedAt?: Date;
   updatedAt: Date;
 }
 
@@ -132,6 +142,7 @@ export interface SanitizedGenerationText {
 const SENSITIVE_PATTERNS: RegExp[] = [
   /data:[^,\s]+;base64,[^\s"')]+/gi,
   /Bearer\s+[A-Za-z0-9._~+/=-]+/gi,
+  /(?<![A-Za-z0-9_-])mgmt_[A-Za-z0-9_-]{43,251}(?![A-Za-z0-9_-])/g,
   /\bsk-[A-Za-z0-9_-]{12,}\b/g,
   /\bapi[_-]?key\s*[=:]\s*\S+/gi,
   /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
